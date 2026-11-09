@@ -9,6 +9,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "serve": "node scripts/serve.mjs",
+    "fixtures": "node tools/make_school.mjs && uv run --no-project --isolated --with ortools --with openpyxl tools/expected.py",
     "check": "npm run build && node --test tests/unit/ && playwright test && echo CHECK OK"
   },
   "dependencies": {
