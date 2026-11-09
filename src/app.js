@@ -31,7 +31,11 @@ function addFiles(list) {
   queue = queue.then(async () => {
     try {
       for (const f of files) held.set(f.name, { name: f.name, bytes: await readBytes(f) });
-      ({ slots, school: parsed } = await parseFiles([...held.values()]));
+      const named = (yes) => [...held.values()].filter((f) => SLOTS.includes(f.name) === yes);
+      // A file with any other name keeps its one line but never holds up Build.
+      const out = await parseFiles(named(true));
+      slots = { ...(await parseFiles(named(false))).slots, ...out.slots };
+      parsed = out.school;
     } catch {
       parsed = null;
     } finally {

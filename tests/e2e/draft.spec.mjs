@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { readFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { readBook } from "../../src/xlsx.js";
 import { buildButton, buildDraft, dropFiles, dropSchool, measure, schoolFiles, variantSchool, visibleStrings, watchPage } from "./helpers.mjs";
 import { forbiddenIn } from "./words.mjs";
@@ -36,6 +36,31 @@ async function toItem(page, text) {
     await nextItem(page);
   }
   throw new Error(`no To do item shows ${text}`);
+}
+// Every screen of a built draft, with names left off. Calls check(where) at each stop; ends on Who asked.
+async function walkDraft(page, check) {
+  for (let i = 0; i < TODO_COUNT; i++) { await check(`To do ${i}`); await nextItem(page); }
+  await tab(page, "Teachers").click();
+  await check("Teachers");
+  await page.locator("#main [data-row][data-teacher]", { hasNotText: "Not placed" }).first().click();
+  await check("Teacher");
+  await page.getByRole("button", { name: "All options" }).click();
+  await check("Move");
+  // Taking a sponsor off a course leaves it short, which brings up the Could sponsor rows.
+  await page.getByRole("button", { name: "Not placed", exact: true }).click();
+  await check("Teacher, moved");
+  await tab(page, /^To do/).click();
+  await toItem(page, "Could sponsor");
+  await check("Could sponsor");
+  await page.getByRole("button", { name: "Undo" }).click();
+  await page.getByRole("button", { name: "History" }).click();
+  await check("History");
+  await tab(page, "Courses").click();
+  await check("Courses");
+  await page.locator("#main [data-row][data-course]").first().click();
+  await check("Course");
+  await page.getByRole("button", { name: /^Who asked/ }).click();
+  await check("Who asked");
 }
 
 test("Build stays locked until all six files are ready", async ({ page }) => {
@@ -83,6 +108,16 @@ test("a bad file shows one plain line and Build stays locked", async ({ page }) 
   await page.locator('[data-k="files"]').setInputFiles({ name: "notes.xlsx", mimeType: "application/octet-stream", buffer: Buffer.from("x") });
   await expect(slot(page, "notes.xlsx")).toHaveText("notes.xlsx: not one of the six file names");
   await expect(buildButton(page)).toBeDisabled();
+});
+
+test("a stray file keeps its line but does not lock Build", async ({ page }) => {
+  await page.goto("/");
+  const payload = schoolFiles().map((p) => ({ name: basename(p), mimeType: "application/octet-stream", buffer: readFileSync(p) }));
+  await page.locator('[data-k="files"]').setInputFiles([...payload, { name: "courses (1).xlsx", mimeType: "application/octet-stream", buffer: Buffer.from("x") }]);
+  await expect(slot(page, "courses (1).xlsx")).toHaveText("courses (1).xlsx: not one of the six file names");
+  await expect(page.locator("[data-slot]", { hasText: "ready" })).toHaveCount(6);
+  await expect(buildButton(page)).toBeEnabled();
+  await buildDraft(page);
 });
 
 test("reload before Build returns to an empty Start", async ({ page }) => {
@@ -166,15 +201,7 @@ test("names are off at start and no invented name or email is in the DOM", async
   const people = await staff();
   await goBuild(page);
   await expect(names(page)).toHaveAttribute("aria-checked", "false");
-  await expectNoPeople(page, people);
-  for (const name of ["Teachers", "Courses"]) {
-    await tab(page, name).click();
-    await expectNoPeople(page, people);
-  }
-  await page.locator("#main [data-row][data-course]").first().click();
-  await expectNoPeople(page, people);
-  await page.getByRole("button", { name: "History" }).click();
-  await expectNoPeople(page, people);
+  await walkDraft(page, () => expectNoPeople(page, people));
 });
 
 test("the switch shows names and hides them again", async ({ page }) => {
@@ -259,19 +286,7 @@ test("forbidden words are gone on every screen", async ({ page }) => {
   await dropSchool(page);
   await check("Start, ready");
   await buildDraft(page);
-  for (let i = 0; i < TODO_COUNT; i++) { await check(`To do ${i}`); await nextItem(page); }
-  await tab(page, "Teachers").click();
-  await check("Teachers");
-  await page.locator("#main [data-row][data-teacher]").first().click();
-  await check("Teacher");
-  await page.getByRole("button", { name: "All options" }).click();
-  await check("Move");
-  await tab(page, "Courses").click();
-  await check("Courses");
-  await page.locator("#main [data-row][data-course]").first().click();
-  await check("Course");
-  await page.getByRole("button", { name: /^Who asked/ }).click();
-  await check("Who asked");
+  await walkDraft(page, check);
   await names(page).click();
   await check("Names on");
   await page.getByRole("button", { name: "History" }).click();
