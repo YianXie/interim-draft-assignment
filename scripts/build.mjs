@@ -9,7 +9,9 @@ await build({
   bundle: true,
   platform: "browser",
   format: "iife",
-  external: ["fs", "path"],
+  // The solver's CommonJS build: its ES module build needs top-level import.meta, which a browser bundle does not have. Its node: requires only run under Node.
+  alias: { highs: "./node_modules/highs/build/highs.js" },
+  external: ["fs", "path", "node:*"],
   logLevel: "warning",
 });
 await cp("public", "dist", { recursive: true });

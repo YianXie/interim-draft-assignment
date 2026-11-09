@@ -113,3 +113,8 @@ button.row:hover { background: var(--hover); }
 .btn[disabled] { color: var(--quiet); border-color: var(--rule); background: #fff; cursor: default; }
 .stepnav { position: sticky; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: -1px; padding: 12px 0; background: #fff; border-top: 1px solid var(--rule); }
 .endgap { margin-bottom: 28px; }
+
+.drop { padding: 28px 32px 32px; border: 2px dashed var(--line); border-radius: 10px; }
+.choose { display: inline-flex; align-items: center; margin-top: 8px; cursor: pointer; }
+.choose:focus-within { outline: 3px solid var(--blue); outline-offset: 2px; }
+.choose input { position: absolute; width: 1px; height: 1px; opacity: 0; }
