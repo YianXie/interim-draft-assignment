@@ -66,6 +66,11 @@ test("a returning course may run short, others may not", () => {
   // INT-01 has a returning sponsor and runs at 1 of 2 in the draft; that passes.
   assert.equal(pairs.filter(([, c]) => c === "INT-01").length, 1);
   assert.deepEqual(recheck(school, pairs), []);
+  // A full returning course that loses an ordinary teacher (not a sponsor) still passes.
+  const full = [...rc].find((c) => pairs.filter(([, x]) => x === c).length === 2);
+  const [drop] = pairs.find(([, c]) => c === full);
+  const ordinary = { ...school, teachers: school.teachers.map((t) => (t.id === drop ? { ...t, returning: false, returningCourse: null } : t)) };
+  assert.deepEqual(recheck(ordinary, without(drop)), []);
   // Any other course at 1 of 2 is a finding.
   const plain = school.courses.find((c) => c.running && c.seats === 2 && !rc.has(c.id) && pairs.some(([, x]) => x === c.id));
   const [t] = pairs.find(([, c]) => c === plain.id);
