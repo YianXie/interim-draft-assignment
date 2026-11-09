@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(//Users/ianxie/interim-private/**)",
+      "Edit(//Users/ianxie/interim-private/**)",
+      "Bash(*/Users/ianxie/interim-private*)",
+      "Read(//Users/ianxie/Desktop/projects/Stable-Sponsors/**)",
+      "Edit(//Users/ianxie/Desktop/projects/Stable-Sponsors/**)",
+      "Bash(*/Users/ianxie/Desktop/projects/Stable-Sponsors*)"
+    ],
+    "allow": [
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(npx playwright:*)",
+      "Bash(uv run --no-project:*)",
+      "Bash(git:*)"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "interim-draft-assignment",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "serve": "node scripts/serve.mjs",
+    "check": "npm run build && node --test tests/unit/ && playwright test && echo CHECK OK"
+  },
+  "dependencies": {
+    "@playwright/test": "1.65.0",
+    "esbuild": "0.28.2",
+    "fflate": "0.8.3",
+    "highs": "1.15.4",
+    "hucre": "1.3.0",
+    "write-excel-file": "4.1.1"
+  }
+}
