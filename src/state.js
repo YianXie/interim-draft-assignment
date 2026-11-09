@@ -1,25 +1,53 @@
-// Behaviour of the approved mock, ported to an ES module. Call Mock.init(data) to load a School; Mock.on(fn) re-renders after any change.
-const fmtTime = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-let D = { teachers: [], courses: [], draft: {} };
+// The mock's logic, ported to an ES module. Call Mock.init(school, snapshots) to load a School, then Mock.build(draft) once.
+// Mock.on(fn) re-renders after any change; Mock.onSnapshot(fn) hears each new Snapshot. No Node modules, no solver imports.
+const fmtTime = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+let D = { teachers: [], courses: [] };
 let T = new Map();
 let C = new Map();
-const S = { listeners: [] };
+const S = { listeners: [], snapListeners: [] };
 
-// Load a School (and its draft) and reset everything that depends on it. Listeners stay registered.
-function init(data) {
-  D = data;
+const on = (fn) => S.listeners.push(fn);
+const onSnapshot = (fn) => S.snapListeners.push(fn);
+const emit = () => S.listeners.forEach((f) => f());
+const load = (snap) => Object.assign(S, { placements: { ...snap.placements }, moved: new Map(snap.moved), left: new Set(snap.left) });
+
+// Load a School. With saved Snapshots the newest is restored; without, the state stays empty until build(). Listeners stay registered.
+function init(school, snapshots) {
+  D = school;
   T = new Map(D.teachers.map((t) => [t.id, t]));
   C = new Map(D.courses.map((c) => [c.id, c]));
-  Object.assign(S, {
-    placements: { ...D.draft }, kept: new Set(), moved: new Map(), namesOn: false, reviewed: new Set(),
-    version: 1, savedAt: fmtTime(), history: [], undone: [],
-  });
-  S.history.push({ version: 1, when: S.savedAt, text: "First draft built from the forms", placements: { ...S.placements }, kept: [], moved: [] });
+  Object.assign(S, { placements: {}, moved: new Map(), left: new Set(), namesOn: false, version: 0, savedAt: "", history: [] });
+  if (snapshots && snapshots.length) {
+    S.history = [...snapshots].sort((a, b) => b.version - a.version);
+    load(S.history[0]);
+    S.version = S.history[0].version;
+    S.savedAt = fmtTime(S.history[0].when);
+  }
   emit();
 }
 
-const on = (fn) => S.listeners.push(fn);
-const emit = () => S.listeners.forEach((f) => f());
+// Every change is one new Snapshot: who is placed where, who was moved by hand, who was left unplaced. T numbers and course codes only.
+function append(event, prev) {
+  const version = S.history.length ? S.history[0].version + 1 : 1;
+  const when = new Date().toISOString();
+  const snap = { version, prev, when, event, placements: { ...S.placements }, moved: [...S.moved], left: [...S.left] };
+  S.history.unshift(snap);
+  S.version = version;
+  S.savedAt = fmtTime(when);
+  S.snapListeners.forEach((f) => f(snap));
+  emit();
+}
+const shown = () => (S.history.length ? S.history[0].version : null);
+
+// The solver's draft becomes the first Snapshot.
+function build(draft) {
+  S.placements = Object.fromEntries(D.teachers.map((t) => [t.id, (draft && draft[t.id]) || null]));
+  S.moved = new Map();
+  S.left = new Set();
+  S.history = [];
+  append({ type: "build" }, null);
+}
+
 const ord = (n) => n + (["th", "st", "nd", "rd"][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10 < 4 ? n % 10 : 0] || "th");
 const BONUS = { "Round 1": 20, "Round 2": 10, Singapore: 0 };
 const score = (p) => 8 - p.rank + BONUS[p.round];
@@ -30,11 +58,11 @@ const teachers = () => D.teachers;
 const courses = () => D.courses.filter((c) => c.running);
 const label = (id) => (S.namesOn ? T.get(id).name : T.get(id).id);
 const contact = (id) => (S.namesOn ? T.get(id).email : "");
-const comment = (id) => (S.namesOn ? T.get(id).comment : null);
 const placedOn = (tid) => S.placements[tid] || null;
 const sponsors = (cid) => D.teachers.filter((t) => S.placements[t.id] === cid).map((t) => t.id);
 const seatsLeft = (cid) => C.get(cid).seats - sponsors(cid).length;
-const choice = (tid, cid) => T.get(tid).prefs.filter((p) => p.course === cid).sort((a, b) => a.rank - b.rank)[0] || null;
+// Their best-scoring listing of this course, where it was ranked more than once.
+const choice = (tid, cid) => T.get(tid).prefs.filter((p) => p.course === cid).sort((a, b) => score(b) - score(a))[0] || null;
 const choiceText = (tid, cid) => { const c = choice(tid, cid); return c ? `${ord(c.rank)} choice, ${c.round}` : "Not on their list"; };
 
 function status(cid) {
@@ -46,40 +74,38 @@ function status(cid) {
   return n === c.seats ? "full" : "short";
 }
 
-// Only the causes that are true for this person's list, in a fixed order.
-function listBlockers(t) {
-  const kinds = new Set(t.prefs.map((p) => {
-    const c = C.get(p.course);
-    if (!c.running) return "not running";
-    if (c.needs && !t.certificates.includes(c.needs)) return "needs a certificate they lack";
-    const st = status(p.course);
-    return st === "full" || st === "over" ? "full" : "short of sponsors";
-  }));
-  const words = ["full", "not running", "short of sponsors", "needs a certificate they lack"].filter((k) => kinds.has(k));
-  return words.length > 1 ? `${words.slice(0, -1).join(", ")} or ${words[words.length - 1]}` : words[0];
+// One true thing about a course on this person's list.
+function verb(t, cid) {
+  const c = C.get(cid);
+  const st = status(cid);
+  if (st === "not running") return "is not running";
+  if (c.needs && !t.certificates.includes(c.needs)) return `needs a ${c.needs.toLowerCase()}`;
+  if (st === "full" || st === "over") return "is full";
+  return st === "short" ? "has a free seat" : "did not run";
 }
+const words = (s) => s.split(/\s+/).filter(Boolean).length;
+// A listed choice by name, with its round when it is not the one already being talked about.
+const which = (p, round) => (p.round === round ? `Their ${ord(p.rank)} choice` : `Their ${p.round} ${ord(p.rank)} choice`);
 
-// One line, facts only. Never names another teacher, never mentions gender, never says anyone had priority.
+// One line, facts only, at most 20 words. Never names another teacher, never says anyone had priority.
 function reason(tid) {
   const t = T.get(tid);
-  const cid = S.placements[tid];
-  const prefix = S.moved.has(tid) ? `Moved by the office, was ${S.moved.get(tid) ? C.get(S.moved.get(tid)).name : "not placed"}. ` : "";
+  const cid = S.placements[tid] || null;
+  const ch = cid ? choice(tid, cid) : null;
+  const own = ch ? `Their ${ord(ch.rank)} choice in ${ch.round}.` : "Not on their list.";
+  if (S.moved.has(tid)) return `Moved by the office. ${cid ? own : "Not placed."}`;
   if (!cid) {
-    if (!t.submitted) return `${prefix}No form received. Not placed yet.`;
-    return `${prefix}Not placed. Every course on their list is ${listBlockers(t)}.`;
+    if (!t.submitted) return "No form received. Not placed yet.";
+    const top = [...t.prefs].sort((a, b) => score(b) - score(a))[0];
+    return top ? `Not placed. ${which(top, null)}, ${C.get(top.course).name}, ${verb(t, top.course)}.` : "Not placed.";
   }
-  if (t.returning && t.returningCourse === cid) return `${prefix}Returning sponsor, staying on this course.`;
-  if (!t.submitted) return `${prefix}No form received. Suggested to fill a seat, check with them first.`;
-  const ch = choice(tid, cid);
-  if (!ch) return prefix ? `${prefix}Not on their list.` : "Not on their list. Placed here by the office.";
-  const base = `${prefix}Their ${ord(ch.rank)} choice in ${ch.round}.`;
-  const better = t.prefs.filter((p) => score(p) > score(ch)).sort((a, b) => score(b) - score(a))[0];
-  if (!better) return base;
-  const st = status(better.course);
-  const bc = C.get(better.course);
-  const verb = bc.needs && !t.certificates.includes(bc.needs) ? `needs a ${bc.needs.toLowerCase()}` : st === "full" || st === "over" ? "is full" : st === "not running" ? "is not running" : "had too few sponsors to run";
-  const which = better.round === ch.round ? `Their ${ord(better.rank)} choice` : `Their ${better.round} ${ord(better.rank)} choice`;
-  return `${base} ${which}, ${C.get(better.course).name}, ${verb}.`;
+  if (t.returning && t.returningCourse === cid) return "Returning sponsor, staying on this course.";
+  if (!t.submitted) return "No form received. Suggested to fill a seat, check with them first.";
+  if (!ch) return "Not on their list. Placed here by the office.";
+  const better = t.prefs.filter((p) => p.course !== cid && score(p) > score(ch)).sort((a, b) => score(b) - score(a))[0];
+  if (!better) return own;
+  const full = `${own} ${which(better, ch.round)}, ${C.get(better.course).name}, ${verb(t, better.course)}.`;
+  return words(full) <= 20 ? full : own;
 }
 
 // What is unusual about this teacher: [{level:'needs'|'check'|'info', text}]
@@ -96,7 +122,6 @@ function teacherFlags(tid) {
     if (!ch && t.submitted && !(t.returning && t.returningCourse === cid)) out.push({ level: "check", text: "Not on their list" });
     if (c.needs && !t.certificates.includes(c.needs)) out.push({ level: "needs", text: `No ${c.needs.toLowerCase()} on file` });
   }
-  if (S.kept.has(tid)) out.push({ level: "info", text: "Kept" });
   return out;
 }
 
@@ -108,18 +133,20 @@ function courseFlags(cid) {
   if (list.length === 0) out.push({ level: "needs", text: `Needs sponsors: 0 of ${c.seats}` });
   else if (list.length < c.seats) out.push({ level: "needs", text: `Needs sponsors: ${list.length} of ${c.seats}` });
   if (list.length > c.seats) out.push({ level: "check", text: `Over by ${list.length - c.seats}` });
-  if (list.length >= 2 && new Set(list.map((t) => T.get(t).gender)).size === 1) out.push({ level: "check", text: "Not a mixed pair" });
-  if (c.needs && list.some((t) => !T.get(t).certificates.includes(c.needs))) out.push({ level: "needs", text: `Certificate missing` });
+  if (c.needs && list.some((t) => !T.get(t).certificates.includes(c.needs))) out.push({ level: "needs", text: "Certificate missing" });
   return out;
 }
 
-// Everything that needs a person, most urgent first: [{level, group, text, tid|cid}]
-function attention() {
-  const out = [];
-  for (const c of courses()) for (const f of courseFlags(c.id)) out.push({ level: f.level, group: "Courses", text: `${c.name}: ${f.text}`, cid: c.id });
-  for (const t of D.teachers) for (const f of teacherFlags(t.id)) if (f.level !== "info") out.push({ level: f.level, group: "Teachers", text: f.text, tid: t.id });
-  const rank = { needs: 0, check: 1 };
-  return out.sort((a, b) => rank[a.level] - rank[b.level]);
+// What still needs the office, in the order it is shown: short or empty offered courses, people with a form not placed,
+// then one group for everyone with no form who is not placed. Anyone the office left unplaced is done.
+function todo() {
+  if (!S.history.length) return [];
+  const out = courses().filter((c) => sponsors(c.id).length < c.seats).map((c) => ({ kind: "course", cid: c.id }));
+  const open = D.teachers.filter((t) => !S.placements[t.id] && !S.left.has(t.id));
+  for (const t of open) if (t.submitted) out.push({ kind: "teacher", tid: t.id });
+  const noForm = open.filter((t) => !t.submitted).map((t) => t.id);
+  if (noForm.length) out.push({ kind: "noForm", tids: noForm });
+  return out;
 }
 
 function summary() {
@@ -132,7 +159,7 @@ function summary() {
     returning: placed.filter((t) => t.returning && t.returningCourse === S.placements[t.id]).length,
     coursesRunning: courses().length, coursesStaffed: courses().filter((c) => sponsors(c.id).length >= c.seats).length,
     coursesShort: courses().filter((c) => sponsors(c.id).length < c.seats).length,
-    reviewed: S.reviewed.size, notChecked: ["Languages: nothing on file"], version: S.version, savedAt: S.savedAt, year: D.year, school: D.school,
+    version: S.version, savedAt: S.savedAt, year: D.year, school: D.school,
   };
 }
 
@@ -157,65 +184,49 @@ function whoAsked(cid) {
     .map((x) => ({ tid: x.tid, choice: `${ord(x.p.rank)} choice, ${x.p.round}`, placedHere: S.placements[x.tid] === cid, placedOn: S.placements[x.tid] ? C.get(S.placements[x.tid]).name : "Not placed" }));
 }
 
-function save(text) {
-  S.version += 1;
-  S.savedAt = fmtTime();
-  S.history.unshift({ version: S.version, when: S.savedAt, text, placements: { ...S.placements }, kept: [...S.kept], moved: [...S.moved] });
-  emit();
+// Place someone, or put them on Not placed (cid null). Moving to Not placed is the office's decision, so it also clears them from the To do.
+function move(tid, cid) {
+  const to = cid || null;
+  if (!T.has(tid) || (to && !C.has(to)) || (S.placements[tid] || null) === to) return;
+  if (!S.moved.has(tid)) S.moved.set(tid, S.placements[tid] || null);
+  S.placements[tid] = to;
+  if (to) S.left.delete(tid); else S.left.add(tid);
+  append({ type: "move", t: tid, to }, shown());
 }
-const short = (id) => label(id);
-function move(tid, cid, why) {
-  const from = S.placements[tid] || null;
-  S.placements[tid] = cid || null;
-  if (!S.moved.has(tid)) S.moved.set(tid, from);
-  S.kept.add(tid);
-  save(`Moved ${short(tid)} to ${cid ? C.get(cid).name : "not placed"}${why ? ` (${why})` : ""}`);
+// The office decides these people stay unplaced.
+function leave(tids) {
+  const ids = [...new Set(tids)].filter((id) => T.has(id) && !S.placements[id] && !S.left.has(id));
+  if (!ids.length) return;
+  ids.forEach((id) => S.left.add(id));
+  append({ type: "leave", t: ids }, shown());
 }
-function swap(a, b) {
-  const ca = S.placements[a], cb = S.placements[b];
-  S.placements[a] = cb; S.placements[b] = ca;
-  for (const [t, c] of [[a, ca], [b, cb]]) { if (!S.moved.has(t)) S.moved.set(t, c); S.kept.add(t); }
-  save(`Swapped ${short(a)} and ${short(b)}`);
-}
-function keep(tid) {
-  if (S.kept.has(tid)) S.kept.delete(tid); else S.kept.add(tid);
-  save(`${S.kept.has(tid) ? "Kept" : "Stopped keeping"} ${short(tid)}`);
-}
-function setNames(on_) { S.namesOn = !!on_; emit(); }
-function toggleReviewed(cid) { if (S.reviewed.has(cid)) S.reviewed.delete(cid); else S.reviewed.add(cid); emit(); }
-
-// Stand-in for the real solver: pairs of people, not kept, who would each do better by swapping.
-function redoPreview() {
-  const free = D.teachers.filter((t) => S.placements[t.id] && !S.kept.has(t.id) && !t.returning);
-  const moves = [];
-  const used = new Set();
-  for (const a of free) {
-    if (used.has(a.id)) continue;
-    for (const b of free) {
-      if (a.id >= b.id || used.has(b.id)) continue;
-      const ca = S.placements[a.id], cb = S.placements[b.id];
-      if (ca === cb) continue;
-      const pa = choice(a.id, cb), pb = choice(b.id, ca);
-      if (pa && pb) {
-        moves.push({ tid: a.id, from: ca, to: cb, text: choiceText(a.id, cb) }, { tid: b.id, from: cb, to: ca, text: choiceText(b.id, ca) });
-        used.add(a.id); used.add(b.id);
-        break;
-      }
-    }
-    if (moves.length >= 8) break;
-  }
-  return { moves, kept: S.kept.size };
-}
-function acceptRedo(preview) {
-  for (const m of preview.moves) S.placements[m.tid] = m.to;
-  save(`Redid the rest: ${preview.moves.length} teachers moved, ${preview.kept} kept`);
+const canUndo = () => S.history.length > 0 && S.history[0].prev !== null;
+// Back to the version the newest one replaced. That is written as a new version whose own prev is that version's prev.
+function undo() {
+  if (!canUndo()) return;
+  const back = S.history.find((h) => h.version === S.history[0].prev);
+  load(back);
+  append({ type: "undo" }, back.prev);
 }
 function restore(version) {
   const h = S.history.find((x) => x.version === version);
   if (!h) return;
-  S.placements = { ...h.placements }; S.kept = new Set(h.kept); S.moved = new Map(h.moved);
-  save(`Restored version ${version}`);
+  const was = shown();
+  load(h);
+  append({ type: "restore", v: version }, was);
+}
+function setNames(on_) { S.namesOn = !!on_; emit(); }
+
+// Plain words for a Snapshot, built now so they follow the names switch.
+function describe(snap) {
+  const e = snap.event;
+  const where = (cid) => (cid ? C.get(cid).name : "not placed");
+  if (e.type === "build") return "First draft built from the forms";
+  if (e.type === "move") return `Moved ${label(e.t)} to ${where(e.to)}`;
+  if (e.type === "leave") return e.t.length === 1 ? `Left ${label(e.t[0])} unplaced` : `Left ${e.t.length} people unplaced`;
+  if (e.type === "restore") return `Restored version ${e.v}`;
+  return "Undid the last change";
 }
 
-export const Mock = { state: S, on, teacher, course, teachers, courses, label, contact, comment, placedOn, sponsors, seatsLeft, choice, choiceText, status, reason,
-  init, teacherFlags, courseFlags, attention, summary, optionsFor, whoAsked, move, swap, keep, setNames, toggleReviewed, redoPreview, acceptRedo, restore, history: () => S.history };
+export const Mock = { state: S, on, onSnapshot, init, build, teacher, course, teachers, courses, label, contact, placedOn, sponsors, seatsLeft, choice, choiceText, status, reason,
+  teacherFlags, courseFlags, todo, summary, optionsFor, whoAsked, move, leave, undo, canUndo, restore, setNames, describe, history: () => [...S.history] };

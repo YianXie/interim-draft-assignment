@@ -22,10 +22,8 @@ function undo() {
   else { note = null; Mock.restore(u); }
 }
 
-// Every unplaced teacher is a to-do, so "10 things" adds up with "9 not placed" and "1 course". Deciding to leave someone unplaced clears it.
-const toDo = (a) => a.level === "needs" || (a.tid && !Mock.placedOn(a.tid));
-const decided = (a) => a.tid && !Mock.placedOn(a.tid) && Mock.state.kept.has(a.tid);
-const needs = () => Mock.attention().filter((a) => toDo(a) && !decided(a));
+// Stand-in until Task 6 rewrites the page: one entry per To do item (the no-form group shows its first person).
+const needs = () => Mock.todo().map((i) => (i.kind === "course" ? { cid: i.cid } : { tid: i.tid || i.tids[0] }));
 const who = (id) => `${id} ${Mock.label(id)}`;
 
 function shortNeed(text) {
@@ -298,3 +296,4 @@ document.addEventListener("keydown", (e) => {
 
 Mock.on(render);
 Mock.init(stub);
+Mock.build(stub.draft);
