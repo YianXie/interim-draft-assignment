@@ -248,6 +248,10 @@ test("teacher row order does not change when invented names change", async ({ pa
     const ids = await teacherIds(page);
     expect(ids).toHaveLength(96);
     expect(ids).toEqual([...ids].sort());
+    // A built draft is remembered, so the second school needs a Start of its own.
+    await page.getByRole("button", { name: "History" }).click();
+    await page.getByRole("button", { name: "Start over" }).click();
+    await expect(page.locator("[data-slot]")).toHaveCount(6);
   }
 });
 

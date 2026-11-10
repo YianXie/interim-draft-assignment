@@ -4,6 +4,7 @@ import { loadHighs, solveDraft, toDraft } from "./solver.js";
 import { recheck } from "./recheck.js";
 import { sheetsFor, fileName } from "./export.js";
 import { writeBook } from "./xlsx.js";
+import { addSnapshot, loadAll, saveUpload, wipe } from "./store.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const L = (id) => esc(Mock.label(id));
@@ -16,11 +17,36 @@ const top_ = () => view.stack[view.stack.length - 1];
 
 /* Start: files stay in memory, keyed by name, until Build. Nothing is stored. */
 const held = new Map();
-let phase = "start"; // start, building, failed or draft
+let phase = "loading"; // loading, start, building, failed or draft
 let slots = {};
 let parsed = null;
 let reading = 0;
 let queue = Promise.resolve();
+
+/* Saving: one write at a time, in order. A write that fails stops the line, so "saved" is never claimed over a gap. */
+let savedVersion = null;
+let saving = Promise.resolve();
+function inOrder(job) {
+  saving = saving.then(job);
+  saving.catch(() => {});
+}
+function showSaved() {
+  const el = document.querySelector("[data-saved]");
+  if (!el || savedVersion === null) return;
+  el.dataset.version = savedVersion;
+  el.textContent = savedVersion === Mock.state.version ? "Saved in this browser" : "";
+}
+function remember(snap) {
+  inOrder(async () => {
+    await addSnapshot(snap);
+    savedVersion = snap.version;
+    showSaved();
+  });
+}
+function startOver() {
+  const toStart = () => location.reload();
+  saving.catch(() => {}).then(wipe).then(toStart, toStart);
+}
 
 const readBytes = (f) => f.arrayBuffer().then((b) => new Uint8Array(b), () => new Uint8Array());
 // Drops are handled strictly in order, so a later file always replaces an earlier one of the same name.
@@ -57,6 +83,7 @@ async function build() {
   try {
     const { status, pairs } = solveDraft(await loadHighs({ locateFile: (f) => "/" + f }), school);
     if (status !== "Optimal" || recheck(school, pairs).length) { phase = "failed"; render(); return; }
+    inOrder(() => saveUpload(school));
     Mock.init(school);
     Mock.build(toDraft(school, pairs));
     held.clear();
@@ -107,7 +134,7 @@ function teacherOrder(id) {
   const ch = Mock.choice(id, c);
   return ch ? ch.rank : 100;
 }
-const warns = (o) => o.warn.filter((x) => x !== "They did not rank this").map((x) => x.replace("This course is full", "Full").replace(" on file", "")).join(", ").replace(", No ", ", no ");
+const warns = (o) => o.warn.map((x) => x.replace("This course is full", "Full").replace(" on file", "")).join(", ").replace(/, (\w)/g, (_, c) => `, ${c.toLowerCase()}`);
 
 /* Top bar and bottom line */
 function topBar() {
@@ -122,7 +149,7 @@ function topBar() {
       <button class="plain" data-download data-k="download" title="${Mock.state.namesOn ? "Download with names" : "Download with T numbers"}">Download</button>
     </div></div>`;
 }
-const bottomLine = () => `<div class="wrap"><span data-saved>Saved in this browser</span>
+const bottomLine = () => `<div class="wrap"><span data-saved></span>
   ${Mock.canUndo() ? `<button class="link" data-act="undo" data-k="un">Undo</button>` : ""}
   <button class="link" data-act="open" data-to="history" data-k="hist">History</button></div>`;
 
@@ -217,7 +244,8 @@ function askedCard(f) {
 
 function historyCard() {
   return card(`${back()}${title("History")}<div class="gap" data-rows>${Mock.history().map((h, i) => `
-    <div class="row r-two" data-row><span><span class="q">${esc(timeOf(h.when))}</span>&ensp;${esc(Mock.describe(h))}</span>${i ? `<button class="link" data-act="restore" data-v="${h.version}" data-k="h-${h.version}">Restore</button>` : ""}</div>`).join("")}</div>`);
+    <div class="row r-two" data-row><span><span class="q">${esc(timeOf(h.when))}</span>&ensp;${esc(Mock.describe(h))}</span>${i ? `<button class="link" data-act="restore" data-v="${h.version}" data-k="h-${h.version}">Restore</button>` : ""}</div>`).join("")}</div>
+    <div class="links"><button class="link" data-act="startOver" data-k="so">Start over</button></div>`);
 }
 
 function frame(f) {
@@ -286,6 +314,7 @@ function render() {
     main.innerHTML = f ? frame(f) : view.tab === "todo" ? todoHome() : view.tab === "courses" ? coursesHome() : teachersHome();
     ["courses", "teachers"].forEach(filter);
     done.innerHTML = bottomLine();
+    showSaved();
   } else {
     main.innerHTML = startView();
   }
@@ -337,6 +366,7 @@ document.addEventListener("click", (e) => {
     case "leaveGroup": Mock.leave(Mock.todo().find((i) => i.kind === "noForm").tids); break;
     case "restore": Mock.restore(Number(d.v)); break;
     case "undo": Mock.undo(); break;
+    case "startOver": startOver(); break;
   }
 });
 document.addEventListener("input", (e) => {
@@ -351,4 +381,17 @@ window.addEventListener("dragover", (e) => e.preventDefault());
 window.addEventListener("drop", (e) => { e.preventDefault(); addFiles(e.dataTransfer.files); });
 
 Mock.on(render);
-addFiles([]);
+Mock.onSnapshot(remember);
+
+async function boot() {
+  const saved = await loadAll().catch(() => null);
+  if (saved) {
+    savedVersion = saved.snapshots.at(-1).version;
+    phase = "draft";
+    Mock.init(saved.school, saved.snapshots);
+  } else {
+    phase = "start";
+    addFiles([]);
+  }
+}
+boot();
