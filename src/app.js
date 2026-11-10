@@ -2,6 +2,8 @@ import { Mock } from "./state.js";
 import { parseFiles, SLOTS } from "./import.js";
 import { loadHighs, solveDraft, toDraft } from "./solver.js";
 import { recheck } from "./recheck.js";
+import { sheetsFor, fileName } from "./export.js";
+import { writeBook } from "./xlsx.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const L = (id) => esc(Mock.label(id));
@@ -117,7 +119,7 @@ function topBar() {
     <div class="tabs" role="tablist">${tab("todo", n ? `To do ${n}` : "To do")}${tab("teachers", "Teachers")}${tab("courses", "Courses")}</div>
     <div class="right">
       <button class="switch" role="switch" data-names data-k="names" aria-checked="${Mock.state.namesOn}">Show names <span class="track"><span class="knob"></span></span></button>
-      <button class="plain" data-k="download">Download</button>
+      <button class="plain" data-download data-k="download">Download</button>
     </div></div>`;
 }
 const bottomLine = () => `<div class="wrap"><span data-saved>Saved in this browser</span>
@@ -305,10 +307,23 @@ function setNames(on) {
   Mock.setNames(on);
 }
 
+// Builds the workbook from the draft as it is now, on the current switch, and hands it to the browser as a download.
+async function download() {
+  const blob = new Blob([await writeBook(sheetsFor(Mock))], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = fileName(Mock);
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+}
+
 document.addEventListener("click", (e) => {
-  const el = e.target.closest("[data-tab],[data-names],[data-act],[data-course],[data-teacher]");
+  const el = e.target.closest("[data-tab],[data-names],[data-download],[data-act],[data-course],[data-teacher]");
   if (!el) return;
   const d = el.dataset;
+  if ("download" in d) { download(); return; }
   if ("tab" in d) { view.tab = d.tab; view.stack = []; render(); window.scrollTo(0, 0); return; }
   if ("names" in d) { setNames(!Mock.state.namesOn); return; }
   if (!d.act) { push(d.course && !d.teacher ? { k: "course", id: d.course } : { k: "teacher", id: d.teacher }); return; }

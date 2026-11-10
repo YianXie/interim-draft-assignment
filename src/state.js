@@ -56,6 +56,7 @@ const teacher = (id) => T.get(id);
 const course = (id) => C.get(id);
 const teachers = () => D.teachers;
 const courses = () => D.courses.filter((c) => c.running);
+const allCourses = () => D.courses;
 const label = (id) => (S.namesOn ? T.get(id).name : T.get(id).id);
 const contact = (id) => (S.namesOn ? T.get(id).email : "");
 const placedOn = (tid) => S.placements[tid] || null;
@@ -228,5 +229,5 @@ function describe(snap) {
   return "Undid the last change";
 }
 
-export const Mock = { state: S, on, onSnapshot, init, build, teacher, course, teachers, courses, label, contact, placedOn, sponsors, seatsLeft, choice, choiceText, status, reason,
+export const Mock = { state: S, on, onSnapshot, init, build, teacher, course, teachers, courses, allCourses, label, contact, placedOn, sponsors, seatsLeft, choice, choiceText, status, reason,
   teacherFlags, courseFlags, todo, summary, optionsFor, whoAsked, move, leave, undo, canUndo, restore, setNames, describe, history: () => [...S.history] };
