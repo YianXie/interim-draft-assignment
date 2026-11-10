@@ -10,7 +10,8 @@
     "build": "node scripts/build.mjs",
     "serve": "node scripts/serve.mjs",
     "fixtures": "node tools/make_school.mjs && uv run --no-project --isolated --with ortools --with openpyxl tools/expected.py",
-    "check": "npm run build && node --test tests/unit/ && playwright test && echo CHECK OK"
+    "check": "npm run build && node --test tests/unit/ && playwright test && echo CHECK OK",
+    "check:final": "npm run build && node --test tests/unit/ && playwright test --repeat-each=5 && echo CHECK OK"
   },
   "dependencies": {
     "@playwright/test": "1.65.0",
