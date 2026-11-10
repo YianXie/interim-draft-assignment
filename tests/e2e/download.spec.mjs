@@ -94,6 +94,18 @@ test("file name contains invented", async ({ page }) => {
   expect((await download(page)).name).toBe("Fernhollow invented draft v2 with names.xlsx");
 });
 
+test("the Download tooltip says which version the press gives", async ({ page }) => {
+  await goBuild(page);
+  const button = page.getByRole("button", { name: "Download", exact: true });
+  await expect(button).toHaveAttribute("title", "Download with T numbers");
+  expect((await download(page)).name).toContain("T numbers");
+  await names(page).click();
+  await expect(button).toHaveAttribute("title", "Download with names");
+  expect((await download(page)).name).toContain("with names");
+  await names(page).click();
+  await expect(button).toHaveAttribute("title", "Download with T numbers");
+});
+
 test("a name such as O'Neil <b> and a course named =SUM(1) stay text in the file", async ({ page }) => {
   const CODE = 'C"><i>x';
   let courseName, courseCode;

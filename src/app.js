@@ -119,7 +119,7 @@ function topBar() {
     <div class="tabs" role="tablist">${tab("todo", n ? `To do ${n}` : "To do")}${tab("teachers", "Teachers")}${tab("courses", "Courses")}</div>
     <div class="right">
       <button class="switch" role="switch" data-names data-k="names" aria-checked="${Mock.state.namesOn}">Show names <span class="track"><span class="knob"></span></span></button>
-      <button class="plain" data-download data-k="download">Download</button>
+      <button class="plain" data-download data-k="download" title="${Mock.state.namesOn ? "Download with names" : "Download with T numbers"}">Download</button>
     </div></div>`;
 }
 const bottomLine = () => `<div class="wrap"><span data-saved>Saved in this browser</span>
