@@ -3,7 +3,7 @@
 cd "$(dirname "$0")" || exit 1
 export PATH="/opt/homebrew/bin:$PATH"
 
-[ -f dist/index.html ] || npm run build || exit 1
+npm run build || exit 1
 
 node scripts/serve.mjs &
 server=$!

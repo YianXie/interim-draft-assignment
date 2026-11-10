@@ -174,6 +174,7 @@ function optionsFor(tid) {
     if (left <= 0) warn.push("This course is full");
     if (!ch && t.submitted) warn.push("They did not rank this");
     if (c.needs && !t.certificates.includes(c.needs)) warn.push(`No ${c.needs.toLowerCase()} on file`);
+    if (t.returning && t.returningCourse && c.id !== t.returningCourse) warn.push("Returning sponsor");
     return { cid: c.id, name: c.name, kind: c.kind, choice: ch ? `${ord(ch.rank)} choice, ${ch.round}` : "Not on their list", rank: ch ? score(ch) : -1,
              seats: left > 0 ? `${left} seat${left === 1 ? "" : "s"} left` : "Full", warn };
   }).sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name));

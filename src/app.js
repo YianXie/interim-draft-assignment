@@ -236,7 +236,7 @@ function moveCard(f) {
   }).join("");
   const rest = opts.filter((o) => o.choice === "Not on their list").map((o) => go(o.cid, o.name, "", warns(o), `o-${o.cid}`)).join("");
   return card(`${back()}${title(`Move ${L(id)}`)}
-    ${c ? `<div class="links"><button class="link" data-act="moveTo" data-id="${id}" data-c="" data-k="np">Not placed</button></div>` : ""}
+    ${c ? `<div class="links"><button class="link" data-act="moveTo" data-id="${id}" data-c="" data-k="np">Not placed</button>${Mock.teacher(id).returning && Mock.teacher(id).returningCourse === c ? `<span class="need">Returning sponsor</span>` : ""}</div>` : ""}
     <div data-rows>${own}<div class="group"><span>${own ? "Other courses" : "All courses"}</span></div>${rest}</div>`);
 }
 function askedCard(f) {

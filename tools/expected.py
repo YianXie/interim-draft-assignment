@@ -1,6 +1,6 @@
 """Independent CP-SAT solve of the three priorities on the invented Fernhollow files.
 Shares no code with src/. Reads fixtures/school/*.xlsx, writes fixtures/expected.json.
-Run: uv run --no-project --with ortools --with openpyxl tools/expected.py"""
+Run: uv run --no-project --isolated --with ortools --with openpyxl tools/expected.py"""
 import json, sys
 from pathlib import Path
 from openpyxl import load_workbook

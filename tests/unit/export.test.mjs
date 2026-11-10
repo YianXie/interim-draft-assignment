@@ -174,3 +174,17 @@ test("forbidden words are in no workbook string", () => {
     assert.deepEqual(forbiddenIn(strings), []);
   }
 });
+
+test("Courses keeps every sponsor when a move overfills a full course", () => {
+  Mock.setNames(true);
+  const max = Math.max(...school.courses.map((c) => c.seats));
+  const target = school.courses.find((c) => c.running && c.seats === max && Mock.sponsors(c.id).length === max);
+  const mover = school.teachers.find((t) => Mock.placedOn(t.id) && Mock.placedOn(t.id) !== target.id);
+  Mock.move(mover.id, target.id);
+  const rows = sheet("Courses").rows;
+  assert.equal(rows[0].filter((h) => /^Sponsor /.test(h)).length, max + 1);
+  assert.ok(rows[0].includes(`Sponsor ${max + 1}`));
+  const row = rows.find((r) => r[0] === target.id);
+  assert.equal(row.length, max + 4);
+  for (const t of Mock.sponsors(target.id)) assert.ok(row.includes(Mock.label(t)));
+});

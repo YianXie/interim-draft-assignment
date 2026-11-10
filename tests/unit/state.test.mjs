@@ -220,3 +220,25 @@ test("onSnapshot hears every new snapshot, build included", () => {
   assert.deepEqual(heard, ["build", "leave", "undo"]);
   assert.equal(Mock.history()[0].event.type, "undo");
 });
+
+test("optionsFor warns for every rule a move would break", () => {
+  fresh();
+  const certified = (t, c) => !c.needs || t.certificates.includes(c.needs);
+  const full = (cid) => school.teachers.filter((t) => Mock.placedOn(t.id) === cid).length >= Mock.course(cid).seats;
+  const seen = new Set();
+  for (const t of school.teachers) {
+    for (const o of Mock.optionsFor(t.id)) {
+      const c = Mock.course(o.cid);
+      assert.equal(o.warn.includes("This course is full"), full(o.cid));
+      assert.equal(o.warn.includes("They did not rank this"), o.choice === "Not on their list" && t.submitted);
+      assert.equal(o.warn.includes(`No ${(c.needs || "").toLowerCase()} on file`), !certified(t, c));
+      assert.equal(o.warn.includes("Returning sponsor"), Boolean(t.returning && t.returningCourse && o.cid !== t.returningCourse));
+      for (const w of o.warn) seen.add(w.startsWith("No ") ? "No cert" : w);
+    }
+  }
+  for (const w of ["This course is full", "They did not rank this", "No cert", "Returning sponsor"]) assert.ok(seen.has(w), `fixture never shows: ${w}`);
+  assert.ok([...seen].includes("No cert"));
+  const scuba = school.courses.find((c) => c.needs && c.running);
+  const noCert = school.teachers.find((t) => !t.certificates.includes(scuba.needs) && Mock.placedOn(t.id) !== scuba.id);
+  assert.ok(Mock.optionsFor(noCert.id).find((o) => o.cid === scuba.id).warn.includes(`No ${scuba.needs.toLowerCase()} on file`));
+});

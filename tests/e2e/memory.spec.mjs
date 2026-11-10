@@ -355,6 +355,31 @@ test("a move that breaks a rule warns and stands", async ({ page }) => {
   expect((await placements(page))[id]).toBe(course);
 });
 
+test("moving a returning sponsor off their course warns and stands", async ({ page }) => {
+  await goBuild(page);
+  await tab(page, "Teachers").click();
+  const rows = page.locator("#main [data-row][data-teacher]", { hasNotText: "Not placed" });
+  let who = null;
+  for (const id of await rows.evaluateAll((els) => els.map((e) => e.dataset.teacher))) {
+    await page.locator(`#main [data-teacher="${id}"]`).click();
+    await expect(page.locator("#main .why")).toBeVisible();
+    if (/Returning sponsor, staying/.test(await page.locator("#main .why").innerText())) { who = id; break; }
+    await page.getByRole("button", { name: "Back" }).click();
+  }
+  expect(who).not.toBeNull();
+  await page.getByRole("button", { name: "All options" }).click();
+  await expect(page.getByRole("heading", { name: `Move ${who}` })).toBeVisible();
+  await expect(page.locator("#main .links")).toContainText("Returning sponsor");
+  const row = page.locator('#main [data-act="moveTo"]:not([data-c=""])', { hasText: "Returning sponsor" }).first();
+  await expect(row).toBeVisible();
+  const course = await row.evaluate((el) => el.firstChild.textContent);
+  await row.click();
+  await expect(page.locator("#main .under")).toHaveText(course);
+  await savedAt(page, 2);
+  await reloaded(page);
+  expect((await placements(page))[who]).toBe(course);
+});
+
 test("every Move screen, with its warnings, fits detail", async ({ page }) => {
   test.setTimeout(120_000);
   watchPage(page);

@@ -14,7 +14,7 @@ export function fileName(mock) {
 
 function coursesSheet(mock) {
   const all = [...mock.allCourses()].sort((a, b) => byText(a.id, b.id));
-  const n = Math.max(1, ...all.map((c) => c.seats));
+  const n = Math.max(1, ...all.map((c) => Math.max(c.seats, mock.sponsors(c.id).length)));
   const head = ["Course Code", "Course Name", ...Array.from({ length: n }, (_, i) => `Sponsor ${i + 1}`), "Status"];
   const rows = all.map((c) => {
     const sponsors = mock.sponsors(c.id).map((t) => mock.label(t));
