@@ -107,6 +107,42 @@ test("an upload saved with no snapshots counts as nothing saved", async ({ page 
   await expect(buildButton(page)).toBeDisabled();
 });
 
+test("a load that fails never overwrites the saved draft", async ({ page }) => {
+  // Not watchPage: the console error here is the expected result.
+  const errors = [];
+  page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem("failRead")) IDBObjectStore.prototype.getAll = () => { throw new Error("stubbed read failure"); };
+  });
+  await goBuild(page);
+  await moveOne(page, placedIds(await placements(page), 1)[0]);
+  await savedAt(page, 2);
+  const before = await placements(page);
+
+  await page.evaluate(() => sessionStorage.setItem("failRead", "1"));
+  await page.reload();
+  await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(6);
+  await expect.poll(() => errors.join("\n")).toContain("stubbed read failure");
+
+  // A new Build and an edit in this session, then Start over: none of them may touch what is on disk.
+  await dropSchool(page);
+  await buildDraft(page);
+  await moveOne(page, placedIds(await placements(page), 1)[0]);
+  await expect(undo(page)).toBeVisible();
+  await expect(saved(page)).toHaveText("");
+  await expect(saved(page)).not.toHaveAttribute("data-version");
+  await history(page);
+  await page.getByRole("button", { name: "Start over" }).click();
+  await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(6);
+  expect(await stored(page)).toEqual({ upload: 1, snapshots: 2 });
+
+  await page.evaluate(() => sessionStorage.removeItem("failRead"));
+  await reloaded(page);
+  await savedAt(page, 2);
+  await expect(saved(page)).toHaveText("Saved in this browser");
+  expect(await placements(page)).toEqual(before);
+});
+
 test("the saved line waits for the write, and versions land in order", async ({ page }) => {
   await goBuild(page);
   const start = await placements(page);

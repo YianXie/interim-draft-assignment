@@ -23,10 +23,13 @@ let parsed = null;
 let reading = 0;
 let queue = Promise.resolve();
 
-/* Saving: one write at a time, in order. A write that fails stops the line, so "saved" is never claimed over a gap. */
+/* Saving: one write at a time, in order. A write that fails stops the line, so "saved" is never claimed over a gap.
+   After a failed load nothing is written or wiped for the whole session: a draft may still be on disk. */
+let loadFailed = false;
 let savedVersion = null;
 let saving = Promise.resolve();
 function inOrder(job) {
+  if (loadFailed) return;
   saving = saving.then(job);
   saving.catch(() => {});
 }
@@ -45,7 +48,7 @@ function remember(snap) {
 }
 function startOver() {
   const toStart = () => location.reload();
-  saving.catch(() => {}).then(wipe).then(toStart, toStart);
+  saving.catch(() => {}).then(() => loadFailed || wipe()).then(toStart, toStart);
 }
 
 const readBytes = (f) => f.arrayBuffer().then((b) => new Uint8Array(b), () => new Uint8Array());
@@ -384,7 +387,11 @@ Mock.on(render);
 Mock.onSnapshot(remember);
 
 async function boot() {
-  const saved = await loadAll().catch(() => null);
+  const saved = await loadAll().catch((err) => {
+    console.error(err);
+    loadFailed = true;
+    return null;
+  });
   if (saved) {
     savedVersion = saved.snapshots.at(-1).version;
     phase = "draft";
