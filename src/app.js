@@ -75,6 +75,9 @@ function addFiles(list) {
     }
   });
 }
+// The invented school, fetched from this page's own server and read like dropped files. A file that fails to arrive reads as empty.
+const sampleFiles = () =>
+  SLOTS.map((name) => ({ name, arrayBuffer: () => fetch(`sample/${name}`).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject())) }));
 const canBuild = () => phase === "start" && reading === 0 && !!parsed;
 
 async function build() {
@@ -108,7 +111,8 @@ function startView() {
   return `<div class="narrow drop" data-drop>
     <h1 class="big" data-big>Drop the six files here</h1>
     <p class="sub"><span>Invented school</span>&ensp;<span>Interim 2028</span></p>
-    <label class="link choose">Choose files<input type="file" multiple accept=".xlsx" data-k="files"></label>
+    <div class="links"><label class="link choose">Choose files<input type="file" multiple accept=".xlsx" data-k="files"></label>
+    <button class="link sample" data-act="sample">Use sample data</button></div>
     <div class="gap" data-rows>${names.map(slotRow).join("")}</div>
     <div class="acts"><button class="btn fill" data-act="build" data-k="build"${canBuild() ? "" : " disabled"}>${phase === "building" ? "Building" : "Build"}</button></div>
   </div>`;
@@ -361,6 +365,7 @@ document.addEventListener("click", (e) => {
   if (!d.act) { push(d.course && !d.teacher ? { k: "course", id: d.course } : { k: "teacher", id: d.teacher }); return; }
   switch (d.act) {
     case "build": build(); break;
+    case "sample": addFiles(sampleFiles()); break;
     case "open": push({ k: d.to, id: d.id }); break;
     case "back": pop(); break;
     case "next": view.idx += 1; render(); break;

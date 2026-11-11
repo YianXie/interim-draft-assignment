@@ -117,4 +117,5 @@ button.row:hover { background: var(--hover); }
 .drop { padding: 28px 32px 32px; border: 2px dashed var(--line); border-radius: 10px; }
 .choose { display: inline-flex; align-items: center; margin-top: 8px; cursor: pointer; }
 .choose:focus-within { outline: 3px solid var(--blue); outline-offset: 2px; }
+.links .choose { margin-top: 0; }
 .choose input { position: absolute; width: 1px; height: 1px; opacity: 0; }
