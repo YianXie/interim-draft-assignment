@@ -257,6 +257,12 @@ test("rows shuffled, same draft")
 
 ---
 
+### Task 4b: A believable invented past year (added during the build)
+
+Task 4's fixture needed 47 of 88 people with result `none` to meet the case "some owed teacher cannot be given a top-4 choice". Ruling: that case is dropped (see the amended design); the past year is regenerated to look ordinary, with this year's returning sponsors on their course last year and 10 to 14 `none`. The full brief is `.superpowers/sdd/2026-11-13-cross-year-tracking/task-4b-brief.md`; its test changes replace the two Task 4 tests named there.
+
+---
+
 ### Task 5: Last year in the state and the download
 
 **Files:**
