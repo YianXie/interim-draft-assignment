@@ -10,7 +10,7 @@
     "build": "node scripts/build.mjs",
     "serve": "node scripts/serve.mjs",
     "fixtures": "node tools/make_school.mjs && uv run --no-project --isolated --with ortools --with openpyxl tools/expected.py",
-    "fixtures:past": "node tools/make_past.mjs && uv run --no-project --isolated --with ortools --with openpyxl tools/expected.py --past",
+    "fixtures:past": "node tools/make_past.mjs && uv run --python 3.14 --no-project --isolated --with ortools --with openpyxl tools/expected.py --past",
     "check": "npm run build && node --test tests/unit/ && playwright test && echo CHECK OK",
     "check:final": "npm run build && node --test tests/unit/ && playwright test --repeat-each=5 && echo CHECK OK"
   },

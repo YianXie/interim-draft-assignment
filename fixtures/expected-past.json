@@ -1,13 +1,13 @@
 {
   "values": [
     1,
-    44,
-    1337,
-    3
+    11,
+    1343,
+    4
   ],
   "placedMin": 84,
   "placedMax": 84,
   "runningMin": 34,
   "runningMax": 34,
-  "owed": 47
+  "owed": 11
 }

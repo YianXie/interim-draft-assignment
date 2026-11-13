@@ -84,11 +84,12 @@ stages = [("min", [(1, s) for s in short]), ("max", score), ("min", [(1, v) for 
 
 def none_last_year():
     """Staff who sent a form last year and were placed on a course that was on none of their forms.
-    A sponsor entry is a name: it counts only when exactly one of this year's staff has it, ignoring case and extra spaces."""
+    A sponsor entry is a name: it counts only when exactly one of this year's staff has it, ignoring case and extra spaces.
+    Emails are in lower case throughout, the staff list's as well as the past forms'."""
     squash = lambda s: " ".join(str(s).lower().split())
     named = {}
     for e, p in people.items():
-        named.setdefault(squash(p["name"]), []).append(e)
+        named.setdefault(squash(p["name"]), []).append(e.lower())
     _, arow = rows("past-allocation", PAST)
     placed = {}
     for r in arow:
@@ -107,7 +108,7 @@ def none_last_year():
 if WITH_PAST:
     # Second priority: most of them on a 1st to 4th choice this year. A returning sponsor is fixed, so not counted.
     got_none = none_last_year()
-    top4 = [k for k in x if k[0] in got_none and k[0] not in rep and shown.get(k, 99) <= 4]
+    top4 = [k for k in x if k[0].lower() in got_none and k[0] not in rep and shown.get(k, 99) <= 4]
     stages.insert(1, ("max", [(1, x[k]) for k in top4]))
 
 def solve(sense, expr):

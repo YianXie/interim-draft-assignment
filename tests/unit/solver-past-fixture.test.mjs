@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { readSchool } from "./school-fixture.mjs";
 import { readPastSchool } from "./past-fixture.mjs";
-import { loadHighs, solveDraft } from "../../src/solver.js";
+import { loadHighs, solveDraft, displayedRank } from "../../src/solver.js";
 import { recheck } from "../../src/recheck.js";
 
 const expected = JSON.parse(await readFile(new URL("../../fixtures/expected-past.json", import.meta.url), "utf8"));
@@ -47,6 +47,21 @@ test("the draft differs from the draft built without the past files", async () =
   assert.equal(without.status, "Optimal");
   assert.equal(without.values.length, 3);
   assert.notDeepEqual(byEmail(school, solved.pairs), byEmail(plain, without.pairs));
+});
+
+test("the new priority puts more owed teachers on a top-4 choice than the six-file draft does", async () => {
+  const plain = await readSchool();
+  const without = solveDraft(highs, plain);
+  assert.equal(without.status, "Optimal");
+  const owed = school.teachers.filter((t) => t.lastYear !== null && t.lastYear.result === "none" && !t.returning);
+  const top4 = (courseOf) => owed.filter((t) => {
+    const rank = displayedRank(t.prefs, courseOf[t.email]);
+    return rank !== null && rank <= 4;
+  }).length;
+  const withPast = top4(byEmail(school, solved.pairs));
+  const withoutPast = top4(byEmail(plain, without.pairs));
+  assert.equal(withPast, solved.values[1]);
+  assert.ok(withPast > withoutPast, `${withPast} owed teachers on a top-4 choice with the past files, ${withoutPast} without`);
 });
 
 test("same people, different T numbers, same draft", async () => {
