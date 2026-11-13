@@ -76,12 +76,13 @@ export const RESULT_LABEL = { top4: "Top 4", "5to7": "5 to 7", none: "None", not
 // allocation: [{ course: string, sponsors: string[] }]        course = Course Name, sponsors as written
 // forms: [{ email: string, course: string, rank: number, round: "Round 1"|"Round 2"|"Singapore" }]
 // staff: [{ email: string, name: string }]                     this year's staff
+// sent: string[]   every email with a row on any past form, even one with no choice filled in (optional, default [])
 // returns { byEmail: Map<email, {result, rank, round}>, unmatched: string[] }
-export function lastYearResults({ allocation, forms, staff })
+export function lastYearResults({ allocation, forms, staff, sent })
 export const normName = (s) => String(s).trim().toLowerCase().replace(/\s+/g, " ");
 ```
 
-`byEmail` has an entry only for staff who appear in a past form or matched a sponsor entry.
+`byEmail` has an entry only for staff who appear in a past form or matched a sponsor entry. "Sent a form" means the email is in `sent` or has at least one listing, the same as this year's reader, which counts a form row with every choice blank as sent.
 
 - [ ] **Step 1: Write the failing tests** in `tests/unit/past.test.mjs`, on a made-up list inside the test (people `a@`, `b@` … on `fernhollow.example`, names `Pat One`, `Pat Two`, …; courses `C1`…`C4`). One test per line:
 
@@ -149,11 +150,13 @@ test("a past email not on this year's staff is accepted and ignored")
 test("a past email outside fernhollow.example is refused with file and row")
 test("no name, email or course text reaches a past problem line")            // same style as the existing import test
 test("T numbers do not change which teacher gets which lastYear")            // two random sources; compare by email
-test("unmatched keeps the entries as written and in file order")
+test("unmatched keeps the entries as written and in file order")                // at least three unmatched entries, not in alphabetical order
+test("a past form row with every choice blank still counts as a form")       // placed -> none; not on the allocation -> notFound
+test("past emails match this year's staff whatever their letter case or stray spaces")
 ```
 
 - [ ] **Step 2: Run** `node --test tests/unit/import-past.test.mjs`. Expected: FAIL.
-- [ ] **Step 3: Implement in `src/import.js`.** Keep `SLOTS` as is. A file named in `PAST_SLOTS` is not "not one of the six file names". The six are parsed and cross-checked exactly as today; the past files are read after `staff.xlsx` is known, and `lastYearResults` is called only when all ten are ready.
+- [ ] **Step 3: Implement in `src/import.js`.** Keep `SLOTS` as is. A file named in `PAST_SLOTS` is not "not one of the six file names". The six are parsed and cross-checked exactly as today; the past files are read after `staff.xlsx` is known, and `lastYearResults` is called only when all ten are ready. Pass it lower-cased, trimmed emails (the existing `normEmail`), trimmed course names, the round labels from `PAST_FORMS`, ranks as column numbers 1 to 7, and `sent` = the email of every row on the three past form files.
 - [ ] **Step 4: Run** `node --test tests/unit/`. Expected: all pass, including every existing test unchanged.
 - [ ] **Step 5: Commit** `feat: read last year's four files`.
 
