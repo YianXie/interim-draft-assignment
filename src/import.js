@@ -1,5 +1,9 @@
-// Reads the six workbooks into a School. Runs in the browser and in Node, so it imports no Node modules.
+// Reads the six workbooks, and last year's four when they are added, into a School.
+// Runs in the browser and in Node, so it imports no Node modules.
 import { readBook } from "./xlsx.js";
+import { PAST_SLOTS, PAST_FORMS, normName, lastYearResults } from "./past.js";
+
+export { PAST_SLOTS };
 
 export const SLOTS = ["courses.xlsx", "staff.xlsx", "returning.xlsx", "round1.xlsx", "round2.xlsx", "singapore.xlsx"];
 const SHEET = "Fernhollow";
@@ -12,7 +16,11 @@ const HEADERS = {
   "round1.xlsx": ["Email", ...choices(7)],
   "round2.xlsx": ["Email", ...choices(3)],
   "singapore.xlsx": ["Email", ...choices(5)],
+  "past-round1.xlsx": ["Email", ...choices(7)],
+  "past-round2.xlsx": ["Email", ...choices(3)],
+  "past-singapore.xlsx": ["Email", ...choices(5)],
 };
+const ALLOCATION = PAST_SLOTS[0];
 const FORMS = { "round1.xlsx": "Round 1", "round2.xlsx": "Round 2", "singapore.xlsx": "Singapore" };
 
 // random(n) returns a whole number from 0 to n - 1.
@@ -31,7 +39,15 @@ const blank = (v) => v === null || v === undefined || String(v).trim() === "";
 const text = (v) => (blank(v) ? "" : String(v).trim());
 const normEmail = (v) => text(v).toLowerCase();
 
+// The header row a file must have. Last year's allocation has as many Sponsor columns as it needs, from one up.
+function headerRow(file, head) {
+  if (file !== ALLOCATION) return HEADERS[file];
+  const last = head.reduce((at, h, i) => (blank(h) ? at : i), 0);
+  return ["Course Code", "Course Name", ...Array.from({ length: Math.max(1, last - 1) }, (_, i) => `Sponsor ${i + 1}`)];
+}
+
 // Checks sheet name and headers, returns [{ n, cells }] for non-empty rows, n being the sheet row number.
+// In a past file, cells past the last header are not read.
 async function table(file, bytes) {
   let book;
   try {
@@ -41,12 +57,14 @@ async function table(file, bytes) {
   }
   if (!book.length || book[0].name !== SHEET) refuse(file, 0, `first sheet must be named ${SHEET}`);
   const [head = [], ...rest] = book[0].rows;
-  const want = HEADERS[file];
+  const want = headerRow(file, head);
   if (want.some((h, i) => head[i] !== h) || head.slice(want.length).some((h) => !blank(h))) {
-    refuse(file, 1, `headers must be exactly: ${want.join(", ")}`);
+    const list = file === ALLOCATION ? "Course Code, Course Name, Sponsor 1, Sponsor 2, and so on" : want.join(", ");
+    refuse(file, 1, `headers must be exactly: ${list}`);
   }
+  const past = PAST_SLOTS.includes(file);
   return rest
-    .map((cells, i) => ({ n: i + 2, cells }))
+    .map((cells, i) => ({ n: i + 2, cells: past ? cells.slice(0, want.length) : cells }))
     .filter((r) => r.cells.some((c) => !blank(c)));
 }
 
@@ -95,6 +113,28 @@ function readEmailRows(file, rows) {
   return rows.map((r) => ({ n: r.n, email: email(file, r, seen), cells: r.cells.slice(1) }));
 }
 
+// Last year's allocation: [{ course, sponsors }], course being the Course Name and sponsors the names as written.
+function readPastAllocation(file, rows) {
+  const codes = new Set();
+  const names = new Set();
+  const sponsors = new Set();
+  return rows.map((r) => {
+    const [code, name, ...entries] = r.cells.map(text);
+    if (!code) refuse(file, r.n, "course code is empty");
+    if (codes.has(code)) refuse(file, r.n, "course code appears twice");
+    if (!name) refuse(file, r.n, "course name is empty");
+    if (names.has(name)) refuse(file, r.n, "course name appears twice");
+    codes.add(code);
+    names.add(name);
+    const written = entries.filter(Boolean);
+    for (const entry of written) {
+      if (sponsors.has(normName(entry))) refuse(file, r.n, "a sponsor appears twice in this file");
+      sponsors.add(normName(entry));
+    }
+    return { course: name, sponsors: written };
+  });
+}
+
 const SECTION = (file, fn) => async (bytes) => {
   try {
     return { ok: true, data: fn(file, await table(file, bytes)) };
@@ -108,22 +148,29 @@ export async function parseFiles(files, random = secureRandom) {
   const slots = {};
   const bytesOf = {};
   for (const f of files) {
-    if (SLOTS.includes(f.name)) bytesOf[f.name] = f.bytes;
+    if (SLOTS.includes(f.name) || PAST_SLOTS.includes(f.name)) bytesOf[f.name] = f.bytes;
     else slots[f.name] = `${f.name}: not one of the six file names`;
   }
+  // Last year's files are optional: all four or none. They come after the six, so staff.xlsx is read first.
+  const past = PAST_SLOTS.some((file) => file in bytesOf);
+  const wanted = past ? [...SLOTS, ...PAST_SLOTS] : SLOTS;
   const got = {};
-  for (const file of SLOTS) {
+  for (const file of wanted) {
     if (!bytesOf[file]) {
       slots[file] = `${file}: file not added`;
       continue;
     }
-    const fn = file === "courses.xlsx" ? readCourses : file === "staff.xlsx" ? readStaff : readEmailRows;
+    const fn = file === "courses.xlsx" ? readCourses
+      : file === "staff.xlsx" ? readStaff
+      : file === ALLOCATION ? readPastAllocation
+      : readEmailRows;
     const res = await SECTION(file, fn)(bytesOf[file]);
     if (res.ok) got[file] = res.data;
     else slots[file] = res.problem;
   }
 
-  // Cross-file checks, only against files that read cleanly on their own.
+  // Cross-file checks, only against files that read cleanly on their own. Last year's files have none:
+  // a past course is compared only with last year's allocation, and a past email may belong to someone who left.
   const courses = got["courses.xlsx"];
   const staff = got["staff.xlsx"];
   const byId = courses && new Map(courses.map((c) => [c.id, c]));
@@ -151,7 +198,7 @@ export async function parseFiles(files, random = secureRandom) {
     }
   }
 
-  for (const file of SLOTS) if (got[file] && !slots[file]) slots[file] = "ready";
+  for (const file of wanted) if (got[file] && !slots[file]) slots[file] = "ready";
   if (Object.values(slots).some((v) => v !== "ready")) {
     return { school: null, slots };
   }
@@ -189,8 +236,21 @@ export async function parseFiles(files, random = secureRandom) {
       });
     }
   }
-  return {
-    school: { school: "Fernhollow Academy", year: "Interim 2028", courses, teachers: [...teachers.values()] },
-    slots,
-  };
+  const school = { school: "Fernhollow Academy", year: "Interim 2028", courses, teachers: [...teachers.values()] };
+  if (past) {
+    const forms = [];
+    const sent = [];
+    for (const [file, round] of Object.entries(PAST_FORMS)) {
+      for (const r of got[file]) {
+        sent.push(r.email);
+        r.cells.forEach((c, i) => {
+          if (!blank(c)) forms.push({ email: r.email, course: text(c), rank: i + 1, round });
+        });
+      }
+    }
+    const { byEmail, unmatched } = lastYearResults({ allocation: got[ALLOCATION], forms, staff, sent });
+    for (const t of school.teachers) t.lastYear = byEmail.get(t.email) ?? null;
+    school.past = { unmatched };
+  }
+  return { school, slots };
 }
