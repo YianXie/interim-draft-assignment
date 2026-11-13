@@ -1,5 +1,5 @@
 import { Mock } from "./state.js";
-import { parseFiles, SLOTS } from "./import.js";
+import { parseFiles, SLOTS, PAST_SLOTS } from "./import.js";
 import { loadHighs, solveDraft, toDraft } from "./solver.js";
 import { recheck } from "./recheck.js";
 import { sheetsFor, fileName } from "./export.js";
@@ -51,6 +51,7 @@ function startOver() {
   saving.catch(() => {}).then(() => loadFailed || wipe()).then(toStart, toStart);
 }
 
+const KNOWN = [...SLOTS, ...PAST_SLOTS];
 const readBytes = (f) => f.arrayBuffer().then((b) => new Uint8Array(b), () => new Uint8Array());
 // Drops are handled strictly in order, so a later file always replaces an earlier one of the same name.
 function addFiles(list) {
@@ -62,7 +63,8 @@ function addFiles(list) {
   queue = queue.then(async () => {
     try {
       for (const f of files) held.set(f.name, { name: f.name, bytes: await readBytes(f) });
-      const named = (yes) => [...held.values()].filter((f) => SLOTS.includes(f.name) === yes);
+      // Last year's files are read together with the six, so the School carries last year.
+      const named = (yes) => [...held.values()].filter((f) => KNOWN.includes(f.name) === yes);
       // A file with any other name keeps its one line but never holds up Build.
       const out = await parseFiles(named(true));
       slots = { ...(await parseFiles(named(false))).slots, ...out.slots };
@@ -102,12 +104,14 @@ async function build() {
 
 function slotRow(name) {
   const v = slots[name];
-  if (v === "ready") return `<div class="row r-two" data-row data-slot="${esc(name)}"><span>${esc(name)}</span><span class="q">ready</span></div>`;
+  // Entries on last year's allocation that matched nobody on the staff list: a number only, never the entries.
+  const lost = name === PAST_SLOTS[0] && parsed && parsed.past ? parsed.past.unmatched.length : 0;
+  if (v === "ready") return `<div class="row r-two" data-row data-slot="${esc(name)}"><span>${esc(name)}</span><span class="q">ready${lost ? `, ${lost} not matched` : ""}</span></div>`;
   return `<div class="row" data-row data-slot="${esc(name)}"><span class="${v.endsWith("file not added") ? "q" : "need"}">${esc(v)}</span></div>`;
 }
 function startView() {
   if (phase === "failed") return `<h1 class="big" data-big>Couldn't build a draft. Reload and try again.</h1>`;
-  const names = [...SLOTS, ...Object.keys(slots).filter((n) => !SLOTS.includes(n))].filter((n) => slots[n]);
+  const names = [...KNOWN, ...Object.keys(slots).filter((n) => !KNOWN.includes(n))].filter((n) => slots[n]);
   return `<div class="narrow drop" data-drop>
     <h1 class="big" data-big>Drop the six files here</h1>
     <p class="sub"><span>Invented school</span>&ensp;<span>Interim 2028</span></p>
@@ -166,7 +170,7 @@ const back = () => `<button class="link back" data-act="back" data-k="back">Back
 const title = (t) => `<h2 tabindex="-1">${t}</h2>`;
 
 function teacherBody(id) {
-  const c = Mock.placedOn(id), mail = Mock.contact(id);
+  const c = Mock.placedOn(id), mail = Mock.contact(id), last = Mock.lastYearLine(id);
   const opts = Mock.optionsFor(id).filter((o) => o.choice !== "Not on their list").slice(0, 5);
   let round = null;
   const rows = opts.map((o) => {
@@ -178,6 +182,7 @@ function teacherBody(id) {
   return `${title(L(id))}
     <p class="under ${c ? "" : "need"}">${c ? esc(Mock.course(c).name) : "Not placed"}</p>
     <p class="why"><span class="q">Why</span>&ensp;${esc(Mock.reason(id))}</p>
+    ${last ? `<p class="q" data-last>${esc(last)}</p>` : ""}
     ${mail ? `<p class="q gap">${esc(mail)}</p>` : ""}
     ${!c && !Mock.state.left.has(id) ? `<div class="acts"><button class="btn" data-act="leave" data-id="${id}" data-k="lv">Leave unplaced</button></div>` : ""}
     ${rows ? `<div class="gap" data-rows>${rows}</div>` : ""}
@@ -296,7 +301,7 @@ function teachersHome() {
   return `${bigLine()}${tools("teachers")}
     <div data-rows>${list.map((t) => {
       const c = Mock.placedOn(t.id), cn = c ? Mock.course(c).name : "Not placed";
-      return `<button class="row r-teacher" data-row data-teacher="${t.id}" data-k="t-${t.id}" data-q="${esc(who(t.id) + " " + cn)}">
+      return `<button class="row r-teacher" data-row data-teacher="${t.id}" data-k="t-${t.id}" data-q="${esc([who(t.id), cn, Mock.lastYearLine(t.id)].filter(Boolean).join(" "))}">
         <span>${L(t.id)}</span><span class="${c ? "" : "need"}">${esc(cn)}</span></button>`;
     }).join("")}<div class="row q" data-empty hidden>No matches</div></div>`;
 }
