@@ -66,6 +66,26 @@ const seatsLeft = (cid) => C.get(cid).seats - sponsors(cid).length;
 const choice = (tid, cid) => T.get(tid).prefs.filter((p) => p.course === cid).sort((a, b) => score(b) - score(a))[0] || null;
 const choiceText = (tid, cid) => { const c = choice(tid, cid); return c ? `${ord(c.rank)} choice, ${c.round}` : "Not on their list"; };
 
+// Last year, when the past files were added. Its own line on the teacher, never part of a reason.
+const past = () => D.past || null;
+const lastYear = (tid) => T.get(tid).lastYear || null;
+const LAST_YEAR = { none: "none of their choices", notFound: "not on the allocation", noForm: "no form" };
+function lastYearLine(tid) {
+  const was = past() && lastYear(tid);
+  return was ? `Last year: ${LAST_YEAR[was.result] || `${ord(was.rank)} choice`}` : "";
+}
+// How this year stands for them in the draft as it is now, for setting against last year.
+function thisYear(tid) {
+  const t = T.get(tid);
+  const cid = S.placements[tid];
+  if (!cid) return "notPlaced";
+  if (t.returning && t.returningCourse === cid) return "returning";
+  if (!t.submitted) return "noForm";
+  const ch = choice(tid, cid);
+  if (!ch) return "notRanked";
+  return ch.rank <= 4 ? "top4" : "5to7";
+}
+
 function status(cid) {
   const c = C.get(cid);
   const n = sponsors(cid).length;
@@ -230,5 +250,5 @@ function describe(snap) {
   return "Undid the last change";
 }
 
-export const Mock = { state: S, on, onSnapshot, init, build, teacher, course, teachers, courses, allCourses, label, contact, placedOn, sponsors, seatsLeft, choice, choiceText, status, reason,
+export const Mock = { state: S, on, onSnapshot, init, build, teacher, course, teachers, courses, allCourses, label, contact, placedOn, sponsors, seatsLeft, choice, choiceText, past, lastYear, lastYearLine, thisYear, status, reason,
   teacherFlags, courseFlags, todo, summary, optionsFor, whoAsked, move, leave, undo, canUndo, restore, setNames, describe, history: () => [...S.history] };
