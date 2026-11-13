@@ -369,6 +369,12 @@ test("a full run with ten files makes zero outside requests")                   
 
 ---
 
+### Task 6b: The last-year line on the opened card only (added during the build)
+
+Task 6 as built was one word or more over the `first` budget on To do items for unplaced teachers. Ruling: the line shows on an opened teacher card only (see the amended design). The brief is `.superpowers/sdd/2026-11-13-cross-year-tracking/task-6b-brief.md`.
+
+---
+
 ### Task 7: Whole-branch verification
 
 **Files:** none new. Fixes only, each with a test in the owning task's test file.

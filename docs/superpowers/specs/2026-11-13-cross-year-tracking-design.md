@@ -99,7 +99,7 @@ The rules that are never broken stay exactly as they are. Returning sponsors are
 ## What the office sees
 
 - **Start:** the past files appear as rows like the six. The allocation row also says how many names were not matched, as a number only.
-- **Teacher card:** one extra line, for example "Last year: none of their choices", "Last year: 2nd choice", "Last year: no form", "Last year: not found on the allocation". No line when there is no record. The card is also what a To do item for an unplaced teacher shows, so the line appears there too.
+- **Teacher card:** one extra line, for example "Last year: none of their choices", "Last year: 2nd choice", "Last year: no form", "Last year: not found on the allocation". No line when there is no record. The line is shown on an opened teacher card only, not on a To do item. *(Amended during the build, 2026-11-13: a To do item for an unplaced teacher is already within 2 or 3 words of the 80-word limit for that screen, so no last-year line fits there. The result is still one click away on the teacher's card, in the search and in the download.)*
 - **Teachers list:** the rows do not change. The search box also matches last year's result, so typing "none" lists those teachers. `teacherFlags` is not touched, so the download's row order stays as it is.
 - **Download, only when past files were dropped:** the Teachers sheet gains a "Last year" column after "Choice". A new "Last year" sheet holds a small table counting teachers by last year's result against this year's (top 4, 5 to 7, not on their list, returning, no form, not placed). With names on, that sheet also lists the unmatched names and the teachers marked Not found, so the office can pair them up and correct the file.
 
