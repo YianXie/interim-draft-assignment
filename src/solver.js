@@ -4,6 +4,7 @@ import highsLoader from "highs";
 const OPTIONS = { output_flag: false, mip_rel_gap: 0, mip_abs_gap: 0.9, time_limit: 60, random_seed: 0 };
 const WEIGHTS = [7, 6, 5, 4, 3, 2, 1];
 const BONUS = { "Round 1": 20, "Round 2": 10, Singapore: 0 };
+const ROUNDS = ["Round 1", "Round 2", "Singapore"];
 
 export function loadHighs(options) {
   return highsLoader(options);
@@ -11,6 +12,13 @@ export function loadHighs(options) {
 
 const key = (s) => s.trim().toLowerCase();
 const byKey = (f) => (a, b) => (f(a) < f(b) ? -1 : f(a) > f(b) ? 1 : 0);
+
+// The rank the page shows for a course: the one on the earliest of Round 1, Round 2, Singapore that lists it.
+export function displayedRank(prefs, courseId) {
+  const listings = prefs.filter((p) => p.course === courseId);
+  listings.sort((a, b) => ROUNDS.indexOf(a.round) - ROUNDS.indexOf(b.round) || a.rank - b.rank);
+  return listings.length ? listings[0].rank : null;
+}
 
 export function toInstance(school) {
   const teachers = [...school.teachers].sort(byKey((t) => key(t.email)));
@@ -25,6 +33,7 @@ export function toInstance(school) {
     courses: courses.map((c) => ({ id: c.id, min: c.seats, max: c.seats, requires: c.needs ? [c.needs] : [] })),
     prefs: teachers.flatMap((t) => t.prefs.map((p) => ({ t: t.id, c: p.course, rank: p.rank, round: p.round }))),
     unticked: courses.filter((c) => !c.running).map((c) => c.id),
+    owed: school.past ? teachers.filter((t) => t.lastYear && t.lastYear.result === "none").map((t) => t.id) : null,
     weights: WEIGHTS,
     bonus: BONUS,
   };
@@ -83,7 +92,15 @@ function build(inst) {
   });
   const score = vars.flatMap((v) => { const b = best.get(v.t + "|" + v.c); return b ? [[inst.weights[b.rank - 1] + b.bonus, v.name]] : []; });
   const noForm = vars.filter((v) => !submitters.has(v.t) && !repeaterOn.has(v.t)).map((v) => [1, v.name]);
-  return { vars, rows, bins, conts, stages: [["min", shortTerms], ["max", score], ["min", noForm]] };
+  const stages = [["min", shortTerms], ["max", score], ["min", noForm]];
+  if (inst.owed !== null) {
+    // Those who got none of their choices last year, on a 1st to 4th choice this year. A returning sponsor is fixed, so not counted.
+    const owed = new Set(inst.owed), listed = new Map(inst.owed.map((t) => [t, []]));
+    for (const p of inst.prefs) if (owed.has(p.t)) listed.get(p.t).push({ course: p.c, rank: p.rank, round: p.round });
+    const top4 = (v) => { const rank = displayedRank(listed.get(v.t), v.c); return rank !== null && rank <= 4; };
+    stages.splice(1, 0, ["max", vars.filter((v) => owed.has(v.t) && !repeaterOn.has(v.t) && top4(v)).map((v) => [1, v.name])]);
+  }
+  return { vars, rows, bins, conts, stages };
 }
 
 function lpText(m, sense, terms, pins) {
@@ -96,7 +113,8 @@ function lpText(m, sense, terms, pins) {
   ].join("\n");
 }
 
-// values: [short seats (min), score (max), no-form placed (min)]. pairs: one [tid, cid] per placed column.
+// values: [short seats (min), score (max), no-form placed (min)], or with last year's files
+// [short seats (min), owed on a top-4 choice (max), score (max), no-form placed (min)]. pairs: one [tid, cid] per placed column.
 export function solveDraft(highs, school) {
   const inst = toInstance(school), m = build(inst), pins = [], values = [];
   let res;
