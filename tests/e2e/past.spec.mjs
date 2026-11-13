@@ -80,6 +80,14 @@ async function todoCount(page) {
   return n;
 }
 const nextItem = (page) => page.getByRole("button", { name: "Next", exact: true }).click();
+// Reaches a To do item of this kind by pressing Next.
+async function toItem(page, text) {
+  for (let i = await todoCount(page); i > 0; i--) {
+    if (await page.getByText(text).count()) return;
+    await nextItem(page);
+  }
+  throw new Error(`no To do item shows ${text}`);
+}
 async function teacherIds(page) {
   await tab(page, "Teachers").click();
   await expect(teacherRows(page)).toHaveCount(TEACHERS);
@@ -236,26 +244,32 @@ test("a teacher card shows its last-year line, and the reason is unchanged", asy
   expect(shown).toBeGreaterThan(0);
 });
 
-test("an unplaced teacher's To do item shows the line too", async ({ page }) => {
+test("a To do item never shows the last-year line, and the same teacher's opened card does", async ({ page }) => {
   const { lastYear } = await fixture();
   await goTen(page);
-  await names(page).click();
   const n = await todoCount(page);
-  let shown = 0;
+  // With names off a teacher's own item is headed by their T number, and only it carries a reason.
+  const ids = [];
   for (let i = 0; i < n; i++) {
-    // Only a teacher's own item shows an email.
-    if (await emailShown(page).count()) {
-      const want = lineFor(lastYear.get(await emailShown(page).innerText()));
-      await expect(last(page)).toHaveCount(want ? 1 : 0);
-      if (want) {
-        await expect(page.locator("#main .under")).toHaveText("Not placed");
-        await expect(page.locator("#main [data-panel] .why + [data-last]")).toHaveText(want);
-        shown += 1;
-      }
-    }
+    await expect(last(page)).toHaveCount(0);
+    if (await page.locator("#main [data-panel] .why").count()) ids.push(await page.locator("#main [data-panel] h2").innerText());
     await nextItem(page);
   }
-  test.skip(shown === 0, "the invented school has no unplaced teacher in To do with a result last year");
+  await tab(page, "Teachers").click();
+  await names(page).click();
+  let shown = 0;
+  for (const id of ids) {
+    await page.locator(`#main [data-teacher="${id}"]`).click();
+    const want = lineFor(lastYear.get(await emailShown(page).innerText()));
+    await expect(last(page)).toHaveCount(want ? 1 : 0);
+    if (want) {
+      await expect(last(page)).toBeVisible();
+      await expect(last(page)).toHaveText(want);
+      shown += 1;
+    }
+    await page.getByRole("button", { name: "Back" }).click();
+  }
+  expect(shown).toBeGreaterThan(0);
 });
 
 test("search for 'none of their' lists only those teachers", async ({ page }) => {
@@ -298,6 +312,23 @@ test("every To do item fits first with past files", async ({ page }) => {
   await goTen(page);
   const n = await todoCount(page);
   for (let i = 0; i < n; i++) { await measure(page, "first"); await nextItem(page); }
+});
+
+test("a To do item still fits first with past files once Undo is showing", async ({ page }) => {
+  watchPage(page);
+  await goTen(page);
+  await toItem(page, /with no form$/);
+  await page.getByRole("button", { name: "Leave them unplaced" }).click();
+  await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
+  // Undo is one more word on every item, and a teacher's own item is the fullest.
+  const n = await todoCount(page);
+  let own = 0;
+  for (let i = 0; i < n; i++) {
+    own += await page.locator("#main [data-panel] .why").count();
+    await measure(page, "first");
+    await nextItem(page);
+  }
+  expect(own).toBeGreaterThan(0);
 });
 
 test("every open teacher card fits detail with past files", async ({ page }) => {

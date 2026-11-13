@@ -169,8 +169,9 @@ const card = (inner) => `<section class="card" data-panel>${inner}</section>`;
 const back = () => `<button class="link back" data-act="back" data-k="back">Back</button>`;
 const title = (t) => `<h2 tabindex="-1">${t}</h2>`;
 
-function teacherBody(id) {
-  const c = Mock.placedOn(id), mail = Mock.contact(id), last = Mock.lastYearLine(id);
+// opened: the card reached from a row. A To do item is the same body without the last-year line, which would not fit there.
+function teacherBody(id, opened = false) {
+  const c = Mock.placedOn(id), mail = Mock.contact(id), last = opened ? Mock.lastYearLine(id) : "";
   const opts = Mock.optionsFor(id).filter((o) => o.choice !== "Not on their list").slice(0, 5);
   let round = null;
   const rows = opts.map((o) => {
@@ -261,7 +262,7 @@ function historyCard() {
 }
 
 function frame(f) {
-  const map = { teacher: () => card(back() + teacherBody(f.id)), course: () => card(back() + courseBody(f.id)), move: () => moveCard(f), asked: () => askedCard(f), history: historyCard };
+  const map = { teacher: () => card(back() + teacherBody(f.id, true)), course: () => card(back() + courseBody(f.id)), move: () => moveCard(f), asked: () => askedCard(f), history: historyCard };
   return `<div class="narrow">${map[f.k]()}</div>`;
 }
 
