@@ -3,6 +3,7 @@
 // Usage: node tools/make_past.mjs
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { readBook, writeBook } from "../src/xlsx.js";
+import { seeded } from "./rng.mjs";
 
 const SEED = 20261113;
 const NEW_STAFF = 8; // this year's staff who are in no past file
@@ -14,31 +15,7 @@ const LEFT = "Sponsor who left"; // a label, not a person: the one allocation en
 const school = new URL("../fixtures/school/", import.meta.url);
 const out = new URL("../fixtures/past/", import.meta.url);
 
-function mulberry32(a) {
-  return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-const rnd = mulberry32(SEED);
-function shuffle(a) {
-  a = [...a];
-  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
-  return a;
-}
-function pickWeighted(items, weights, k) {
-  const pool = items.map((it, i) => ({ it, w: weights[i] }));
-  const got = [];
-  while (got.length < k && pool.length) {
-    const total = pool.reduce((s, p) => s + p.w, 0);
-    let r = rnd() * total, i = 0;
-    while (r >= pool[i].w && i < pool.length - 1) { r -= pool[i].w; i++; }
-    got.push(pool.splice(i, 1)[0].it);
-  }
-  return got;
-}
+const { rnd, shuffle, pickWeighted } = seeded(SEED); // this script's own stream
 
 // This year's six files, without their header rows.
 async function rows(name) {

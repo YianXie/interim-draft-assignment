@@ -2,36 +2,13 @@
 // Usage: node tools/make_school.mjs
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { writeBook } from "../src/xlsx.js";
+import { seeded } from "./rng.mjs";
 
 const SEED = 20261109;
 const N3 = 17; // free offered courses with 3 seats; the rest keep 2
 const out = new URL("../fixtures/school/", import.meta.url);
 
-function mulberry32(a) {
-  return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-const rnd = mulberry32(SEED);
-function shuffle(a) {
-  a = [...a];
-  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
-  return a;
-}
-function pickWeighted(items, weights, k) {
-  const pool = items.map((it, i) => ({ it, w: weights[i] }));
-  const got = [];
-  while (got.length < k && pool.length) {
-    const total = pool.reduce((s, p) => s + p.w, 0);
-    let r = rnd() * total, i = 0;
-    while (r >= pool[i].w && i < pool.length - 1) { r -= pool[i].w; i++; }
-    got.push(pool.splice(i, 1)[0].it);
-  }
-  return got;
-}
+const { rnd, shuffle, pickWeighted } = seeded(SEED);
 
 const FIRST = "Ada Bram Cora Dov Esme Finn Greer Hollis Ines Jory Kestrel Linus Mirel Nico Orla Perrin Quill Rosamund Silas Tamsin Ulric Vesper Wren Xanthe Yorick Zinnia Alder Briar Calder Delphine Emeric Fenna".split(" ");
 const LAST = "Quillfeather Tollivant Ambletide Hazelrook Thornquist Marrowby Fernwhistle Lindqvale Ashdowne Brambleton Copperfold Dunmorrow Elderhaven Foxglenn Gorsewick Hollowmere Inglethorn Juniperlee Kettlewick Larkmoor Mossgrove Nettlefield Orchardley Pinewhistle Quarrystone Rookhollow Sedgemoor Tansywell Underhill Vetchley Willowmere Yarrowby".split(" ");
