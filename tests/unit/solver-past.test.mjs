@@ -196,3 +196,92 @@ test("the draft passes recheck", () => {
   const swap = twoForOne({ past: PAST });
   assert.deepEqual(recheck(swap, solveDraft(highs, swap).pairs), []);
 });
+
+// The edge of the new priority: a 1st to 4th choice counts, a 5th does not, and no listing never counts.
+const alone = (prefs, lastYear = none) => mk({
+  courses: [course("X", 1)],
+  teachers: [teacher("O", { prefs, lastYear })],
+  past: PAST,
+});
+
+test("a 1st, 2nd, 3rd or 4th choice counts, in any round", () => {
+  for (const [round, ranks] of [["Round 1", [1, 2, 3, 4]], ["Round 2", [1, 2, 3]], ["Singapore", [1, 2, 3, 4]]]) {
+    for (const rank of ranks) {
+      const r = solveDraft(highs, alone([listed("X", rank, round)]));
+      assert.equal(r.status, "Optimal");
+      assert.equal(r.values[1], 1, `${round} rank ${rank}`);
+      assert.deepEqual(placed(r), { O: "X" }, `${round} rank ${rank}`);
+    }
+  }
+});
+
+test("a 5th, 6th or 7th choice does not count", () => {
+  for (const [round, ranks] of [["Round 1", [5, 6, 7]], ["Singapore", [5]]]) {
+    for (const rank of ranks) {
+      const r = solveDraft(highs, alone([listed("X", rank, round)]));
+      assert.equal(r.status, "Optimal");
+      assert.equal(r.values[1], 0, `${round} rank ${rank}`);
+      // Still placed there, by the preference score.
+      assert.deepEqual(placed(r), { O: "X" }, `${round} rank ${rank}`);
+    }
+  }
+});
+
+test("a 3rd choice wins the seat for an owed teacher, and so does a 4th", () => {
+  // A ranks X 1st and Y 7th. Without last year A has X (27) and B has Y.
+  for (const [rank, score] of [[3, 25 + 21], [4, 24 + 21]]) {
+    const r = solveDraft(highs, twoForOne({ past: PAST, bPrefs: [listed("X", rank), listed("Y", 5)] }));
+    assert.deepEqual(r.values, [0, 1, score, 0], `rank ${rank}`);
+    assert.deepEqual(placed(r), { A: "Y", B: "X" }, `rank ${rank}`);
+  }
+});
+
+test("a 5th choice wins nothing for an owed teacher", () => {
+  // B ranks X 5th and Y 6th: neither counts, so the score decides and A has X.
+  const r = solveDraft(highs, twoForOne({ past: PAST, bPrefs: [listed("X", 5), listed("Y", 6)] }));
+  assert.deepEqual(toInstance(twoForOne({ past: PAST, bPrefs: [listed("X", 5), listed("Y", 6)] })).owed, ["B"]);
+  assert.deepEqual(r.values, [0, 0, 27 + 22, 0]);
+  assert.deepEqual(placed(r), { A: "X", B: "Y" });
+});
+
+test("an owed teacher who sent no form this year is never counted, wherever they are placed", () => {
+  // N is owed and sent no form, so any course is open to N and none of them is a choice.
+  // R has a returning sponsor and two seats, and only N can take the second: N is placed, and still not counted.
+  const forced = mk({
+    courses: [course("R", 2), course("X", 1)],
+    teachers: [teacher("N", { lastYear: none }), teacher("S", { lastYear: null, returningCourse: "R" })],
+    past: PAST,
+  });
+  assert.deepEqual(toInstance(forced).owed, ["N"]);
+  const r = solveDraft(highs, forced);
+  assert.deepEqual(r.values, [0, 0, 0, 1]);
+  assert.deepEqual(placed(r), { N: "R", S: "R" });
+  assert.equal(recount(forced, r.pairs), 0);
+  // With nothing forcing it, N is not placed at all: counting N would have put N on X.
+  const free = solveDraft(highs, alone([]));
+  assert.deepEqual(free.values, [0, 0, 0, 0]);
+  assert.deepEqual(placed(free), {});
+  // And N on a course does not outweigh a teacher with a form: A keeps X, the only seat.
+  const beside = mk({
+    courses: [course("X", 1)],
+    teachers: [teacher("A", { prefs: [listed("X", 7)], lastYear: null }), teacher("N", { lastYear: none })],
+    past: PAST,
+  });
+  const b = solveDraft(highs, beside);
+  assert.deepEqual(b.values, [0, 0, 21, 0]);
+  assert.deepEqual(placed(b), { A: "X" });
+});
+
+test("an owed returning sponsor whose own course is not on their form is not counted either", () => {
+  // S is owed, fixed to R, and listed only X: R is a course with no listing for S, and X is closed to S.
+  const school = mk({
+    courses: [course("R", 1), course("X", 1)],
+    teachers: [teacher("S", { prefs: [listed("X", 1)], lastYear: none, returningCourse: "R" })],
+    past: PAST,
+  });
+  assert.deepEqual(toInstance(school).owed, ["S"]);
+  const r = solveDraft(highs, school);
+  assert.deepEqual(r.values, [0, 0, 0, 0]);
+  assert.deepEqual(placed(r), { S: "R" });
+  assert.equal(recount(school, r.pairs), 0);
+});

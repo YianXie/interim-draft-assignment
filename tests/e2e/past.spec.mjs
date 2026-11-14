@@ -112,10 +112,29 @@ async function walk(page, check) {
   await check("Teachers, searched");
   await search(page).fill("");
   await eachCard(page, (id) => check(`Teacher ${id}`));
+  await teacherRows(page).first().click();
+  await page.getByRole("button", { name: "All options" }).click();
+  await expect(page.locator("#main h2")).toHaveText(/^Move /);
+  await check("Move");
   await page.getByRole("button", { name: "History" }).click();
   await check("History");
   await tab(page, "Courses").click();
   await check("Courses");
+  // The first course card that has people who asked for it and are not on it.
+  for (const id of await page.locator("#main [data-row][data-course]").evaluateAll((els) => els.map((e) => e.dataset.course))) {
+    await page.locator(`#main [data-row][data-course="${id}"]`).click();
+    const asked = page.getByRole("button", { name: /^Who asked \d+$/ });
+    if (await asked.count()) {
+      await check("Course card");
+      await asked.click();
+      await expect(page.locator("#main h2")).toHaveText("Who asked");
+      await check("Who asked");
+      await tab(page, "Courses").click();
+      return;
+    }
+    await page.getByRole("button", { name: "Back" }).click();
+  }
+  throw new Error("no course card shows Who asked");
 }
 // Each teacher's course and last-year line as their card shows them, by T number.
 async function cards(page) {
@@ -378,15 +397,21 @@ test("a To do item still fits first with past files once Undo is showing", async
 });
 
 test("every open teacher card fits detail with past files", async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(240_000);
   watchPage(page);
   await goTen(page);
-  let shown = 0;
-  await eachCard(page, async () => {
-    shown += await last(page).count();
-    await measure(page, "detail");
-  });
-  expect(shown).toBeGreaterThan(0);
+  // Once by T number, once with names on, where the card also carries the name and the email.
+  for (const on of [false, true]) {
+    if (on) await names(page).click();
+    await expect(names(page)).toHaveAttribute("aria-checked", String(on));
+    let shown = 0;
+    await eachCard(page, async () => {
+      shown += await last(page).count();
+      await expect(emailShown(page)).toHaveCount(on ? 1 : 0);
+      await measure(page, "detail");
+    });
+    expect(shown).toBeGreaterThan(0);
+  }
 });
 
 test("Teachers fits list with past files", async ({ page }) => {
@@ -399,7 +424,7 @@ test("Teachers fits list with past files", async ({ page }) => {
 });
 
 test("with names off no name, email or unmatched entry is in the DOM on any screen", async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(240_000);
   const secrets = await hidden();
   for (const entry of (await fixture()).unmatched) expect(secrets).toContain(entry);
   const check = async (where) => {
@@ -408,8 +433,25 @@ test("with names off no name, email or unmatched entry is in the DOM on any scre
   };
   await startTen(page);
   await check("Start, ten ready");
+  // A refused past file: the line gives the file and the row, never the name that was in the cell.
+  for (const [at, line] of [[2, "sponsor appears twice in this file"], [5, "value outside the headed columns"]]) {
+    await dropFiles(page, [await variantAllocation((rows) => { rows[2][at] = rows[1][2]; })]);
+    await expect(slot(page, ALLOCATION)).toHaveText(`${ALLOCATION}, row 3: ${line}`);
+    await check(`Start, ${line}`);
+  }
+  await dropFiles(page, [pastFiles[0]]);
+  await expect(rightOf(page, ALLOCATION)).toContainText("not matched");
   await buildDraft(page);
   await expect(names(page)).toHaveAttribute("aria-checked", "false");
+  await walk(page, check);
+  // An edit made with names on leaves nothing behind once names are off again.
+  await names(page).click();
+  await moveOne(page);
+  await expect(page.locator("#main .why")).toContainText("Moved by the office");
+  await names(page).click();
+  await expect(names(page)).toHaveAttribute("aria-checked", "false");
+  await check("Names off again, on the moved teacher's card");
+  await tab(page, /^To do/).click();
   await walk(page, check);
 });
 
@@ -444,6 +486,14 @@ test("forbidden words are gone on every past screen", async ({ page }) => {
   await page.locator('[data-k="files"]').setInputFiles(pastFiles.at(-1));
   await expect(rightOf(page, ALLOCATION)).toContainText("not matched");
   await check("Start, ten ready");
+  await dropFiles(page, [await variantAllocation((rows) => { rows[2][2] = rows[1][2]; })]);
+  await expect(slot(page, ALLOCATION)).toContainText("sponsor appears twice");
+  await check("Start, a past file refused");
+  await dropFiles(page, [await variantAllocation((rows) => { rows[2][5] = rows[1][2]; })]);
+  await expect(slot(page, ALLOCATION)).toContainText("value outside the headed columns");
+  await check("Start, a past file refused for a stray value");
+  await dropFiles(page, [pastFiles[0]]);
+  await expect(rightOf(page, ALLOCATION)).toContainText("not matched");
   await buildDraft(page);
   await walk(page, check);
   await names(page).click();
@@ -462,6 +512,10 @@ test("reload shows the same draft and last-year lines with no re-upload", async 
   await expect(page.locator("[data-slot]")).toHaveCount(0);
   await expect(page.locator("[data-saved]")).toHaveText("Saved in this browser");
   expect(await cards(page)).toEqual(before);
+  // The download after a reload still carries last year: the saved School holds it.
+  const dl = await download(page);
+  expect(sheetOf(dl, "Teachers")[0]).toContain("Last year");
+  expect(dl.book.map((s) => s.name)).toContain("Last year");
 });
 
 test("six files alone: no [data-last] anywhere and the workbook has no Last year column or sheet", async ({ page }) => {

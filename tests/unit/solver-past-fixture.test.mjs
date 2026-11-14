@@ -81,3 +81,18 @@ test("rows shuffled, same draft", () => {
   assert.deepEqual(r.values, solved.values);
   assert.deepEqual(byEmail(shuffled, r.pairs), byEmail(school, solved.pairs));
 });
+
+test("the number of teachers the new priority can count equals the separate solver's", () => {
+  // A teacher has a term in the new priority when they are owed, sent a form this year, are not fixed to a course as a
+  // returning sponsor, and have a 1st to 4th choice, as the page shows it, on a running course whose certificate they hold.
+  const open = school.courses.filter((c) => c.running);
+  const canCount = school.teachers.filter((t) =>
+    t.lastYear !== null && t.lastYear.result === "none" && t.submitted && !(t.returning && t.returningCourse) &&
+    open.some((c) => {
+      const rank = displayedRank(t.prefs, c.id);
+      return rank !== null && rank <= 4 && (!c.needs || t.certificates.includes(c.needs));
+    }));
+  assert.equal(new Set(canCount.map((t) => t.email)).size, canCount.length);
+  assert.ok(expected.owed > 0);
+  assert.equal(canCount.length, expected.owed);
+});
