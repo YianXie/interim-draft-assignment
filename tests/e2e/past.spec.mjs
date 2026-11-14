@@ -186,7 +186,7 @@ test("past files can arrive in a second drop, and a re-dropped allocation replac
   await expect(buildButton(page)).toBeEnabled();
 
   await dropFiles(page, [twice]);
-  await expect(slot(page, ALLOCATION)).toHaveText(`${ALLOCATION}, row 3: a sponsor appears twice in this file`);
+  await expect(slot(page, ALLOCATION)).toHaveText(`${ALLOCATION}, row 3: sponsor appears twice in this file`);
   await expect(buildButton(page)).toBeDisabled();
   await dropFiles(page, [allMatched]);
   await expect(rightOf(page, ALLOCATION)).toHaveText("ready");
@@ -197,7 +197,7 @@ test("past files can arrive in a second drop, and a re-dropped allocation replac
   await expect(rightOf(page, ALLOCATION)).toHaveText(`ready, ${unmatched.length} not matched`);
   await expect(buildButton(page)).toBeEnabled();
   await dropFiles(page, [good], [twice]);
-  await expect(slot(page, ALLOCATION)).toContainText("a sponsor appears twice");
+  await expect(slot(page, ALLOCATION)).toContainText("sponsor appears twice");
   await expect(buildButton(page)).toBeDisabled();
   await dropFiles(page, [good]);
   await expect(buildButton(page)).toBeEnabled();
@@ -290,6 +290,17 @@ test("search for 'none of their' lists only those teachers", async ({ page }) =>
     await page.getByRole("button", { name: "Back" }).click();
   }
   await expect(rows).toHaveCount(none);
+});
+
+test("Start with a past file refused fits first", async ({ page }) => {
+  watchPage(page);
+  await startTen(page);
+  await dropFiles(page, [await variantAllocation((rows) => { rows[2][2] = rows[1][2]; })]);
+  await expect(slot(page, ALLOCATION)).toHaveText(`${ALLOCATION}, row 3: sponsor appears twice in this file`);
+  await measure(page, "first");
+  await dropFiles(page, [await variantAllocation((rows) => { rows[2][5] = rows[1][2]; })]);
+  await expect(slot(page, ALLOCATION)).toHaveText(`${ALLOCATION}, row 3: value outside the headed columns`);
+  await measure(page, "first");
 });
 
 test("Start with all ten ready fits first", async ({ page }) => {

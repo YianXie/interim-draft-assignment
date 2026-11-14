@@ -47,7 +47,7 @@ function headerRow(file, head) {
 }
 
 // Checks sheet name and headers, returns [{ n, cells }] for non-empty rows, n being the sheet row number.
-// In a past file, cells past the last header are not read.
+// In a past file a value under no header refuses the row: a sponsor typed one column too far would otherwise be lost.
 async function table(file, bytes) {
   let book;
   try {
@@ -62,10 +62,11 @@ async function table(file, bytes) {
     const list = file === ALLOCATION ? "Course Code, Course Name, Sponsor 1, Sponsor 2, and so on" : want.join(", ");
     refuse(file, 1, `headers must be exactly: ${list}`);
   }
-  const past = PAST_SLOTS.includes(file);
-  return rest
-    .map((cells, i) => ({ n: i + 2, cells: past ? cells.slice(0, want.length) : cells }))
-    .filter((r) => r.cells.some((c) => !blank(c)));
+  const rows = rest.map((cells, i) => ({ n: i + 2, cells })).filter((r) => r.cells.some((c) => !blank(c)));
+  if (PAST_SLOTS.includes(file)) {
+    for (const r of rows) if (r.cells.slice(want.length).some((c) => !blank(c))) refuse(file, r.n, "value outside the headed columns");
+  }
+  return rows;
 }
 
 function email(file, r, seen) {
@@ -113,11 +114,10 @@ function readEmailRows(file, rows) {
   return rows.map((r) => ({ n: r.n, email: email(file, r, seen), cells: r.cells.slice(1) }));
 }
 
-// Last year's allocation: [{ course, sponsors }], course being the Course Name and sponsors the names as written.
+// Last year's allocation: [{ n, course, sponsors }], course being the Course Name and sponsors the names as written.
 function readPastAllocation(file, rows) {
   const codes = new Set();
   const names = new Set();
-  const sponsors = new Set();
   return rows.map((r) => {
     const [code, name, ...entries] = r.cells.map(text);
     if (!code) refuse(file, r.n, "course code is empty");
@@ -126,13 +126,24 @@ function readPastAllocation(file, rows) {
     if (names.has(name)) refuse(file, r.n, "course name appears twice");
     codes.add(code);
     names.add(name);
-    const written = entries.filter(Boolean);
-    for (const entry of written) {
-      if (sponsors.has(normName(entry))) refuse(file, r.n, "a sponsor appears twice in this file");
-      sponsors.add(normName(entry));
-    }
-    return { course: name, sponsors: written };
+    return { n: r.n, course: name, sponsors: entries.filter(Boolean) };
   });
+}
+
+// One person on two of last year's courses refuses the file. A sponsor entry is one person only when exactly one of
+// this year's staff has that name; an entry that matches nobody, or two people, is counted as not matched however often it is written.
+function oncePerPerson(file, allocation, staff) {
+  const holders = new Map();
+  for (const s of staff) holders.set(normName(s.name), (holders.get(normName(s.name)) || 0) + 1);
+  const seen = new Set();
+  for (const { n, sponsors } of allocation) {
+    for (const entry of sponsors) {
+      const name = normName(entry);
+      if (holders.get(name) !== 1) continue;
+      if (seen.has(name)) refuse(file, n, "sponsor appears twice in this file");
+      seen.add(name);
+    }
+  }
 }
 
 const SECTION = (file, fn) => async (bytes) => {
@@ -169,8 +180,9 @@ export async function parseFiles(files, random = secureRandom) {
     else slots[file] = res.problem;
   }
 
-  // Cross-file checks, only against files that read cleanly on their own. Last year's files have none:
-  // a past course is compared only with last year's allocation, and a past email may belong to someone who left.
+  // Cross-file checks, only against files that read cleanly on their own. Last year's files are not held to this year's
+  // lists: a past course is compared only with last year's allocation, and a past email may belong to someone who left.
+  // Their one check against another file, one person written twice on the allocation, comes after this loop.
   const courses = got["courses.xlsx"];
   const staff = got["staff.xlsx"];
   const byId = courses && new Map(courses.map((c) => [c.id, c]));
@@ -195,6 +207,16 @@ export async function parseFiles(files, random = secureRandom) {
       if (!(e instanceof Refusal)) throw e;
       slots[file] = e.message;
       delete got[file];
+    }
+  }
+
+  if (got[ALLOCATION] && staff) {
+    try {
+      oncePerPerson(ALLOCATION, got[ALLOCATION], staff);
+    } catch (e) {
+      if (!(e instanceof Refusal)) throw e;
+      slots[ALLOCATION] = e.message;
+      delete got[ALLOCATION];
     }
   }
 
@@ -238,17 +260,19 @@ export async function parseFiles(files, random = secureRandom) {
   }
   const school = { school: "Fernhollow Academy", year: "Interim 2028", courses, teachers: [...teachers.values()] };
   if (past) {
+    // A past choice is the allocation's course whatever its letter case or spacing. Nothing is shown from these names.
+    const allocation = got[ALLOCATION].map((a) => ({ course: normName(a.course), sponsors: a.sponsors }));
     const forms = [];
     const sent = [];
     for (const [file, round] of Object.entries(PAST_FORMS)) {
       for (const r of got[file]) {
         sent.push(r.email);
         r.cells.forEach((c, i) => {
-          if (!blank(c)) forms.push({ email: r.email, course: text(c), rank: i + 1, round });
+          if (!blank(c)) forms.push({ email: r.email, course: normName(c), rank: i + 1, round });
         });
       }
     }
-    const { byEmail, unmatched } = lastYearResults({ allocation: got[ALLOCATION], forms, staff, sent });
+    const { byEmail, unmatched } = lastYearResults({ allocation, forms, staff, sent });
     for (const t of school.teachers) t.lastYear = byEmail.get(t.email) ?? null;
     school.past = { unmatched };
   }

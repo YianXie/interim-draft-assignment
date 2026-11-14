@@ -85,6 +85,7 @@ stages = [("min", [(1, s) for s in short]), ("max", score), ("min", [(1, v) for 
 def none_last_year():
     """Staff who sent a form last year and were placed on a course that was on none of their forms.
     A sponsor entry is a name: it counts only when exactly one of this year's staff has it, ignoring case and extra spaces.
+    A past choice is the allocation's course whatever its letter case or spacing.
     Emails are in lower case throughout, the staff list's as well as the past forms'."""
     squash = lambda s: " ".join(str(s).lower().split())
     named = {}
@@ -96,13 +97,13 @@ def none_last_year():
         for entry in r[2:]:
             who = named.get(squash(entry), [])
             if len(who) == 1:
-                placed[who[0]] = r[1]
+                placed[who[0]] = squash(r[1])
     sent, listed = set(), set()
     for fname in ("past-round1", "past-round2", "past-singapore"):
         _, frows = rows(fname, PAST)
         for r in frows:
             e = r[0].lower(); sent.add(e)  # a row with every choice blank is still a form
-            listed.update((e, nm) for nm in r[1:] if nm != "")
+            listed.update((e, squash(nm)) for nm in r[1:] if nm != "")
     return {e for e, c in placed.items() if e in sent and (e, c) not in listed}
 
 if WITH_PAST:

@@ -148,13 +148,15 @@ test("past-allocation headers: Sponsor columns may be any number, but not zero a
   }
 });
 
+// One file refused with exactly this line, the other nine ready, and no School.
+const refused = async (file, edit, line) => {
+  const out = await run({ edit });
+  assert.equal(out.school, null, line);
+  assert.equal(out.slots[file], line);
+  for (const name of [...SLOTS, ...PAST_SLOTS]) if (name !== file) assert.equal(out.slots[name], "ready", line);
+};
+
 test("each allocation refusal gives file and row", async () => {
-  const refused = async (file, edit, line) => {
-    const out = await run({ edit });
-    assert.equal(out.school, null, line);
-    assert.equal(out.slots[file], line);
-    for (const name of [...SLOTS, ...PAST_SLOTS]) if (name !== file) assert.equal(out.slots[name], "ready", line);
-  };
   for (const file of PAST_SLOTS) {
     await refused(file, (past) => (past[file].sheetName = "Sheet1"), `${file}: first sheet must be named Fernhollow`);
   }
@@ -165,12 +167,56 @@ test("each allocation refusal gives file and row", async () => {
   await refused(ALLOCATION, (past) => (past[ALLOCATION][3][1] = null), "past-allocation.xlsx, row 4: course name is empty");
   await refused(ALLOCATION, (past) => (past[ALLOCATION][5][1] = course(0)),
     "past-allocation.xlsx, row 6: course name appears twice");
-  // The same person written two ways, on two courses.
+});
+
+test("one person on two past courses refuses the file", async () => {
+  // The same person written two ways, on two courses. The line gives the row of the second entry.
   await refused(ALLOCATION, (past) => (past[ALLOCATION][5][2] = `  ${named(0).toUpperCase().replace(" ", "   ")} `),
-    "past-allocation.xlsx, row 6: a sponsor appears twice in this file");
+    "past-allocation.xlsx, row 6: sponsor appears twice in this file");
   // And twice on one course.
   await refused(ALLOCATION, (past) => (past[ALLOCATION][2][3] = named(2)),
-    "past-allocation.xlsx, row 3: a sponsor appears twice in this file");
+    "past-allocation.xlsx, row 3: sponsor appears twice in this file");
+  // A repeated placeholder earlier in the file does not hide it.
+  await refused(ALLOCATION, (past) => {
+    past[ALLOCATION][2][3] = "TBC";
+    past[ALLOCATION][4][3] = "TBC";
+    past[ALLOCATION][5][2] = named(1);
+  }, "past-allocation.xlsx, row 6: sponsor appears twice in this file");
+});
+
+test("a placeholder repeated on the allocation is counted as not matched each time", async () => {
+  const base = await run({ random: seq() });
+  const out = await run({
+    random: seq(),
+    edit: (past) => {
+      past[ALLOCATION][2][3] = "TBC";
+      past[ALLOCATION][4][3] = "  tbc ";
+      past[ALLOCATION][5][2] = "TBC";
+    },
+  });
+  assert.ok(out.school, JSON.stringify(out.slots));
+  assert.deepEqual(out.slots, Object.fromEntries([...SLOTS, ...PAST_SLOTS].map((name) => [name, "ready"])));
+  assert.deepEqual(out.school.past, { unmatched: ["TBC", "tbc", "TBC"] });
+  // Nobody's result moves.
+  assert.deepEqual(out.school.teachers, base.school.teachers);
+});
+
+test("two staff who share a name can both appear and are both counted as not matched", async () => {
+  const out = await run({
+    edit: (past, now) => {
+      // Staff 4 and staff 6 now have one name, and last year's allocation has it on two courses.
+      now["staff.xlsx"][7][1] = named(4);
+      past[ALLOCATION][5][2] = ` ${named(4).toUpperCase()}`;
+    },
+  });
+  assert.ok(out.school, JSON.stringify(out.slots));
+  assert.deepEqual(out.slots, Object.fromEntries([...SLOTS, ...PAST_SLOTS].map((name) => [name, "ready"])));
+  assert.deepEqual(out.school.past, { unmatched: [named(4), named(4).toUpperCase()] });
+  // Neither holder of the name is counted as placed, and nobody else's result moves.
+  assert.equal(lastYear(out.school, 4), null);
+  assert.equal(lastYear(out.school, 6), null);
+  assert.deepEqual(lastYear(out.school, 0), { result: "top4", rank: 1, round: "Round 1" });
+  assert.deepEqual(lastYear(out.school, 1), none);
 });
 
 test("past form files give the existing lines for headers and emails", async () => {
@@ -240,6 +286,11 @@ test("no name, email or course text reaches a past problem line", async () => {
     (past) => (past[ALLOCATION][0][3] = "Sponsor B"),
     (past) => (past[ALLOCATION][2][0] = null),
     (past) => (past[ALLOCATION][3][1] = ""),
+    // A name and a course name, each one column past the last header.
+    (past) => {
+      past[ALLOCATION][3] = [courses[2][0], course(2), null, named(3), named(5)];
+      past[ROUND1][2] = [who(1), course(1), course(2), null, null, null, null, null, course(0)];
+    },
   ];
   const lines = [];
   for (const edit of edits) {
@@ -247,7 +298,9 @@ test("no name, email or course text reaches a past problem line", async () => {
     assert.equal(out.school, null);
     lines.push(...PAST_SLOTS.map((name) => out.slots[name]).filter((line) => line !== "ready"));
   }
-  assert.equal(lines.length, 11);
+  assert.equal(lines.length, 13);
+  assert.equal(lines.filter((line) => line.endsWith("sponsor appears twice in this file")).length, 1);
+  assert.equal(lines.filter((line) => line.endsWith("value outside the headed columns")).length, 2);
   for (const line of lines) {
     for (const s of staff) assert.ok(!line.includes(s[0]) && !line.includes(s[1]), line);
     for (const c of courses) assert.ok(!line.includes(c[0]) && !line.includes(c[1]), line);
@@ -318,16 +371,51 @@ test("past emails match this year's staff whatever their letter case or stray sp
   assert.deepEqual(lastYear(out.school, 0), { result: "top4", rank: 1, round: "Round 1" });
 });
 
-test("cells past the last header are not read", async () => {
+test("a value outside the headed columns of a past file refuses the row", async () => {
+  // A sponsor cell under no Sponsor column.
+  await refused(ALLOCATION, (past) => (past[ALLOCATION][3] = [courses[2][0], course(2), null, named(3), named(5)]),
+    "past-allocation.xlsx, row 4: value outside the headed columns");
+  // An 8th choice on a 7-choice form.
+  await refused(ROUND1, (past) => (past[ROUND1][2] = [who(1), course(1), course(2), null, null, null, null, null, course(0)]),
+    "past-round1.xlsx, row 3: value outside the headed columns");
+  // Blank cells out there are nothing.
   const base = await run({ random: seq() });
   const out = await run({
     random: seq(),
     edit: (past) => {
-      // An 8th choice on a 7-choice form, and a sponsor cell under no Sponsor column.
-      past[ROUND1][2] = [who(1), course(1), course(2), null, null, null, null, null, course(0)];
-      past[ALLOCATION][3] = [courses[2][0], course(2), null, named(3), named(5)];
+      past[ROUND2][1] = [who(3), course(0), `${course(2)}  `, null, " ", ""];
+      past[ALLOCATION][5] = [courses[4][0], course(4), null, null, " "];
     },
   });
   assert.ok(out.school, JSON.stringify(out.slots));
   assert.deepEqual(out.school, base.school);
+});
+
+test("a past choice matches the allocation's course whatever its letter case or spacing", async () => {
+  const base = await run({ random: seq() });
+  const untidy = (name) => `${name.toUpperCase().replace(/ /g, "  ")} `;
+  assert.notEqual(untidy(course(0)).trim(), course(0).toUpperCase(), "the course name has an inner space to double");
+  // Every choice on every past form in upper case, with doubled inner spaces and a trailing space.
+  const forms = await run({
+    random: seq(),
+    edit: (past) => {
+      for (const file of [ROUND1, ROUND2, SINGAPORE]) {
+        for (const row of past[file].slice(1)) for (let i = 1; i < row.length; i++) row[i] = untidy(row[i]);
+      }
+    },
+  });
+  assert.ok(forms.school, JSON.stringify(forms.slots));
+  assert.deepEqual(forms.school, base.school);
+  assert.deepEqual(lastYear(forms.school, 0), { result: "top4", rank: 1, round: "Round 1" });
+  assert.deepEqual(lastYear(forms.school, 2), { result: "5to7", rank: 5, round: "Round 1" });
+  assert.deepEqual(lastYear(forms.school, 1), none);
+  // The other way round: the allocation untidy, the forms as they were.
+  const allocation = await run({
+    random: seq(),
+    edit: (past) => {
+      for (const row of past[ALLOCATION].slice(1)) row[1] = untidy(row[1]);
+    },
+  });
+  assert.ok(allocation.school, JSON.stringify(allocation.slots));
+  assert.deepEqual(allocation.school, base.school);
 });
