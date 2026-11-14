@@ -1,5 +1,6 @@
 import { Mock } from "./state.js";
 import { parseFiles, SLOTS, PAST_SLOTS } from "./import.js";
+import { RESULT_LABEL } from "./past.js";
 import { loadHighs, solveDraft, toDraft } from "./solver.js";
 import { recheck } from "./recheck.js";
 import { sheetsFor, fileName } from "./export.js";
@@ -182,8 +183,7 @@ function teacherBody(id, opened = false) {
   }).join("");
   return `${title(L(id))}
     <p class="under ${c ? "" : "need"}">${c ? esc(Mock.course(c).name) : "Not placed"}</p>
-    <p class="why"><span class="q">Why</span>&ensp;${esc(Mock.reason(id))}</p>
-    ${last ? `<p class="q" data-last>${esc(last)}</p>` : ""}
+    <p class="why"><span class="q">Why</span>&ensp;${esc(Mock.reason(id))}</p>${last ? `\n    <p class="q" data-last>${esc(last)}</p>` : ""}
     ${mail ? `<p class="q gap">${esc(mail)}</p>` : ""}
     ${!c && !Mock.state.left.has(id) ? `<div class="acts"><button class="btn" data-act="leave" data-id="${id}" data-k="lv">Leave unplaced</button></div>` : ""}
     ${rows ? `<div class="gap" data-rows>${rows}</div>` : ""}
@@ -302,7 +302,9 @@ function teachersHome() {
   return `${bigLine()}${tools("teachers")}
     <div data-rows>${list.map((t) => {
       const c = Mock.placedOn(t.id), cn = c ? Mock.course(c).name : "Not placed";
-      return `<button class="row r-teacher" data-row data-teacher="${t.id}" data-k="t-${t.id}" data-q="${esc([who(t.id), cn, Mock.lastYearLine(t.id)].filter(Boolean).join(" "))}">
+      // Search also finds last year's result, in the card's words and in the download's.
+      const was = Mock.past() && Mock.lastYear(t.id);
+      return `<button class="row r-teacher" data-row data-teacher="${t.id}" data-k="t-${t.id}" data-q="${esc([who(t.id), cn, Mock.lastYearLine(t.id), was ? RESULT_LABEL[was.result] : ""].filter(Boolean).join(" "))}">
         <span>${L(t.id)}</span><span class="${c ? "" : "need"}">${esc(cn)}</span></button>`;
     }).join("")}<div class="row q" data-empty hidden>No matches</div></div>`;
 }
@@ -332,6 +334,8 @@ function render() {
     main.innerHTML = startView();
   }
   if (k) { const el = document.querySelector(`[data-k="${CSS.escape(k)}"]`); if (el) el.focus(); }
+  // Last year's rows make Start longer, so Build can end up below a short window just as it unlocks.
+  if (canBuild() && PAST_SLOTS.some((name) => slots[name])) document.querySelector('[data-k="build"]').scrollIntoView({ block: "nearest" });
 }
 
 function push(f) {

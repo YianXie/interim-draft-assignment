@@ -292,6 +292,41 @@ test("search for 'none of their' lists only those teachers", async ({ page }) =>
   await expect(rows).toHaveCount(none);
 });
 
+test("search finds the download's labels too", async ({ page }) => {
+  const { lastYear } = await fixture();
+  const withResult = (result) => [...lastYear.values()].filter((was) => was && was.result === result).length;
+  await goTen(page);
+  await tab(page, "Teachers").click();
+  await expect(names(page)).toHaveAttribute("aria-checked", "false");
+  const rows = page.locator("#main [data-row][data-teacher]:visible");
+  await expect(rows).toHaveCount(TEACHERS);
+  for (const [typed, result, n] of [["top 4", "top4", 52], ["5 to 7", "5to7", 7], ["not found", "notFound", 1], ["none", "none", 11]]) {
+    expect(withResult(result), typed).toBe(n);
+    await search(page).fill(typed);
+    await expect(rows, typed).toHaveCount(n);
+  }
+  // The label is in the search text only: a row still shows its T number and course, nothing more.
+  expect(await rows.first().locator("span").count()).toBe(2);
+  expect(await page.locator("#main [data-rows]").innerText()).not.toMatch(/top 4|5 to 7|not found|none/i);
+});
+
+test("Build is in view once ten files are ready, on a short window", async ({ page }) => {
+  const short = { width: 1366, height: 680 };
+  await page.setViewportSize(short);
+  await startTen(page);
+  const box = await buildButton(page).boundingBox();
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(short.height);
+});
+
+test("six files alone never move the page, however short the window", async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 360 });
+  await dropSchool(page);
+  const box = await buildButton(page).boundingBox();
+  expect(box.y + box.height).toBeGreaterThan(360);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+});
+
 test("Start with a past file refused fits first", async ({ page }) => {
   watchPage(page);
   await startTen(page);
