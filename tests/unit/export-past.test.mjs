@@ -165,3 +165,66 @@ test("every cell is a string cell and there are no formulas", async () => {
     }
   }
 });
+
+// A copy of the fixture School, as the page holds it (teachers in T-number order), with its lastYear and past edited.
+const copyOf = (from, edit) => {
+  const copy = structuredClone(from);
+  edit(copy);
+  copy.teachers.sort((a, b) => a.id.localeCompare(b.id));
+  return copy;
+};
+const lists = () => sheet("Last year").rows.slice(7);
+
+test("an empty list writes no heading", () => {
+  const notFound = school.teachers.find((t) => t.lastYear && t.lastYear.result === "notFound");
+  const use = (edit) => { Mock.init(copyOf(school, edit)); Mock.build(draft); Mock.setNames(true); };
+  // Nothing unmatched: only the second list, with no blank row before a missing first one.
+  use((s) => { s.past.unmatched = []; });
+  assert.deepEqual(lists(), [[], [NOT_FOUND], [notFound.name]]);
+  // Nobody Not found: only the first list, and no blank row left at the end.
+  use((s) => { s.teachers.find((t) => t.id === notFound.id).lastYear = null; });
+  assert.deepEqual(lists(), [[], [UNMATCHED], ["Sponsor who left"]]);
+  // Neither: the sheet ends with the table, as it does with names off.
+  use((s) => { s.past.unmatched = []; s.teachers.find((t) => t.id === notFound.id).lastYear = null; });
+  assert.deepEqual(lists(), []);
+  assert.equal(sheet("Last year").rows.length, 7);
+});
+
+test("the not-on-the-allocation list is the same under two T-number draws", async () => {
+  const seeded = (seed) => { let s = seed; return (n) => { s = (s * 1103515245 + 12345) % 2147483648; return s % n; }; };
+  // Five teachers picked by email, so the same people under any draw. Two of them are given one name.
+  const emails = school.teachers.map((t) => t.email).sort().filter((_, i) => i % 19 === 3);
+  assert.equal(emails.length, 5);
+  const shared = school.teachers.find((t) => t.email === emails[4]).name;
+  const drawn = async (seed) => copyOf(await readPastSchool(seeded(seed)), (s) => {
+    for (const t of s.teachers) {
+      if (t.lastYear && t.lastYear.result === "notFound") t.lastYear = null;
+      if (emails.includes(t.email)) t.lastYear = { result: "notFound", rank: null, round: null };
+      if (t.email === emails[0]) t.name = shared;
+    }
+  });
+  const listed = (s) => {
+    Mock.init(s);
+    Mock.build({});
+    Mock.setNames(true);
+    const rows = lists();
+    return rows.slice(rows.findIndex((r) => r[0] === NOT_FOUND) + 1).map((r) => r[0]);
+  };
+  const a = await drawn(1), b = await drawn(2);
+  const inTOrder = (s) => s.teachers.filter((t) => emails.includes(t.email)).map((t) => t.email);
+  assert.notDeepEqual(inTOrder(a), inTOrder(b), "the two draws put these five in different T-number orders");
+  // By name, then email: the two who share a name come in email order.
+  const want = a.teachers.filter((t) => emails.includes(t.email))
+    .sort((x, y) => x.name.localeCompare(y.name) || x.email.localeCompare(y.email)).map((t) => t.name);
+  assert.equal(want.length, 5);
+  assert.equal(want.filter((name) => name === shared).length, 2);
+  assert.deepEqual(listed(a), want);
+  assert.deepEqual(listed(b), want);
+  // Under one draw, the pair that shares a name is in email order whatever their T numbers say.
+  const pair = (s) => s.teachers.filter((t) => t.name === shared && emails.includes(t.email));
+  const flipped = structuredClone(a);
+  const [p, q] = pair(flipped);
+  [p.id, q.id] = [q.id, p.id];
+  flipped.teachers.sort((x, y) => x.id.localeCompare(y.id));
+  assert.deepEqual(listed(flipped), want);
+});

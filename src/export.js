@@ -67,15 +67,18 @@ const THIS_YEAR = { top4: "Top 4", "5to7": "5 to 7", notRanked: "Not on their li
 
 // Last year's result down the side, this year's across the top, each teacher counted once.
 // The two lists under the table hold what was written on last year's allocation and who to pair it with, so they are written only with names on.
+// A list with nothing in it is not written at all. The second is in name order, then email, never T-number order:
+// T-number order would be the same in the download with names off, and the two could be paired row by row.
 function lastYearSheet(mock) {
   const result = (t) => (mock.lastYear(t.id) ? mock.lastYear(t.id).result : null);
   const count = (was, now) => mock.teachers().filter((t) => result(t) === was && mock.thisYear(t.id) === now).length;
   const row = (was, text) => [text, ...Object.keys(THIS_YEAR).map((now) => count(was, now))];
   const rows = [["Last year", ...Object.values(THIS_YEAR)], ...Object.entries(RESULT_LABEL).map(([was, text]) => row(was, text)), row(null, "No record")];
   if (mock.state.namesOn) {
-    const notFound = mock.teachers().filter((t) => result(t) === "notFound").map((t) => [mock.label(t.id)]);
-    rows.push([], ["Not matched on last year's allocation"], ...mock.past().unmatched.map((entry) => [entry]),
-      [], ["Sent a form last year, not on the allocation"], ...notFound);
+    const list = (heading, entries) => { if (entries.length) rows.push([], [heading], ...entries.map((entry) => [entry])); };
+    const notFound = mock.teachers().filter((t) => result(t) === "notFound").sort((a, b) => byText(a.name, b.name) || byText(a.email, b.email));
+    list("Not matched on last year's allocation", mock.past().unmatched);
+    list("Sent a form last year, not on the allocation", notFound.map((t) => mock.label(t.id)));
   }
   return { name: "Last year", rows };
 }
