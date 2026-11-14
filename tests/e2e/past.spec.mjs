@@ -6,7 +6,7 @@ import { unzipSync, strFromU8 } from "fflate";
 import { PAST_SLOTS, SLOTS } from "../../src/import.js";
 import { readBook, writeBook } from "../../src/xlsx.js";
 import { pastFiles, readPastSchool } from "../unit/past-fixture.mjs";
-import { buildButton, buildDraft, dropFiles, dropSchool, measure, schoolFiles, visibleStrings, watchPage } from "./helpers.mjs";
+import { buildButton, buildDraft, dropFiles, dropSchool, measure, measureStart, schoolFiles, visibleStrings, watchPage } from "./helpers.mjs";
 import { dropTen, tenFiles } from "./past-helpers.mjs";
 import { forbiddenIn } from "./words.mjs";
 
@@ -52,7 +52,7 @@ async function variantAllocation(edit) {
 }
 
 const slot = (page, file) => page.locator(`[data-slot="${file}"]`);
-const rightOf = (page, file) => slot(page, file).locator("span").nth(1);
+const rightOf = (page, file) => slot(page, file).locator("[data-line]");
 const ready = (page) => page.locator("[data-slot]", { hasText: "ready" });
 const tab = (page, name) => page.getByRole("tab", { name });
 const names = (page) => page.getByRole("switch", { name: "Show names" });
@@ -168,7 +168,7 @@ test("ten files build the expected draft", async ({ page }) => {
   await expect(result).toHaveAttribute("data-running", String(expected.runningMin));
   // The second value is what last year changes: those who got none of their choices, now on a 1st to 4th choice.
   const counts = sheetOf(await download(page), "Last year");
-  expect(counts.find((r) => r[0] === "None")[counts[0].indexOf("Top 4")]).toBe(String(expected.values[1]));
+  expect(counts.find((r) => r[0] === "None")[counts[0].indexOf("Top 4")]).toBe(Number(expected.values[1]));
   expect(await watch.csp()).toEqual([]);
   expect(watch.problems).toEqual([]);
 });
@@ -177,7 +177,7 @@ test("three of the four past files keep Build locked and say which is missing", 
   for (const missing of PAST_SLOTS) {
     await page.goto("/");
     await page.locator('[data-k="files"]').setInputFiles(tenFiles().filter((p) => basename(p) !== missing));
-    await expect(slot(page, missing)).toHaveText(`${missing}: file not added`);
+    await expect(rightOf(page, missing)).toHaveText("file not added");
     await expect(page.locator("[data-slot]")).toHaveCount(10);
     await expect(ready(page)).toHaveCount(9);
     await expect(buildButton(page)).toBeDisabled();
@@ -205,7 +205,7 @@ test("past files can arrive in a second drop, and a re-dropped allocation replac
   await expect(buildButton(page)).toBeEnabled();
 
   await dropFiles(page, [twice]);
-  await expect(slot(page, ALLOCATION)).toHaveText(`${ALLOCATION}, row 3: sponsor appears twice in this file`);
+  await expect(rightOf(page, ALLOCATION)).toHaveText("Row 3: sponsor appears twice in this file");
   await expect(buildButton(page)).toBeDisabled();
   await dropFiles(page, [allMatched]);
   await expect(rightOf(page, ALLOCATION)).toHaveText("ready");
@@ -221,10 +221,10 @@ test("past files can arrive in a second drop, and a re-dropped allocation replac
   await dropFiles(page, [good]);
   await expect(buildButton(page)).toBeEnabled();
 
-  // A file with any other name still gets its own line, after the ten, and does not hold up Build.
+  // A file with any other name still gets its own line, with the six on the This year tab, and does not hold up Build.
   await dropFiles(page, [tempFile("notes.xlsx", "x")]);
   await expect(slot(page, "notes.xlsx")).toHaveText("notes.xlsx: not one of the six file names");
-  expect(await page.locator("[data-slot]").evaluateAll((els) => els.map((e) => e.dataset.slot))).toEqual([...SLOTS, ...PAST_SLOTS, "notes.xlsx"]);
+  expect(await page.locator("[data-slot]").evaluateAll((els) => els.map((e) => e.dataset.slot))).toEqual([...SLOTS, "notes.xlsx", ...PAST_SLOTS]);
   await expect(buildButton(page)).toBeEnabled();
 });
 
@@ -350,17 +350,17 @@ test("Start with a past file refused fits first", async ({ page }) => {
   watchPage(page);
   await startTen(page);
   await dropFiles(page, [await variantAllocation((rows) => { rows[2][2] = rows[1][2]; })]);
-  await expect(slot(page, ALLOCATION)).toHaveText(`${ALLOCATION}, row 3: sponsor appears twice in this file`);
-  await measure(page, "first");
+  await expect(rightOf(page, ALLOCATION)).toHaveText("Row 3: sponsor appears twice in this file");
+  await measureStart(page);
   await dropFiles(page, [await variantAllocation((rows) => { rows[2][5] = rows[1][2]; })]);
-  await expect(slot(page, ALLOCATION)).toHaveText(`${ALLOCATION}, row 3: value outside the headed columns`);
-  await measure(page, "first");
+  await expect(rightOf(page, ALLOCATION)).toHaveText("Row 3: value outside the headed columns");
+  await measureStart(page);
 });
 
 test("Start with all ten ready fits first", async ({ page }) => {
   watchPage(page);
   await startTen(page);
-  await measure(page, "first");
+  await measureStart(page);
 });
 
 test("Start with one past file missing fits first", async ({ page }) => {
@@ -369,7 +369,7 @@ test("Start with one past file missing fits first", async ({ page }) => {
   await page.locator('[data-k="files"]').setInputFiles(tenFiles().slice(0, -1));
   await expect(ready(page)).toHaveCount(9);
   await expect(page.locator("[data-slot]")).toHaveCount(10);
-  await measure(page, "first");
+  await measureStart(page);
 });
 
 test("every To do item fits first with past files", async ({ page }) => {
@@ -436,7 +436,7 @@ test("with names off no name, email or unmatched entry is in the DOM on any scre
   // A refused past file: the line gives the file and the row, never the name that was in the cell.
   for (const [at, line] of [[2, "sponsor appears twice in this file"], [5, "value outside the headed columns"]]) {
     await dropFiles(page, [await variantAllocation((rows) => { rows[2][at] = rows[1][2]; })]);
-    await expect(slot(page, ALLOCATION)).toHaveText(`${ALLOCATION}, row 3: ${line}`);
+    await expect(rightOf(page, ALLOCATION)).toHaveText(`Row 3: ${line}`);
     await check(`Start, ${line}`);
   }
   await dropFiles(page, [pastFiles[0]]);
@@ -473,7 +473,7 @@ test("names on, move, names off, download: no name, email or unmatched entry in 
     expect(secrets.filter((s) => text.includes(s)), path).toEqual([]);
   }
   expect(off.book.map((s) => s.name)).toEqual(["Courses", "Teachers", "Changes", "Last year", "Note"]);
-  expect(sheetOf(off, "Teachers")[0]).toEqual(["Teacher", "Course", "Choice", "Last year", "Why", "Status"]);
+  expect(sheetOf(off, "Teachers")[0]).toEqual(["Teacher", "Course Code", "Course", "Choice", "Last year", "Why", "Status"]);
 });
 
 test("forbidden words are gone on every past screen", async ({ page }) => {

@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { readFileSync, rmSync } from "node:fs";
 import { basename, join } from "node:path";
 import { readBook } from "../../src/xlsx.js";
-import { buildButton, buildDraft, dropFiles, dropSchool, measure, schoolFiles, variantSchool, visibleStrings, watchPage } from "./helpers.mjs";
+import { buildButton, buildDraft, dropFiles, dropSchool, measure, measureStart, schoolFiles, variantSchool, visibleStrings, watchPage } from "./helpers.mjs";
 import { forbiddenIn } from "./words.mjs";
 
 const expected = JSON.parse(readFileSync("fixtures/expected.json", "utf8"));
@@ -103,7 +103,7 @@ test("files can arrive in two drops, and a re-dropped file replaces the old one"
 test("a bad file shows one plain line and Build stays locked", async ({ page }) => {
   await dropSchool(page);
   await page.locator('[data-k="files"]').setInputFiles(join(await badCourses(), "courses.xlsx"));
-  await expect(slot(page, "courses.xlsx")).toHaveText("courses.xlsx, row 2: seats must be a positive whole number");
+  await expect(slot(page, "courses.xlsx").locator("[data-line]")).toHaveText("Row 2: seats must be a positive whole number");
   await expect(buildButton(page)).toBeDisabled();
   await page.locator('[data-k="files"]').setInputFiles({ name: "notes.xlsx", mimeType: "application/octet-stream", buffer: Buffer.from("x") });
   await expect(slot(page, "notes.xlsx")).toHaveText("notes.xlsx: not one of the six file names");
@@ -309,7 +309,7 @@ test("Invented school is shown on Start and in the top bar", async ({ page }) =>
 });
 
 const SCREENS = [
-  ["Start", "first", (page) => page.goto("/")],
+  ["Start", "start", (page) => page.goto("/")],
   ["To do", "first", goBuild],
   ["Teachers", "list", async (page) => { await goBuild(page); await tab(page, "Teachers").click(); }],
   ["Courses", "list", async (page) => { await goBuild(page); await tab(page, "Courses").click(); }],
@@ -320,14 +320,14 @@ for (const [screen, budget, reach] of SCREENS) {
     watchPage(page);
     await reach(page);
     await expect(page.locator("#main").getByRole("heading").first()).toBeVisible();
-    await measure(page, budget);
+    await (budget === "start" ? measureStart(page) : measure(page, budget));
   });
 }
 
 test("Start with all six ready fits first", async ({ page }) => {
   watchPage(page);
   await dropSchool(page);
-  await measure(page, "first");
+  await measureStart(page);
 });
 
 test("every To do item fits first", async ({ page }) => {

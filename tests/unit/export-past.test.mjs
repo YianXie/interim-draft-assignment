@@ -40,7 +40,7 @@ function thisYear(t, cid) {
 }
 const lastYear = (t) => (t.lastYear ? RESULT_LABEL[t.lastYear.result] : "No record");
 const expectedTable = (placed) => ROWS.map((row) => [row, ...HEAD.slice(1).map((col) =>
-  String(school.teachers.filter((t) => lastYear(t) === row && thisYear(t, placed[t.id]) === col).length))]);
+  school.teachers.filter((t) => lastYear(t) === row && thisYear(t, placed[t.id]) === col).length)]);
 
 test("with past files the sheets are Courses, Teachers, Changes, Last year (and Note with names off)", () => {
   assert.deepEqual(names(), ["Courses", "Teachers", "Changes", "Last year", "Note"]);
@@ -50,26 +50,27 @@ test("with past files the sheets are Courses, Teachers, Changes, Last year (and 
 
 test("Teachers has Last year after Choice, with the label or blank", () => {
   const labels = new Set(["", ...Object.values(RESULT_LABEL)]);
-  assert.deepEqual(sheet("Teachers").rows[0], ["Teacher", "Course", "Choice", "Last year", "Why", "Status"]);
+  assert.deepEqual(sheet("Teachers").rows[0], ["Teacher", "Course Code", "Course", "Choice", "Last year", "Why", "Status"]);
   const off = body("Teachers");
   assert.equal(off.length, school.teachers.length);
   for (const t of school.teachers) {
     const r = off.find((x) => x[0] === t.id);
-    assert.equal(r.length, 6);
-    assert.equal(r[3], t.lastYear ? RESULT_LABEL[t.lastYear.result] : "");
-    assert.ok(labels.has(r[3]));
-    assert.equal(r[4], Mock.reason(t.id));
+    assert.equal(r.length, 7);
+    assert.equal(r[1], Mock.placedOn(t.id) || "");
+    assert.equal(r[4], t.lastYear ? RESULT_LABEL[t.lastYear.result] : "");
+    assert.ok(labels.has(r[4]));
+    assert.equal(r[5], Mock.reason(t.id));
   }
   Mock.setNames(true);
-  assert.deepEqual(sheet("Teachers").rows[0], ["Teacher", "Email", "Course", "Choice", "Last year", "Why", "Status"]);
+  assert.deepEqual(sheet("Teachers").rows[0], ["Teacher", "Email", "Course Code", "Course", "Choice", "Last year", "Why", "Status"]);
   const on = body("Teachers");
   for (const t of school.teachers) {
     const r = on.find((x) => x[1] === t.email);
-    assert.equal(r.length, 7);
-    assert.equal(r[4], t.lastYear ? RESULT_LABEL[t.lastYear.result] : "");
-    assert.equal(r[5], Mock.reason(t.id));
+    assert.equal(r.length, 8);
+    assert.equal(r[5], t.lastYear ? RESULT_LABEL[t.lastYear.result] : "");
+    assert.equal(r[6], Mock.reason(t.id));
   }
-  const count = (label) => on.filter((r) => r[4] === label).length;
+  const count = (label) => on.filter((r) => r[5] === label).length;
   assert.deepEqual(["Top 4", "5 to 7", "None", "Not found", "No form", ""].map(count), [52, 7, 11, 1, 17, 8]);
 });
 
@@ -80,7 +81,7 @@ test("the Last year table counts every teacher exactly once", () => {
     assert.deepEqual(rows[0], HEAD);
     assert.deepEqual(table().map((r) => r[0]), ROWS);
     const counts = table().map((r) => r.slice(1));
-    assert.ok(counts.every((r) => r.length === 6 && r.every((v) => /^\d+$/.test(v))), JSON.stringify(counts));
+    assert.ok(counts.every((r) => r.length === 6 && r.every((v) => Number.isInteger(v))), JSON.stringify(counts));
     const sum = (xs) => xs.reduce((a, v) => a + Number(v), 0);
     assert.equal(sum(counts.flat()), school.teachers.length);
     assert.deepEqual(counts.map(sum), [52, 7, 11, 1, 17, 8]);
@@ -149,20 +150,24 @@ test("forbidden words are in no workbook string with past files", () => {
   }
 });
 
-test("every cell is a string cell and there are no formulas", async () => {
+// The Last year counts are number cells, so Excel does not flag them as numbers stored as text. Everything else is text.
+const isCount = (s, i, j) => s.name === "Last year" && i >= 1 && i <= 6 && j >= 1;
+test("every cell is a string cell except the Last year counts, and there are no formulas", async () => {
   for (const on of [false, true]) {
     Mock.setNames(on);
     const sheets = sheetsFor(Mock);
-    assert.ok(sheets.every((s) => s.rows.every((r) => r.every((v) => typeof v === "string"))));
+    assert.ok(sheets.every((s) => s.rows.every((r, i) => r.every((v, j) => typeof v === (isCount(s, i, j) ? "number" : "string")))));
     const zip = unzipSync(await writeBook(sheets));
     const parts = Object.keys(zip).filter((path) => /^xl\/worksheets\/sheet\d+\.xml$/.test(path));
     assert.equal(parts.length, sheets.length);
+    let numbers = 0;
     for (const path of parts) {
       const xml = strFromU8(zip[path]);
       assert.ok(xml.includes("<c "), path);
-      for (const m of xml.matchAll(/<c [^>]*>/g)) assert.match(m[0], / t="s"/, `${path} ${m[0]}`);
+      for (const m of xml.matchAll(/<c [^>]*>/g)) if (!/ t="s"/.test(m[0])) { assert.doesNotMatch(m[0], / t="/, `${path} ${m[0]}`); numbers += 1; }
       assert.ok(!/<f[ >]/.test(xml));
     }
+    assert.equal(numbers, 6 * 6);
   }
 });
 

@@ -119,3 +119,13 @@ button.row:hover { background: var(--hover); }
 .choose:focus-within { outline: 3px solid var(--blue); outline-offset: 2px; }
 .links .choose { margin-top: 0; }
 .choose input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+
+.start-tabs { margin-top: 22px; border-bottom: 1px solid var(--rule); }
+.start-tabs .tab { height: 48px; display: inline-flex; align-items: center; gap: 8px; }
+.start-tabs .tab span { font-weight: 400; }
+.intro { margin-bottom: 4px; }
+.r-file b { font-weight: 600; }
+.r-file .about { display: block; }
+.r-file { line-height: 24px; }
+.r-file .about, .intro { line-height: 22px; }
+.start-tabs { line-height: 24px; }

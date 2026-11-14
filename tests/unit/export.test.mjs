@@ -24,14 +24,14 @@ const firstPlaced = () => school.teachers.find((t) => draft[t.id]);
 test("sheets are Courses, Teachers, Changes when names are on", () => {
   Mock.setNames(true);
   assert.deepEqual(names(), ["Courses", "Teachers", "Changes"]);
-  assert.deepEqual(sheet("Teachers").rows[0], ["Teacher", "Email", "Course", "Choice", "Why", "Status"]);
+  assert.deepEqual(sheet("Teachers").rows[0], ["Teacher", "Email", "Course Code", "Course", "Choice", "Why", "Status"]);
   assert.equal(body("Teachers").length, school.teachers.length);
 });
 
 test("names off adds a Note sheet and removes the Email column", () => {
   assert.deepEqual(names(), ["Courses", "Teachers", "Changes", "Note"]);
-  assert.deepEqual(sheet("Teachers").rows[0], ["Teacher", "Course", "Choice", "Why", "Status"]);
-  assert.ok(body("Teachers").every((r) => r.length === 5 && /^T\d+$/.test(r[0])));
+  assert.deepEqual(sheet("Teachers").rows[0], ["Teacher", "Course Code", "Course", "Choice", "Why", "Status"]);
+  assert.ok(body("Teachers").every((r) => r.length === 6 && /^T\d+$/.test(r[0])));
 });
 
 test("Note says T numbers are pseudonymous, not anonymous", () => {
@@ -64,7 +64,7 @@ test("Teachers: not placed first, then flagged, then by label", () => {
   Mock.move(firstPlaced().id, null);
   Mock.setNames(true);
   const rows = body("Teachers");
-  const status = (r) => r[5];
+  const status = (r) => r[6];
   const rank = (r) => { const t = school.teachers.find((x) => x.email === r[1]); return !Mock.placedOn(t.id) ? 0 : Mock.teacherFlags(t.id).length ? 1 : 2; };
   const ranks = rows.map(rank);
   assert.deepEqual(ranks, [...ranks].sort((a, b) => a - b));
@@ -80,17 +80,18 @@ test("Teachers cells: choice, why and status say what the screen says", () => {
     const r = rows.find((x) => x[1] === t.email);
     const c = Mock.placedOn(t.id);
     assert.equal(r[0], t.name);
-    assert.equal(r[2], c ? Mock.course(c).name : "");
-    assert.equal(r[4], Mock.reason(t.id));
-    if (!c) assert.equal(r[5], "Not placed");
-    else if (t.returning && t.returningCourse === c) assert.equal(r[3], "Returning sponsor");
-    else if (!t.submitted) { assert.equal(r[3], "No form received"); assert.equal(r[5], "Check with them"); }
-    else assert.equal(r[3], Mock.choiceText(t.id, c));
+    assert.equal(r[2], c || "");
+    assert.equal(r[3], c ? Mock.course(c).name : "");
+    assert.equal(r[5], Mock.reason(t.id));
+    if (!c) assert.equal(r[6], "Not placed");
+    else if (t.returning && t.returningCourse === c) assert.equal(r[4], "Returning sponsor");
+    else if (!t.submitted) { assert.equal(r[4], "No form received"); assert.equal(r[6], "Check with them"); }
+    else assert.equal(r[4], Mock.choiceText(t.id, c));
   }
   const some = school.teachers.find((t) => draft[t.id] && t.submitted);
   Mock.move(some.id, null);
   Mock.move(some.id, draft[some.id]);
-  assert.equal(body("Teachers").find((x) => x[1] === some.email)[5], "Moved by the office");
+  assert.equal(body("Teachers").find((x) => x[1] === some.email)[6], "Moved by the office");
 });
 
 test("Teachers with names off are ordered by T number", () => {

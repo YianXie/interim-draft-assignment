@@ -79,8 +79,12 @@ function addFiles(list) {
   });
 }
 // The invented school, fetched from this page's own server and read like dropped files. A file that fails to arrive reads as empty.
-const sampleFiles = () =>
-  SLOTS.map((name) => ({ name, arrayBuffer: () => fetch(`sample/${name}`).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject())) }));
+// On the Last year tab it is last year's four, plus any of the six not added yet, so the sample builds either way
+// and files the office already dropped are never replaced.
+const sampleFiles = () => {
+  const names = startTab === "past" ? [...SLOTS.filter((name) => !held.has(name)), ...PAST_SLOTS] : SLOTS;
+  return names.map((name) => ({ name, arrayBuffer: () => fetch(`sample/${name}`).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject())) }));
+};
 const canBuild = () => phase === "start" && reading === 0 && !!parsed;
 
 async function build() {
@@ -103,22 +107,62 @@ async function build() {
   render();
 }
 
+// What each file holds, under its name on Start, so "the six files" is never a guess.
+const ABOUT = {
+  "courses.xlsx": "Every course: code, name, type, seats, offered or not, certificate",
+  "staff.xlsx": "Every teacher who can sponsor: email, name, certificates held",
+  "returning.xlsx": "Sponsors coming back to the course they ran: email and course code",
+  "round1.xlsx": "Round 1 forms: email and up to seven course choices",
+  "round2.xlsx": "Round 2 forms: email and up to three course choices",
+  "singapore.xlsx": "Singapore course forms: email and up to five course choices",
+  "past-allocation.xlsx": "Last year's final list: each course and its sponsors by name",
+  "past-round1.xlsx": "Last year's Round 1 forms, laid out like round1.xlsx",
+  "past-round2.xlsx": "Last year's Round 2 forms, laid out like round2.xlsx",
+  "past-singapore.xlsx": "Last year's Singapore forms, laid out like singapore.xlsx",
+};
+let startTab = "now"; // now or past: which files Start lists. Either tab takes any file dropped.
+
 function slotRow(name) {
-  const v = slots[name];
+  const v = slots[name], about = ABOUT[name] ? `<small class="q about">${esc(ABOUT[name])}</small>` : "";
   // Entries on last year's allocation that matched nobody on the staff list: a number only, never the entries.
   const lost = name === PAST_SLOTS[0] && parsed && parsed.past ? parsed.past.unmatched.length : 0;
-  if (v === "ready") return `<div class="row r-two" data-row data-slot="${esc(name)}"><span>${esc(name)}</span><span class="q">ready${lost ? `, ${lost} not matched` : ""}</span></div>`;
-  return `<div class="row" data-row data-slot="${esc(name)}"><span class="${v.endsWith("file not added") ? "q" : "need"}">${esc(v)}</span></div>`;
+  const head = `<span><b>${esc(name)}</b>${about}</span>`;
+  if (v === "ready") return `<div class="row r-two r-file" data-row data-slot="${esc(name)}">${head}<span class="q" data-line>ready${lost ? `, ${lost} not matched` : ""}</span></div>`;
+  if (!v || v.endsWith("file not added")) {
+    // A past file before any of the four is added is a placeholder only: it is not a slot until one of them arrives.
+    const attr = v ? `data-slot="${esc(name)}"` : `data-placeholder="${esc(name)}"`;
+    return `<div class="row r-two r-file" data-row ${attr}>${head}<span class="q" data-line>file not added</span></div>`;
+  }
+  // A file with any other name has no description, so its line keeps the name. A known file's name is already in bold above.
+  if (!about) return `<div class="row r-file" data-row data-slot="${esc(name)}"><span class="need" data-line>${esc(v)}</span></div>`;
+  const problem = v.startsWith(name) ? v.slice(name.length).replace(/^[,:]\s*/, "") : v;
+  return `<div class="row r-file" data-row data-slot="${esc(name)}">${head}<span class="need" data-line>${esc(problem.charAt(0).toUpperCase() + problem.slice(1))}</span></div>`;
+}
+function startTabs() {
+  const added = PAST_SLOTS.filter((n) => slots[n] && !slots[n].endsWith("file not added")).length;
+  const wrong = PAST_SLOTS.some((n) => slots[n] && slots[n] !== "ready" && !slots[n].endsWith("file not added"));
+  // One to three of the four lock Build as surely as a refused file, so both are red on the tab whichever tab is open.
+  const note = wrong ? `<span class="need">needs a look</span>` : added ? `<span class="${added < 4 ? "need" : "q"}">${added} of 4</span>` : `<span class="q">optional</span>`;
+  const tab = (id, text) => `<button class="tab" role="tab" data-start-tab="${id}" data-k="start-${id}" aria-selected="${startTab === id}">${text}</button>`;
+  return `<div class="tabs start-tabs" role="tablist">${tab("now", "This year")}${tab("past", `Last year ${note}`)}</div>`;
 }
 function startView() {
   if (phase === "failed") return `<h1 class="big" data-big>Couldn't build a draft. Reload and try again.</h1>`;
-  const names = [...KNOWN, ...Object.keys(slots).filter((n) => !KNOWN.includes(n))].filter((n) => slots[n]);
+  const others = Object.keys(slots).filter((n) => !KNOWN.includes(n));
+  const now = [...SLOTS, ...others].filter((n) => slots[n]);
+  const past = PAST_SLOTS;
   return `<div class="narrow drop" data-drop>
-    <h1 class="big" data-big>Drop the six files here</h1>
+    <h1 class="big" data-big>${startTab === "now" ? "Drop the six files here" : "Drop last year's four files here"}</h1>
     <p class="sub"><span>Invented school</span>&ensp;<span>Interim 2028</span></p>
     <div class="links"><label class="link choose">Choose files<input type="file" multiple accept=".xlsx" data-k="files"></label>
     <button class="link sample" data-act="sample">Use sample data</button></div>
-    <div class="gap" data-rows>${names.map(slotRow).join("")}</div>
+    ${startTabs()}
+    <div class="gap" data-rows data-start-panel="now"${startTab === "now" ? "" : " hidden"}>
+      <p class="q intro">Needed every year. Each file name must match exactly.</p>
+      ${now.map(slotRow).join("")}</div>
+    <div class="gap" data-rows data-start-panel="past"${startTab === "past" ? "" : " hidden"}>
+      <p class="q intro">Optional: add all four or none. With them, each teacher's result last year is on their card and in the download, and anyone who got none of their choices last year is put on a top-4 choice first where the rules allow.</p>
+      ${past.map(slotRow).join("")}</div>
     <div class="acts"><button class="btn fill" data-act="build" data-k="build"${canBuild() ? "" : " disabled"}>${phase === "building" ? "Building" : "Build"}</button></div>
   </div>`;
 }
@@ -366,9 +410,10 @@ async function download() {
 }
 
 document.addEventListener("click", (e) => {
-  const el = e.target.closest("[data-tab],[data-names],[data-download],[data-act],[data-course],[data-teacher]");
+  const el = e.target.closest("[data-start-tab],[data-tab],[data-names],[data-download],[data-act],[data-course],[data-teacher]");
   if (!el) return;
   const d = el.dataset;
+  if ("startTab" in d) { startTab = d.startTab; render(); return; }
   if ("download" in d) { download(); return; }
   if ("tab" in d) { view.tab = d.tab; view.stack = []; render(); window.scrollTo(0, 0); return; }
   if ("names" in d) { setNames(!Mock.state.namesOn); return; }

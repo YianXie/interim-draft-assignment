@@ -5,6 +5,8 @@ const ILLEGAL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]|[\uD800-\uDBFF](
 
 // Always a string, with nothing a spreadsheet file cannot hold. Cells are written as text, so "=SUM(1)" or "00123" are never read as anything else.
 export const cleanCell = (value) => String(value ?? "").replace(ILLEGAL, "").slice(0, 32767);
+// The one exception: a count the sheet worked out itself stays a number, so Excel does not flag it as a number stored as text.
+const cellOf = (value) => (typeof value === "number" && Number.isFinite(value) ? value : cleanCell(value));
 
 const sentence = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const byText = (a, b) => a.localeCompare(b);
@@ -48,10 +50,10 @@ function teachersSheet(mock) {
   const rows = [...mock.teachers()].sort(order).map((t) => {
     const cid = mock.placedOn(t.id);
     const was = mock.lastYear(t.id);
-    return [mock.label(t.id), ...(names ? [mock.contact(t.id)] : []), cid ? mock.course(cid).name : "", choiceOf(mock, t, cid),
+    return [mock.label(t.id), ...(names ? [mock.contact(t.id)] : []), cid || "", cid ? mock.course(cid).name : "", choiceOf(mock, t, cid),
       ...(past ? [was ? RESULT_LABEL[was.result] : ""] : []), mock.reason(t.id), statusOf(mock, t, cid)];
   });
-  return { name: "Teachers", rows: [["Teacher", ...(names ? ["Email"] : []), "Course", "Choice", ...(past ? ["Last year"] : []), "Why", "Status"], ...rows] };
+  return { name: "Teachers", rows: [["Teacher", ...(names ? ["Email"] : []), "Course Code", "Course", "Choice", ...(past ? ["Last year"] : []), "Why", "Status"], ...rows] };
 }
 
 // One row per edit, oldest first. The first snapshot is the build, which is not an edit.
@@ -89,5 +91,5 @@ export function sheetsFor(mock) {
   const sheets = [coursesSheet(mock), teachersSheet(mock), changesSheet(mock)];
   if (mock.past()) sheets.push(lastYearSheet(mock));
   if (!mock.state.namesOn) sheets.push(noteSheet());
-  return sheets.map((s) => ({ name: s.name, rows: s.rows.map((r) => r.map(cleanCell)) }));
+  return sheets.map((s) => ({ name: s.name, rows: s.rows.map((r) => r.map(cellOf)) }));
 }

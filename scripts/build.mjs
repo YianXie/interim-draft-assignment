@@ -18,4 +18,6 @@ await cp("public", "dist", { recursive: true });
 await cp("node_modules/highs/build/highs.wasm", "dist/highs.wasm");
 // The invented school, served next to the page for the Use sample data button.
 await cp("fixtures/school", "dist/sample", { recursive: true });
+// Last year's invented files, for the same button on the Last year tab.
+await cp("fixtures/past", "dist/sample", { recursive: true });
 console.log("built dist/");

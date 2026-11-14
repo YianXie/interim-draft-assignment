@@ -19,7 +19,7 @@ It has only ever seen invented data: an invented school, invented people, invent
 - Four more files may be dropped with the six: `past-allocation.xlsx`, `past-round1.xlsx`, `past-round2.xlsx` and `past-singapore.xlsx`.
 - They are optional: all four or none.
 - The file name picks the slot, so it must be exact.
-- An invented set is in `fixtures/past`. The Use sample data button loads only the six.
+- An invented set is in `fixtures/past`. Use sample data loads the six on the This year tab; on the Last year tab it loads these four, plus any of the six not added yet.
 - With them, each teacher's result last year is on their card, in the search and in the download. The draft also puts those who got none of their choices last year on a top-4 choice first, wherever the rules allow.
 
 ## Check it

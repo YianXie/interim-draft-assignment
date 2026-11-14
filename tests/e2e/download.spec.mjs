@@ -40,9 +40,9 @@ test("workbook equals the screen after moves", async ({ page }) => {
   const screen = (await screenPairs(page)).sort();
   const dl = await download(page);
   const rows = sheetOf(dl, "Teachers");
-  expect(rows[0]).toEqual(["Teacher", "Email", "Course", "Choice", "Why", "Status"]);
-  expect(rows.slice(1).map((r) => [r[0], r[2] || "Not placed"]).sort()).toEqual(screen);
-  expect(rows[1][5]).toBe("Not placed");
+  expect(rows[0]).toEqual(["Teacher", "Email", "Course Code", "Course", "Choice", "Why", "Status"]);
+  expect(rows.slice(1).map((r) => [r[0], r[3] || "Not placed"]).sort()).toEqual(screen);
+  expect(rows[1][6]).toBe("Not placed");
   const changes = sheetOf(dl, "Changes");
   expect(changes).toHaveLength(2);
   expect(changes[1][2]).toMatch(/^Moved .+ to not placed$/);
