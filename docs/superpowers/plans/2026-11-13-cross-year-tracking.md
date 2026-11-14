@@ -131,7 +131,7 @@ Rules for the files (each refusal is one line, `file, row N: problem`, never con
 | all four | first sheet `Fernhollow` | `first sheet must be named Fernhollow` |
 | `past-allocation.xlsx` | headers `Course Code`, `Course Name`, then `Sponsor 1`, `Sponsor 2`, … with at least `Sponsor 1` and no gaps | `headers must be exactly: Course Code, Course Name, Sponsor 1, Sponsor 2, and so on` |
 | | course code and name present and unique | `course code is empty`, `course code appears twice`, `course name is empty`, `course name appears twice` |
-| | a sponsor entry (by `normName`) at most once in the file | `a sponsor appears twice in this file` |
+| | a sponsor entry (by `normName`) at most once in the file | `sponsor appears twice in this file` (only when the entry is one person on this year's staff list; amended in the final fix wave) |
 | | blank sponsor cells anywhere; a row with no sponsors | — |
 | past form files | headers exactly as `round1.xlsx`, `round2.xlsx`, `singapore.xlsx` | the existing headers line |
 | | emails as today (`email()` helper: non-empty, on `fernhollow.example`, once per file) | the existing lines |
