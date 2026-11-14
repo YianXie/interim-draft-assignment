@@ -1,6 +1,6 @@
 # Cross-year tracking: design
 
-Status: draft for the owner's review, 2026-11-13. Nothing is built yet.
+Status: built on branch `cross-year-tracking` on 2026-11-14. Awaiting the owner's review of the branch.
 
 ## Why
 
@@ -62,10 +62,11 @@ Optional, and all four or none. Each is `.xlsx`, first sheet `Fernhollow`, heade
 | `past-round2.xlsx` | Email, Choice 1 to Choice 3 |
 | `past-singapore.xlsx` | Email, Choice 1 to Choice 5 |
 
-- Past course names are compared only with `past-allocation.xlsx`, never with this year's course list, because courses change between years. A past choice naming a course that is not in the allocation file is accepted (the course did not run).
+- Past course names are compared only with `past-allocation.xlsx`, never with this year's course list, because courses change between years. A past choice naming a course that is not in the allocation file is accepted (the course did not run). *(Amended during the build, 2026-11-14: a past choice is compared with the allocation's course name ignoring case and extra spaces, as sponsor names are. Compared letter for letter, a choice typed in another letter case did not match, and the teacher read as None, which earns the new priority.)*
 - Past emails must be on `fernhollow.example`. An email not on this year's staff list is ignored (the person left).
 - A sponsor name is matched to this year's `staff.xlsx` by name, ignoring case and extra spaces. A name that matches nobody, or matches two people, is left unmatched and counted. No guessing.
-- The same sponsor name on two past courses refuses the file with one plain line, as today.
+- The same sponsor name on two past courses refuses the file with one plain line, as today. *(Amended during the build, 2026-11-14: the file is refused only when the repeated entry is one person, that is, it matches exactly one of this year's staff. A repeated entry that matches nobody, such as a placeholder written in two cells, or that matches two staff who share a name, is counted as not matched each time it appears. The rule is there to stop one person being on two courses, and a placeholder should not block the office.)*
+- *(Amended during the build, 2026-11-14: a value in a past file outside the headed columns refuses the file with one plain line giving the row. Left unread, a sponsor typed one column too far right was lost without a word, and that teacher became Not found or lost their record.)*
 - If one to three of the four are present, the missing ones show "file not added" and Build stays locked.
 
 ## Last year's result, per teacher
@@ -100,7 +101,7 @@ The rules that are never broken stay exactly as they are. Returning sponsors are
 
 - **Start:** the past files appear as rows like the six. The allocation row also says how many names were not matched, as a number only.
 - **Teacher card:** one extra line, for example "Last year: none of their choices", "Last year: 2nd choice", "Last year: no form", "Last year: not found on the allocation". No line when there is no record. The line is shown on an opened teacher card only, not on a To do item. *(Amended during the build, 2026-11-13: a To do item for an unplaced teacher is already within 2 or 3 words of the 80-word limit for that screen, so no last-year line fits there. The result is still one click away on the teacher's card, in the search and in the download.)*
-- **Teachers list:** the rows do not change. The search box also matches last year's result, so typing "none" lists those teachers. `teacherFlags` is not touched, so the download's row order stays as it is.
+- **Teachers list:** the rows do not change. The search box also matches last year's result, so typing "none" lists those teachers. *(Amended during the build, 2026-11-14: the search also matches the words the download uses for the result, "Top 4", "5 to 7", "None", "Not found" and "No form", so what the office reads in Excel finds the same teachers on screen. The rows still show nothing new.)* `teacherFlags` is not touched, so the download's row order stays as it is.
 - **Download, only when past files were dropped:** the Teachers sheet gains a "Last year" column after "Choice". A new "Last year" sheet holds a small table counting teachers by last year's result against this year's (top 4, 5 to 7, not on their list, returning, no form, not placed). With names on, that sheet also lists the unmatched names and the teachers marked Not found, so the office can pair them up and correct the file.
 
 ## Fixtures and checks

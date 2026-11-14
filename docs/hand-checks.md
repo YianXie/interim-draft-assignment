@@ -26,3 +26,7 @@ Four checks that a browser test cannot do. Use invented data only.
 1. Start Chrome with a new profile (or a guest window).
 2. Double-click `start-demo.command`.
 3. Tell the demo story: drop, Build, open a teacher, Move to, Undo, move again, names on and off, reload, Download, find the change in the workbook.
+
+## Not done yet
+
+- **Not done.** Real Excel with last year's files: drop the six and `fixtures/past`'s four, press Build, press Download, and open the workbook in an activated copy of Excel. It must open with no repair prompt, with its Last year column on the Teachers sheet and its Last year sheet.

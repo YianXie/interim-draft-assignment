@@ -14,6 +14,14 @@ It has only ever seen invented data: an invented school, invented people, invent
 - Double-click `start-demo.command`. It builds the page if needed, starts the server on `http://127.0.0.1:4173`, and opens it. Closing its window stops the server.
 - Or in a terminal: `npm install`, `npm run build`, `npm run serve`, then open `http://127.0.0.1:4173`.
 
+## Last year's files
+
+- Four more files may be dropped with the six: `past-allocation.xlsx`, `past-round1.xlsx`, `past-round2.xlsx` and `past-singapore.xlsx`.
+- They are optional: all four or none.
+- The file name picks the slot, so it must be exact.
+- An invented set is in `fixtures/past`. The Use sample data button loads only the six.
+- With them, each teacher's result last year is on their card, in the search and in the download. The draft also puts those who got none of their choices last year on a top-4 choice first, wherever the rules allow.
+
 ## Check it
 
 - `npm run check` builds, runs the unit tests and the browser tests, and ends with `CHECK OK`.
