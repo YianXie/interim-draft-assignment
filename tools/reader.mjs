@@ -3,7 +3,9 @@
 // Usage: node tools/reader.mjs --dir <folder with the six> [--out fit.xlsx] [--host http://127.0.0.1:11434]
 //        [--model qwen3.5:9b] [--prompt tools/reader-test/prompt_v3.txt]
 import { readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { parseFiles, formAnswers, SLOTS, FIT } from "../src/import.js";
 import { readAll } from "./reader/read.mjs";
@@ -16,11 +18,16 @@ const { values: opt } = parseArgs({
     out: { type: "string", default: FIT },
     host: { type: "string", default: "http://127.0.0.1:11434" },
     model: { type: "string", default: "qwen3.5:9b" },
-    prompt: { type: "string", default: new URL("reader-test/prompt_v3.txt", import.meta.url).pathname },
+    prompt: { type: "string", default: fileURLToPath(new URL("reader-test/prompt_v3.txt", import.meta.url)) },
   },
 });
 if (!opt.dir) {
   console.error("usage: node tools/reader.mjs --dir <folder with the six> [--out fit.xlsx] [--host URL] [--model NAME] [--prompt FILE]");
+  process.exit(1);
+}
+
+if (existsSync(opt.out)) {
+  console.error(`${opt.out} already exists; move it or pass another --out, nothing was read`);
   process.exit(1);
 }
 
@@ -53,6 +60,17 @@ try {
 }
 const { rows, answersSheet, dropped, notRead, errors } = await readAll({ school, answers, ask: makeAsk({ host: opt.host, model: opt.model }), prompt });
 for (const e of errors) console.error(`a model call failed: ${e}`);
-await writeFile(opt.out, await fitBook({ rows, answersSheet }));
 const read = new Set(answers.map((a) => a.email).filter((e) => !notRead.includes(e)));
+if (!read.size) {
+  console.error(`no answers were read, so nothing was written (not read ${notRead.length})`);
+  process.exit(1);
+}
+try {
+  // Never overwrite: the office may already have checked and corrected a fit.xlsx at this path.
+  await writeFile(opt.out, await fitBook({ rows, answersSheet }), { flag: "wx" });
+} catch (e) {
+  if (e.code !== "EEXIST") throw e;
+  console.error(`${opt.out} already exists; move it or pass another --out, nothing was written`);
+  process.exit(1);
+}
 console.log(`teachers read ${read.size}, rows ${rows.length}, dropped ${dropped}, not read ${notRead.length}`);
