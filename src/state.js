@@ -86,6 +86,24 @@ function thisYear(tid) {
   return ch.rank <= 4 ? "top4" : "5to7";
 }
 
+// What the office checked from their form, when fit.xlsx was added. Its own line on the teacher, never part of a reason.
+// The line names only the course they are on now; every row is in the download. Names off: Kinds only, never a Fact or Quote.
+const fit = () => !!D.fit;
+const fitRows = (tid) => (fit() && T.get(tid).fit) || [];
+const factText = (r) => (r.kind === "Limitation" ? `Limitation: ${r.fact}` : r.fact);
+function fitLine(tid) {
+  const rows = fitRows(tid);
+  const cid = S.placements[tid] || null;
+  const here = cid ? rows.filter((r) => r.course === cid) : [];
+  const others = rows.length - here.length;
+  if (!here.length) return others ? `From their form: ${others} in the download` : "";
+  const shown = S.namesOn ? here.slice(0, 2).map(factText) : [...new Set(here.map((r) => r.kind))];
+  const more = S.namesOn ? rows.length - Math.min(2, here.length) : others;
+  return `From their form: ${shown.join(", ")}${more ? `, ${more} more in the download` : ""}`;
+}
+// What the Teachers list search also matches: the Fact labels, with names on only.
+const fitSearch = (tid) => (S.namesOn ? fitRows(tid).map((r) => r.fact).join(" ") : "");
+
 function status(cid) {
   const c = C.get(cid);
   const n = sponsors(cid).length;
@@ -250,5 +268,5 @@ function describe(snap) {
   return "Undid the last change";
 }
 
-export const Mock = { state: S, on, onSnapshot, init, build, teacher, course, teachers, courses, allCourses, label, contact, placedOn, sponsors, seatsLeft, choice, choiceText, past, lastYear, lastYearLine, thisYear, status, reason,
+export const Mock = { state: S, on, onSnapshot, init, build, teacher, course, teachers, courses, allCourses, label, contact, placedOn, sponsors, seatsLeft, choice, choiceText, past, lastYear, lastYearLine, thisYear, fit, fitLine, fitSearch, status, reason,
   teacherFlags, courseFlags, todo, summary, optionsFor, whoAsked, move, leave, undo, canUndo, restore, setNames, describe, history: () => [...S.history] };
