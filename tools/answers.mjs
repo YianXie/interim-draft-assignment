@@ -75,7 +75,7 @@ const vendor = (course) => `https://example.com/vendors/${course.code.toLowerCas
 const pick = (say, list) => list[Math.floor(say() * list.length)];
 
 // What a teacher brings to one kind of course. Every line starts with "I" so it follows any opener.
-const SKILL = {
+export const SKILL = {
   "Coast Kayaking": [
     "I am a qualified lifeguard and have taught swimming for years, so I am comfortable supervising students on and near the water",
     "I hold a sea kayak leader award and have run the Grade 9 paddling club for four years, including capsize and rescue drills",
