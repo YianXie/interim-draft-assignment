@@ -131,3 +131,15 @@ button.row:hover { background: var(--hover); }
 .r-file { line-height: 24px; }
 .r-file .about, .intro { line-height: 22px; }
 .start-tabs { line-height: 24px; }
+
+.about-box { margin-top: 28px; border: 1px solid var(--rule); border-radius: 10px; }
+.about-box summary { cursor: pointer; padding: 14px 32px; min-height: 44px; color: var(--blue); list-style-position: inside; }
+.about-box summary:hover { text-decoration: underline; }
+.about-body { padding: 0 32px 24px; font-size: 16px; line-height: 1.5; }
+.about-body h3 { font-size: 17px; font-weight: 600; margin: 20px 0 6px; }
+.about-body h3:first-child { margin-top: 4px; }
+.about-body p { margin: 0 0 8px; }
+.about-body ul, .about-body ol { margin: 0 0 8px; padding-left: 22px; }
+.about-body li { margin: 4px 0; }
+.about-body li b { font-weight: 600; }
+@media (max-width: 600px) { .about-box summary { padding: 14px 16px; } .about-body { padding: 0 16px 20px; } }
