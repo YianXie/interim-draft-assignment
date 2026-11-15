@@ -10,6 +10,16 @@ const [ALLOCATION, ROUND1, ROUND2, SINGAPORE] = PAST_SLOTS;
 const ALLOCATION_HEADERS =
   "past-allocation.xlsx, row 1: headers must be exactly: Course Code, Course Name, Sponsor 1, Sponsor 2, and so on";
 const choices = (n) => Array.from({ length: n }, (_, i) => `Choice ${i + 1}`);
+// Past forms are laid out like this year's: Timestamp, Email, the choices, then the written answers.
+const ANSWERS = {
+  [ROUND1]: ["Enhancing Learning or Safety", "Notable Priorities", "Final Questions or Comments"],
+  [ROUND2]: [],
+  [SINGAPORE]: ["Enhancing Learning or Safety", "Additional Comments or Questions"],
+};
+const formHead = (file, n) => ["Timestamp", "Email", ...choices(n), ...ANSWERS[file]];
+const HEAD_LINE = (file, n) => `${file}, row 1: headers must be exactly: ${formHead(file, n).join(", ")}`;
+// A form row: the time it was sent, then email and choices. The answers are left blank.
+const sent = (...cells) => ["08/09/2026 9:15:00", ...cells];
 
 const six = {};
 for (const name of SLOTS) six[name] = (await readBook(new Uint8Array(await readFile(new URL(name, dir)))))[0].rows;
@@ -34,19 +44,19 @@ function validPast() {
       [courses[4][0], course(4)],
     ],
     [ROUND1]: [
-      ["Email", ...choices(7)],
-      [who(0), course(0), course(1)],
-      [who(1), course(1), course(2)],
-      [who(2), course(0), course(2), course(3), course(4), course(1)],
-      [who(5), course(0)],
+      formHead(ROUND1, 7),
+      sent(who(0), course(0), course(1)),
+      sent(who(1), course(1), course(2)),
+      sent(who(2), course(0), course(2), course(3), course(4), course(1)),
+      sent(who(5), course(0)),
     ],
     [ROUND2]: [
-      ["Email", ...choices(3)],
-      [who(3), course(0), `${course(2)}  `],
+      formHead(ROUND2, 3),
+      sent(who(3), course(0), `${course(2)}  `),
     ],
     [SINGAPORE]: [
-      ["Email", ...choices(5)],
-      [who(0), course(1), course(2), course(0)],
+      formHead(SINGAPORE, 5),
+      sent(who(0), course(1), course(2), course(0)),
     ],
   };
 }
@@ -225,22 +235,22 @@ test("past form files give the existing lines for headers and emails", async () 
     assert.equal(out.school, null);
     return out.slots[file];
   };
-  assert.equal(await line(ROUND1, (past) => (past[ROUND1][0] = ["Email", ...choices(3)])),
-    `past-round1.xlsx, row 1: headers must be exactly: Email, ${choices(7).join(", ")}`);
-  assert.equal(await line(ROUND2, (past) => (past[ROUND2][0] = ["Email", ...choices(7)])),
-    "past-round2.xlsx, row 1: headers must be exactly: Email, Choice 1, Choice 2, Choice 3");
-  assert.equal(await line(SINGAPORE, (past) => (past[SINGAPORE][0][0] = "E-mail")),
-    `past-singapore.xlsx, row 1: headers must be exactly: Email, ${choices(5).join(", ")}`);
-  assert.equal(await line(ROUND2, (past) => (past[ROUND2][1][0] = "")), "past-round2.xlsx, row 2: email is empty");
-  assert.equal(await line(ROUND1, (past) => past[ROUND1].push([` ${who(1).toUpperCase()}`, course(3)])),
+  assert.equal(await line(ROUND1, (past) => (past[ROUND1][0] = formHead(ROUND1, 3))), HEAD_LINE(ROUND1, 7));
+  assert.equal(await line(ROUND2, (past) => (past[ROUND2][0] = formHead(ROUND2, 7))), HEAD_LINE(ROUND2, 3));
+  assert.equal(await line(SINGAPORE, (past) => (past[SINGAPORE][0][1] = "E-mail")), HEAD_LINE(SINGAPORE, 5));
+  // The layout of years before, without Timestamp or the answers, is refused too.
+  assert.equal(await line(ROUND1, (past) => (past[ROUND1][0] = ["Email", ...choices(7)])), HEAD_LINE(ROUND1, 7));
+  assert.equal(await line(SINGAPORE, (past) => past[SINGAPORE][0].pop()), HEAD_LINE(SINGAPORE, 5));
+  assert.equal(await line(ROUND2, (past) => (past[ROUND2][1][1] = "")), "past-round2.xlsx, row 2: email is empty");
+  assert.equal(await line(ROUND1, (past) => past[ROUND1].push(sent(` ${who(1).toUpperCase()}`, course(3)))),
     "past-round1.xlsx, row 6: email appears twice in this file");
 });
 
 test("a past choice not on any course list is accepted", async () => {
   const out = await run({
     edit: (past) => {
-      past[ROUND1][2][1] = "A course that did not run";
-      past[SINGAPORE].push([who(4), "Another course that did not run"]);
+      past[ROUND1][2][2] = "A course that did not run";
+      past[SINGAPORE].push(sent(who(4), "Another course that did not run"));
     },
   });
   assert.ok(out.school, JSON.stringify(out.slots));
@@ -253,8 +263,8 @@ test("a past email not on this year's staff is accepted and ignored", async () =
   const out = await run({
     random: seq(),
     edit: (past) => {
-      past[ROUND1].push(["nobody.here@fernhollow.example", course(0)]);
-      past[ROUND2].push(["nobody.here@fernhollow.example"]);
+      past[ROUND1].push(sent("nobody.here@fernhollow.example", course(0)));
+      past[ROUND2].push(sent("nobody.here@fernhollow.example"));
     },
   });
   assert.ok(out.school, JSON.stringify(out.slots));
@@ -262,10 +272,10 @@ test("a past email not on this year's staff is accepted and ignored", async () =
 });
 
 test("a past email outside fernhollow.example is refused with file and row", async () => {
-  const out = await run({ edit: (past) => (past[ROUND1][2][0] = "x.y@elsewhere.example") });
+  const out = await run({ edit: (past) => (past[ROUND1][2][1] = "x.y@elsewhere.example") });
   assert.equal(out.school, null);
   assert.equal(out.slots[ROUND1], "past-round1.xlsx, row 3: email is not on fernhollow.example");
-  const second = await run({ edit: (past) => (past[SINGAPORE][1][0] = "@fernhollow.example") });
+  const second = await run({ edit: (past) => (past[SINGAPORE][1][1] = "@fernhollow.example") });
   assert.equal(second.slots[SINGAPORE], "past-singapore.xlsx, row 2: email is not on fernhollow.example");
 });
 
@@ -273,13 +283,13 @@ test("no name, email or course text reaches a past problem line", async () => {
   const edits = [
     (past) => {
       past[ALLOCATION][5][2] = named(0);
-      past[ROUND1][2][0] = "x.y@elsewhere.example";
-      past[ROUND2].push([who(3), "A course that did not run"]);
-      past[SINGAPORE][0][2] = "Second";
+      past[ROUND1][2][1] = "x.y@elsewhere.example";
+      past[ROUND2].push(sent(who(3), "A course that did not run"));
+      past[SINGAPORE][0][3] = "Second";
     },
     (past) => {
       past[ALLOCATION][5][1] = course(0);
-      past[ROUND1][1][0] = null;
+      past[ROUND1][1][1] = null;
       past[ROUND2].sheetName = "Sheet1";
     },
     (past) => (past[ALLOCATION][4][0] = courses[1][0]),
@@ -289,7 +299,7 @@ test("no name, email or course text reaches a past problem line", async () => {
     // A name and a course name, each one column past the last header.
     (past) => {
       past[ALLOCATION][3] = [courses[2][0], course(2), null, named(3), named(5)];
-      past[ROUND1][2] = [who(1), course(1), course(2), null, null, null, null, null, course(0)];
+      past[ROUND1][2] = [...sent(who(1), course(1), course(2)), ...Array(8).fill(null), course(0)];
     },
   ];
   const lines = [];
@@ -343,8 +353,8 @@ test("unmatched keeps the entries as written and in file order", async () => {
 test("a past form row with every choice blank still counts as a form", async () => {
   const out = await run({
     edit: (past) => {
-      past[ROUND1][2] = [who(1)];
-      past[ROUND2].push([who(6), "", null, " "]);
+      past[ROUND1][2] = sent(who(1));
+      past[ROUND2].push(sent(who(6), "", null, " "));
     },
   });
   assert.ok(out.school, JSON.stringify(out.slots));
@@ -362,7 +372,7 @@ test("past emails match this year's staff whatever their letter case or stray sp
     random: seq(),
     edit: (past) => {
       for (const file of [ROUND1, ROUND2, SINGAPORE]) {
-        for (const row of past[file].slice(1)) row[0] = `  ${row[0].toUpperCase()} `;
+        for (const row of past[file].slice(1)) row[1] = `  ${row[1].toUpperCase()} `;
       }
     },
   });
@@ -375,15 +385,15 @@ test("a value outside the headed columns of a past file refuses the row", async 
   // A sponsor cell under no Sponsor column.
   await refused(ALLOCATION, (past) => (past[ALLOCATION][3] = [courses[2][0], course(2), null, named(3), named(5)]),
     "past-allocation.xlsx, row 4: value outside the headed columns");
-  // An 8th choice on a 7-choice form.
-  await refused(ROUND1, (past) => (past[ROUND1][2] = [who(1), course(1), course(2), null, null, null, null, null, course(0)]),
+  // A course name one column past the last answer on the Round 1 form.
+  await refused(ROUND1, (past) => (past[ROUND1][2] = [...sent(who(1), course(1), course(2)), ...Array(8).fill(null), course(0)]),
     "past-round1.xlsx, row 3: value outside the headed columns");
   // Blank cells out there are nothing.
   const base = await run({ random: seq() });
   const out = await run({
     random: seq(),
     edit: (past) => {
-      past[ROUND2][1] = [who(3), course(0), `${course(2)}  `, null, " ", ""];
+      past[ROUND2][1] = [...sent(who(3), course(0), `${course(2)}  `), null, " ", ""];
       past[ALLOCATION][5] = [courses[4][0], course(4), null, null, " "];
     },
   });
@@ -400,7 +410,7 @@ test("a past choice matches the allocation's course whatever its letter case or 
     random: seq(),
     edit: (past) => {
       for (const file of [ROUND1, ROUND2, SINGAPORE]) {
-        for (const row of past[file].slice(1)) for (let i = 1; i < row.length; i++) row[i] = untidy(row[i]);
+        for (const row of past[file].slice(1)) for (let i = 2; i < row.length; i++) row[i] = untidy(row[i]);
       }
     },
   });
@@ -418,4 +428,23 @@ test("a past choice matches the allocation's course whatever its letter case or 
   });
   assert.ok(allocation.school, JSON.stringify(allocation.slots));
   assert.deepEqual(allocation.school, base.school);
+});
+
+test("a past form's timestamp and written answers are not read", async () => {
+  const base = await run({ random: seq() });
+  const out = await run({
+    random: seq(),
+    edit: (past) => {
+      for (const file of [ROUND1, ROUND2, SINGAPORE]) {
+        const head = past[file][0];
+        for (const row of past[file].slice(1)) {
+          row[0] = "not a time";
+          // The name of a course that ran, under each answer header: read as a choice, it would move results.
+          head.forEach((h, i) => { if (i > 1 && !h.startsWith("Choice ")) row[i] = course(0); });
+        }
+      }
+    },
+  });
+  assert.ok(out.school, JSON.stringify(out.slots));
+  assert.deepEqual(out.school, base.school);
 });

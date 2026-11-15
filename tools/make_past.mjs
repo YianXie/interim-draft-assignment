@@ -3,8 +3,11 @@
 // Usage: node tools/make_past.mjs
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { readBook, writeBook } from "../src/xlsx.js";
+import { HEADERS } from "../src/import.js";
+import { mulberry32, stamps, enhancing, priorities, finalWords, singaporeWords } from "./answers.mjs";
 
 const SEED = 20261113;
+const ANSWER_SEED = 20261116; // timestamps and written answers only, so nothing below moves
 const NEW_STAFF = 8; // this year's staff who are in no past file
 const NOT_FOUND = 1; // sent a form last year and are left off the allocation
 const RETURNING_WITH_FORM = 3; // this year's returning sponsors who sent a form last year; the others sent none
@@ -15,14 +18,6 @@ const LEFT = "Sponsor who left"; // a label, not a person: the one allocation en
 const school = new URL("../fixtures/school/", import.meta.url);
 const out = new URL("../fixtures/past/", import.meta.url);
 
-function mulberry32(a) {
-  return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 const rnd = mulberry32(SEED);
 function shuffle(a) {
   a = [...a];
@@ -53,9 +48,12 @@ const ownCourse = new Map((await rows("returning")).map(([email, code]) => [emai
 const fixed = new Map([...ownCourse].filter(([, c]) => c.offered)); // those fixed to their course in this year's draft
 
 // This year's choice numbers: for each course, the rank on the earliest of Round 1, Round 2, Singapore that lists it.
+// A form row is Timestamp, Email, the choices, then the written answers.
+const choiceCount = (file) => HEADERS[file].filter((h) => h.startsWith("Choice ")).length;
 const shownNow = new Map();
 for (const form of ["round1", "round2", "singapore"]) {
-  for (const [email, ...list] of await rows(form)) {
+  for (const [, email, ...rest] of await rows(form)) {
+    const list = rest.slice(0, choiceCount(`${form}.xlsx`));
     if (!shownNow.has(email)) shownNow.set(email, new Map());
     list.forEach((name, i) => { if (name && !shownNow.get(email).has(name)) shownNow.get(email).set(name, i + 1); });
   }
@@ -143,11 +141,21 @@ for (const p of [...leftOver, left]) {
 const ran = courses.filter((c) => c.sponsors.length);
 const most = Math.max(...ran.map((c) => c.sponsors.length));
 const H = (word, n) => Array.from({ length: n }, (_, i) => `${word} ${i + 1}`);
+// Each past form row as the office got it: the time it was sent, then email and choices, then the written answers.
+const say = mulberry32(ANSWER_SEED);
+// A co-sponsor named last year was on the staff last year: never one of this year's new teachers.
+const newStaff = new Set(absent.slice(0, NEW_STAFF));
+const others = (email) => staff.filter((p) => p.email !== email && !newStaff.has(p)).map((p) => p.name);
+const sent = (form, table, answers) => {
+  const times = stamps(say, form, table.length, { past: true });
+  const n = choiceCount(`${form}.xlsx`);
+  return table.map(([email, ...picks], i) => [times[i], email, ...picks, ...Array(n - picks.length).fill(""), ...answers(email, picks)]);
+};
 const files = {
   "past-allocation": [["Course Code", "Course Name", ...H("Sponsor", most)], ...ran.map((c) => [c.code, c.name, ...c.sponsors])],
-  "past-round1": [["Email", ...H("Choice", 7)], ...r1],
-  "past-round2": [["Email", ...H("Choice", 3)], ...r2],
-  "past-singapore": [["Email", ...H("Choice", 5)], ...sg],
+  "past-round1": [HEADERS["past-round1.xlsx"], ...sent("round1", r1, (email, picks) => [enhancing(say, picks, "International"), priorities(say, others(email)), finalWords(say, picks)])],
+  "past-round2": [HEADERS["past-round2.xlsx"], ...sent("round2", r2, () => [])],
+  "past-singapore": [HEADERS["past-singapore.xlsx"], ...sent("singapore", sg, (email, picks) => [enhancing(say, picks, "Singapore"), singaporeWords(say, picks)])],
 };
 await mkdir(out, { recursive: true });
 for (const [name, table] of Object.entries(files)) await writeFile(new URL(`${name}.xlsx`, out), await writeBook([{ name: "Fernhollow", rows: table }]));
@@ -157,9 +165,10 @@ const entries = files["past-allocation"].slice(1).flatMap(([, course, ...sponsor
 const placedOn = new Map(entries);
 const ranks = new Map(); // email -> course name -> its ranks, in the order Round 1, Round 2, Singapore
 for (const form of ["past-round1", "past-round2", "past-singapore"]) {
-  for (const [email, ...list] of files[form].slice(1)) {
+  for (const [, email, ...rest] of files[form].slice(1)) {
+    const list = rest.slice(0, choiceCount(`${form}.xlsx`));
     if (!ranks.has(email)) ranks.set(email, new Map());
-    list.forEach((name, i) => ranks.get(email).set(name, [...(ranks.get(email).get(name) ?? []), i + 1]));
+    list.forEach((name, i) => { if (name) ranks.get(email).set(name, [...(ranks.get(email).get(name) ?? []), i + 1]); });
   }
 }
 const count = { noRecord: 0, top4: 0, "5to7": 0, none: 0, noForm: 0, notFound: 0, owed: 0, twoForms: 0, byRule: 0 };

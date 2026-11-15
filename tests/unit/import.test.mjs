@@ -7,6 +7,9 @@ import { readSchool } from "./school-fixture.mjs";
 
 const dir = new URL("../../fixtures/school/", import.meta.url);
 const SHEET = "Fernhollow";
+// A form row is Timestamp, Email, the choices, then the written answers: Choice k is column k + 1.
+const EMAIL = 1;
+const CHOICE = (k) => k + 1;
 
 async function load() {
   const out = {};
@@ -33,8 +36,8 @@ test("six good files give the agreed school", async () => {
   assert.equal(school.school, "Fernhollow Academy");
   assert.equal(school.year, "Interim 2028");
   assert.equal(school.teachers.length, 96);
-  assert.equal(school.courses.length, 40);
-  assert.equal(school.courses.filter((c) => c.running).length, 34);
+  assert.equal(school.courses.length, 54);
+  assert.equal(school.courses.filter((c) => c.running).length, 48);
   assert.deepEqual(Object.keys(school.courses[0]), ["id", "name", "kind", "seats", "running", "needs"]);
   assert.deepEqual(Object.keys(school.teachers[0]),
     ["id", "name", "email", "returning", "returningCourse", "submitted", "certificates", "prefs"]);
@@ -87,6 +90,54 @@ test("wrong header is refused with the file name", async () => {
   assert.match(out.slots["returning.xlsx"], /^returning\.xlsx, row 1: headers must be exactly/);
 });
 
+test("a form or course list without one of the office's columns is refused", async () => {
+  const lines = {
+    "round1.xlsx": "Timestamp, Email, Choice 1, Choice 2, Choice 3, Choice 4, Choice 5, Choice 6, Choice 7, " +
+      "Enhancing Learning or Safety, Notable Priorities, Final Questions or Comments",
+    "round2.xlsx": "Timestamp, Email, Choice 1, Choice 2, Choice 3",
+    "singapore.xlsx": "Timestamp, Email, Choice 1, Choice 2, Choice 3, Choice 4, Choice 5, " +
+      "Enhancing Learning or Safety, Additional Comments or Questions",
+    "courses.xlsx": "Course Code, Course Name, Type, Seats, Offered, Certificate, Arrival Country, Arrival City, Vendor Link",
+  };
+  for (const [file, line] of Object.entries(lines)) {
+    // The first column taken away, and the last one.
+    for (const edit of [(head) => head.shift(), (head) => head.pop()]) {
+      const out = await run((rows) => edit(rows[file][0]));
+      assert.equal(out.school, null, file);
+      assert.equal(out.slots[file], `${file}, row 1: headers must be exactly: ${line}`);
+    }
+  }
+});
+
+test("timestamps, written answers, arrival places and vendor links are not read", async () => {
+  const base = await run(undefined, seq());
+  const out = await run((rows) => {
+    for (const file of ["round1.xlsx", "round2.xlsx", "singapore.xlsx"]) {
+      const head = rows[file][0];
+      for (const r of rows[file].slice(1)) {
+        r[0] = "not a time";
+        // Anything at all under the answer headers, even text that would be refused as a choice or an email.
+        head.forEach((h, i) => { if (i > EMAIL && !h.startsWith("Choice ")) r[i] = "Underwater Basket Weaving, x.y@elsewhere.example"; });
+      }
+    }
+    for (const r of rows["courses.xlsx"].slice(1)) r.splice(6, 3, null, 42, "not a link");
+  }, seq());
+  assert.ok(out.school, JSON.stringify(out.slots));
+  assert.deepEqual(out.school, base.school);
+});
+
+test("a value past the last header of a form refuses the row", async () => {
+  for (const file of ["round1.xlsx", "round2.xlsx", "singapore.xlsx"]) {
+    const out = await run((rows) => (rows[file][2][rows[file][0].length] = "Underwater Basket Weaving"));
+    assert.equal(out.school, null, file);
+    assert.equal(out.slots[file], `${file}, row 3: value outside the headed columns`);
+  }
+  // Blank cells out there are nothing.
+  const base = await run(undefined, seq());
+  const out = await run((rows) => rows["round2.xlsx"][2].push(null, " ", ""), seq());
+  assert.deepEqual(out.school, base.school);
+});
+
 test("email outside fernhollow.example is refused with file and row", async () => {
   const out = await run((rows) => (rows["staff.xlsx"][4][0] = "x.y@elsewhere.example"));
   assert.equal(out.school, null);
@@ -94,13 +145,13 @@ test("email outside fernhollow.example is refused with file and row", async () =
 });
 
 test("form email not on the staff list is refused", async () => {
-  const out = await run((rows) => (rows["round1.xlsx"][3][0] = "nobody.here@fernhollow.example"));
+  const out = await run((rows) => (rows["round1.xlsx"][3][EMAIL] = "nobody.here@fernhollow.example"));
   assert.equal(out.school, null);
   assert.equal(out.slots["round1.xlsx"], "round1.xlsx, row 4: email is not on the staff list");
 });
 
 test("choice not on the course list is refused with file and row", async () => {
-  const out = await run((rows) => (rows["singapore.xlsx"][2][3] = "Underwater Basket Weaving"));
+  const out = await run((rows) => (rows["singapore.xlsx"][2][CHOICE(3)] = "Underwater Basket Weaving"));
   assert.equal(out.school, null);
   assert.equal(out.slots["singapore.xlsx"], "singapore.xlsx, row 3: Choice 3 is not on the course list");
 });
@@ -141,15 +192,15 @@ test("a returning sponsor on a not-offered course is treated like anyone else", 
 
 test("blank choices are skipped and ranks keep their column number", async () => {
   const out = await run((rows) => {
-    rows["round2.xlsx"][1][1] = "";
-    rows["round2.xlsx"][1][2] = null;
+    rows["round2.xlsx"][1][CHOICE(1)] = "";
+    rows["round2.xlsx"][1][CHOICE(2)] = null;
   });
   assert.ok(out.school, JSON.stringify(out.slots));
   const rows = await load();
-  const t = out.school.teachers.find((x) => x.email === rows["round2.xlsx"][1][0]);
+  const t = out.school.teachers.find((x) => x.email === rows["round2.xlsx"][1][EMAIL]);
   const r2 = t.prefs.filter((p) => p.round === "Round 2");
   assert.deepEqual(r2.map((p) => p.rank), [3]);
-  const course = out.school.courses.find((c) => c.name === rows["round2.xlsx"][1][3]);
+  const course = out.school.courses.find((c) => c.name === rows["round2.xlsx"][1][CHOICE(3)]);
   assert.equal(r2[0].course, course.id);
 });
 
@@ -157,9 +208,9 @@ test("no name or email reaches a problem line beyond the bad value's file and ro
   const staff = (await load())["staff.xlsx"].slice(1);
   const out = await run((rows) => {
     rows["staff.xlsx"][4][0] = "x.y@elsewhere.example";
-    rows["round1.xlsx"][3][0] = "nobody.here@fernhollow.example";
+    rows["round1.xlsx"][3][EMAIL] = "nobody.here@fernhollow.example";
     rows["returning.xlsx"][2][1] = "ZZ-99";
-    rows["singapore.xlsx"][2][3] = "Underwater Basket Weaving";
+    rows["singapore.xlsx"][2][CHOICE(3)] = "Underwater Basket Weaving";
   });
   for (const line of Object.values(out.slots)) {
     for (const s of staff) {

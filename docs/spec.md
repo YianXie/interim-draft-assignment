@@ -27,7 +27,7 @@ Never copy `sample-data.js` or `samples.js`, because their counts copy a real ye
 
 ## The invented school
 
-A new generator writes the six files from a fixed seed: Fernhollow Academy, 96 teachers, 40 courses (34 offered), about 20 returning sponsors, about 6 others with no form, one course needing a Scuba certificate, all emails on `fernhollow.example`. Do not reuse the prototypes' `typical` year profile, because its counts copy a real year. The sample must produce a To do list of 3 to 14 items that includes a short course, people with a form not placed, and the no-form group. The Scuba course has a returning sponsor and too few certified teachers who ranked it, and no one in the no-form group holds Scuba; this is the short course the demo shows, because any uncertified short course would be filled from the no-form group first. The sample also includes one returning sponsor whose course is not offered.
+A new generator writes the six files from a fixed seed: Fernhollow Academy, 96 teachers, 54 courses (44 international; 48 offered), almost all with 2 seats and one or two with 3, so the offered seats (98) cover every teacher (changed 2026-11-15), about 20 returning sponsors, about 6 others with no form, one course needing a Scuba certificate, all emails on `fernhollow.example`. Do not reuse the prototypes' `typical` year profile, because its counts copy a real year. The sample must produce a To do list of 3 to 14 items that includes a short course, people with a form not placed, and the no-form group. The Scuba course has a returning sponsor and too few certified teachers who ranked it, and no one in the no-form group holds Scuba; this is the short course the demo shows, because any uncertified short course would be filled from the no-form group first. The sample also includes one returning sponsor whose course is not offered.
 
 Before the expected results are written, and with all AI sessions closed, the owner checks every invented person and course name against the real lists and renames any match. The agent never sees the comparison, only the new names. The expected results (placed, courses running, each priority's value) are then computed once by a copy of `stack_cpsat.py` in `tools/`, a separate solver with the gender, mixed and stay parts removed, and committed as JSON. Python and OR-Tools are used for this one step only.
 
@@ -35,16 +35,16 @@ Before the expected results are written, and with all AI sessions closed, the ow
 
 Each is `.xlsx`, first sheet named `Fernhollow`, headers in row 1, exact wording. The file name picks the slot. That sheet name and the email domain guard against the owner's own mistake and are never described as security.
 
-| File             | Columns                                                                                                                 |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `courses.xlsx`   | Course Code, Course Name, Type (International or Singapore), Seats, Offered (Yes or No), Certificate (blank means none) |
-| `staff.xlsx`     | Email, Name, Certificates (separated by `;`)                                                                            |
-| `returning.xlsx` | Email, Course Code                                                                                                      |
-| `round1.xlsx`    | Email, Choice 1 to Choice 7 (course names)                                                                              |
-| `round2.xlsx`    | Email, Choice 1 to Choice 3 (course names)                                                                              |
-| `singapore.xlsx` | Email, Choice 1 to Choice 5 (course names)                                                                              |
+| File             | Columns                                                                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `courses.xlsx`   | Course Code, Course Name, Type (International or Singapore), Seats, Offered (Yes or No), Certificate (blank means none), Arrival Country, Arrival City, Vendor Link |
+| `staff.xlsx`     | Email, Name, Certificates (separated by `;`)                                                                                                                  |
+| `returning.xlsx` | Email, Course Code                                                                                                                                            |
+| `round1.xlsx`    | Timestamp, Email, Choice 1 to Choice 7 (course names), Enhancing Learning or Safety, Notable Priorities, Final Questions or Comments                          |
+| `round2.xlsx`    | Timestamp, Email, Choice 1 to Choice 3 (course names)                                                                                                         |
+| `singapore.xlsx` | Timestamp, Email, Choice 1 to Choice 5 (course names), Enhancing Learning or Safety, Additional Comments or Questions                                         |
 
-No gender and no comment columns. A file that doesn't fit is refused with one plain line (file, row, problem), and all six must pass before Build unlocks. Any email outside `fernhollow.example` refuses that file.
+No gender columns. Timestamp (dd/mm/yyyy h:mm:ss), the written answers, Arrival Country, Arrival City and Vendor Link are there so the files match the office's layout (added 2026-11-15); their headers must be present, but the page reads nothing under them. A file that doesn't fit is refused with one plain line (file, row, problem), and all six must pass before Build unlocks. Any email outside `fernhollow.example` refuses that file.
 
 T numbers are created once at upload with a secure random source, then stored. Solver input is ordered by normalised email and by course code, never by T number, so the same files give the same draft.
 

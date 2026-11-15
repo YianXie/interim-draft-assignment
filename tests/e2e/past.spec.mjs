@@ -32,7 +32,7 @@ async function hidden() {
   const out = new Set();
   for (const [email, name] of await rowsOf("fixtures/school/staff.xlsx")) out.add(email).add(name);
   for (const row of await rowsOf(pastFiles[0])) row.slice(2).filter(Boolean).forEach((entry) => out.add(entry));
-  for (const path of pastFiles.slice(1)) for (const [email] of await rowsOf(path)) out.add(email);
+  for (const path of pastFiles.slice(1)) for (const [, email] of await rowsOf(path)) out.add(email);
   return [...out];
 }
 

@@ -10,19 +10,23 @@ const dir = new URL("../../fixtures/", import.meta.url);
 const [ALLOCATION, ...FORMS] = pastFiles;
 const LEFT = "Sponsor who left";
 const choices = (n) => Array.from({ length: n }, (_, i) => `Choice ${i + 1}`);
+// Laid out like this year's forms: Timestamp, Email, the choices, then the written answers.
 const FORM_HEADERS = {
-  "past-round1.xlsx": ["Email", ...choices(7)],
-  "past-round2.xlsx": ["Email", ...choices(3)],
-  "past-singapore.xlsx": ["Email", ...choices(5)],
+  "past-round1.xlsx": ["Timestamp", "Email", ...choices(7), "Enhancing Learning or Safety", "Notable Priorities", "Final Questions or Comments"],
+  "past-round2.xlsx": ["Timestamp", "Email", ...choices(3)],
+  "past-singapore.xlsx": ["Timestamp", "Email", ...choices(5), "Enhancing Learning or Safety", "Additional Comments or Questions"],
 };
-// The six files and the expected values as they were before the past year was added.
+const CHOICES = { "past-round1.xlsx": 7, "past-round2.xlsx": 3, "past-singapore.xlsx": 5 };
+// A past form row's email and its choice cells, blanks included so a choice keeps its column number.
+const formRow = (file, r) => ({ email: r[1], picks: r.slice(2, 2 + CHOICES[basename(file)]) });
+// The six files and the expected values as they were last written: the past year leaves them alone.
 const SCHOOL_SHA256 = {
-  "courses.xlsx": "2cbe51c3924198b3cc80e193f5a7f31fbc69222c2057308baff95dff71abb323",
-  "returning.xlsx": "e5119d15cc959fa26c16ba12f43712345f7651610123d1387b6981b4d1f63a51",
-  "round1.xlsx": "781c374bed18a4023159e530d77e916ab53442f336279793b7c3594baac15c6b",
-  "round2.xlsx": "427d114874b04c9eb045a3630d1420c96a9ec56d7ce8cf0840554a606edfbfc7",
-  "singapore.xlsx": "1bdc6de97218f7cdef44fa4244746ccc13ffef0eb922ac1bc0f2c47a4cc82ba9",
-  "staff.xlsx": "aa1093bf72a8b749368ab142e3147a5ccb370f7f054bf56c5cda161f1e7fd8ec",
+  "courses.xlsx": "062dc936e7cb972fd478852b22e674a9ad5f052ff4c56558464620ce86c558da",
+  "returning.xlsx": "2001f7d3d7303e33c52a1bb7dc03c4f85e91acea91e3a33ba23669f207deb4fa",
+  "round1.xlsx": "a8d14d1fd754f88f7b41e82627139c36c8f7c069c6efbb42715132e53c8281ce",
+  "round2.xlsx": "1d74b2c5d1d02a31b901fad28bda79c4067d9a4a6e9c7d337a1dbdfa77a134d5",
+  "singapore.xlsx": "c941424fcaefac01c6b8453a607a54695c29519795de43d39ea179f70d23c62f",
+  "staff.xlsx": "37193c61f764933eb3805646c033a7bdfde7823c1c477aad780bfe33672817b8",
 };
 
 const blank = (v) => v === null || v === undefined || v === "";
@@ -49,14 +53,14 @@ test("all past emails are on fernhollow.example", async () => {
   for (const file of FORMS) {
     const { rows } = await table(file);
     assert.ok(rows.length > 0, basename(file));
-    for (const r of rows) assert.match(r[0], /^[a-z.]+@fernhollow\.example$/, basename(file));
+    for (const r of rows) assert.match(formRow(file, r).email, /^[a-z.]+@fernhollow\.example$/, basename(file));
   }
 });
 
-test("no gender or comment columns in the past files", async () => {
+test("no gender columns in the past files", async () => {
   for (const file of pastFiles) {
     const { head } = await table(file);
-    for (const h of head) assert.doesNotMatch(h, /gender|comment/i, basename(file));
+    for (const h of head) assert.doesNotMatch(h, /gender/i, basename(file));
   }
 });
 
@@ -76,8 +80,9 @@ test("every past name and course name already exists in fixtures/school", async 
   }
   for (const file of FORMS) {
     for (const r of (await table(file)).rows) {
-      assert.ok(emails.has(r[0]), `${basename(file)}: an email is not on the staff list`);
-      for (const c of filled(r, 1)) assert.ok(courseNames.has(c), `${basename(file)}: ${c}`);
+      const { email, picks } = formRow(file, r);
+      assert.ok(emails.has(email), `${basename(file)}: an email is not on the staff list`);
+      for (const c of picks.filter((c) => !blank(c))) assert.ok(courseNames.has(c), `${basename(file)}: ${c}`);
     }
   }
 });
@@ -93,8 +98,8 @@ test("the past year looks like an ordinary year", async () => {
   const sponsorsOf = new Map(allocation.map((r) => [r[0], filled(r, 2)]));
   const courseOf = new Map(allocation.flatMap((r) => filled(r, 2).map((name) => [name, r[1]]))); // sponsor name -> course name
   const forms = [];
-  for (const file of FORMS) forms.push((await table(file)).rows);
-  const sentPast = new Set(forms.flat().map((r) => r[0]));
+  for (const file of FORMS) forms.push((await table(file)).rows.map((r) => formRow(file, r)));
+  const sentPast = new Set(forms.flat().map((r) => r.email));
 
   // 1. This year's returning sponsors were on that course last year. Most sent no form then; a few did.
   const returning = (await school("returning")).rows;
@@ -114,10 +119,11 @@ test("the past year looks like an ordinary year", async () => {
     for (const name of sponsorsOf.get(code) ?? []) assert.ok(holders.has(name), `a sponsor of ${code} does not hold the ${certificate}`);
   }
 
-  // 3. No course over its seats, at most 4 under, at least 84 of the 96 placed.
+  // 3. No course over its seats, at most 4 that ran under their seats, at least 84 of the 96 placed.
+  // There are more seats than staff, so some courses did not run at all; those have no sponsors.
   for (const [code, , , seats] of courses) assert.ok((sponsorsOf.get(code) ?? []).length <= seats, `${code} is over its seats`);
-  const under = courses.filter(([code, , , seats]) => (sponsorsOf.get(code) ?? []).length < seats).length;
-  assert.ok(under <= 4, `at most 4 courses under their seats, found ${under}`);
+  const under = courses.filter(([code, , , seats]) => (sponsorsOf.get(code) ?? []).length > 0 && sponsorsOf.get(code).length < seats).length;
+  assert.ok(under <= 4, `at most 4 courses that ran under their seats, found ${under}`);
   assert.equal(staff.length, 96);
   const placed = staff.filter((r) => courseOf.has(r[1])).length;
   assert.ok(placed >= 84, `at least 84 staff placed last year, found ${placed}`);
@@ -146,9 +152,9 @@ test("the past year looks like an ordinary year", async () => {
   // placed on a course they ranked 5th to 7th on the earlier form and 1st to 4th on a later one.
   const listed = new Map(); // email|course -> ranks, in the order Round 1, Round 2, Singapore
   for (const rows of forms) {
-    for (const r of rows) {
-      r.slice(1).forEach((c, i) => {
-        if (!blank(c)) listed.set(`${r[0]}|${c}`, [...(listed.get(`${r[0]}|${c}`) ?? []), i + 1]);
+    for (const { email, picks } of rows) {
+      picks.forEach((c, i) => {
+        if (!blank(c)) listed.set(`${email}|${c}`, [...(listed.get(`${email}|${c}`) ?? []), i + 1]);
       });
     }
   }
@@ -174,6 +180,21 @@ test("fixtures/school and expected.json are untouched", async () => {
     assert.equal(createHash("sha256").update(bytes).digest("hex"), sha, name);
   }
   const e = JSON.parse(await readFile(new URL("expected.json", dir), "utf8"));
-  assert.deepEqual(e, { values: [1, 1366, 3], placedMin: 84, placedMax: 84, runningMin: 34, runningMax: 34 });
+  assert.deepEqual(e, { values: [1, 1654, 5], placedMin: 93, placedMax: 93, runningMin: 46, runningMax: 46 });
   assert.equal(e.values.length, 3);
+});
+
+test("every past form row has a timestamp in dd/mm/yyyy h:mm:ss from a year earlier, in the order sent", async () => {
+  const STAMP = /^(\d\d)\/(\d\d)\/(\d{4}) ([1-9]?\d):(\d\d):(\d\d)$/;
+  const when = (s) => {
+    const [, d, m, y, h, mi, se] = s.match(STAMP).map(Number);
+    return Date.UTC(y, m - 1, d, h, mi, se);
+  };
+  for (const file of FORMS) {
+    const { rows } = await table(file);
+    for (const r of rows) assert.match(r[0], STAMP, basename(file));
+    const times = rows.map((r) => when(r[0]));
+    for (const t of times) assert.equal(new Date(t).toISOString().slice(0, 7), "2026-09", basename(file));
+    assert.deepEqual(times, [...times].sort((a, b) => a - b), `${basename(file)} rows are in the order sent`);
+  }
 });

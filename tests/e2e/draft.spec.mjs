@@ -6,7 +6,7 @@ import { buildButton, buildDraft, dropFiles, dropSchool, measure, measureStart, 
 import { forbiddenIn } from "./words.mjs";
 
 const expected = JSON.parse(readFileSync("fixtures/expected.json", "utf8"));
-const TODO_COUNT = 11;
+const TODO_COUNT = 6;
 
 const staff = async () => {
   const [sheet] = await readBook(readFileSync("fixtures/school/staff.xlsx"));

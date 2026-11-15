@@ -109,12 +109,12 @@ async function build() {
 
 // What each file holds, under its name on Start, so "the six files" is never a guess.
 const ABOUT = {
-  "courses.xlsx": "Every course: code, name, type, seats, offered or not, certificate",
+  "courses.xlsx": "Every course: code, name, type, seats, offered, certificate, arrival, vendor",
   "staff.xlsx": "Every teacher who can sponsor: email, name, certificates held",
   "returning.xlsx": "Sponsors coming back to the course they ran: email and course code",
-  "round1.xlsx": "Round 1 forms: email and up to seven course choices",
-  "round2.xlsx": "Round 2 forms: email and up to three course choices",
-  "singapore.xlsx": "Singapore course forms: email and up to five course choices",
+  "round1.xlsx": "Round 1 forms: time, email, up to seven choices, three answers",
+  "round2.xlsx": "Round 2 forms: time, email and up to three course choices",
+  "singapore.xlsx": "Singapore course forms: time, email, up to five choices, two answers",
   "past-allocation.xlsx": "Last year's final list: each course and its sponsors by name",
   "past-round1.xlsx": "Last year's Round 1 forms, laid out like round1.xlsx",
   "past-round2.xlsx": "Last year's Round 2 forms, laid out like round2.xlsx",

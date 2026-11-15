@@ -17,6 +17,10 @@ WITH_PAST = sys.argv[1:] == ["--past"]
 WEIGHTS = [7, 6, 5, 4, 3, 2, 1]
 BONUS = {"round1": 20, "round2": 10, "singapore": 0}
 
+def form_columns(head):
+    """A form is Timestamp, Email, the choices, then written answers: the Email column and the Choice columns, in order."""
+    return head.index("Email"), [i for i, h in enumerate(head) if str(h).startswith("Choice ")]
+
 def rows(name, folder=SCHOOL):
     ws = load_workbook(folder / f"{name}.xlsx", read_only=True).worksheets[0]
     assert ws.title == "Fernhollow", name
@@ -35,13 +39,15 @@ best = {}  # (email, course) -> (best rank, best bonus)
 shown = {}  # (email, course) -> the rank on the earliest of Round 1, Round 2, Singapore that lists the course
 forms = set()
 for fname in ("round1", "round2", "singapore"):
-    _, frows = rows(fname)
+    head, frows = rows(fname)
+    at, picks = form_columns(head)
     for r in frows:
-        forms.add(r[0])
-        for i, nm in enumerate(r[1:], start=1):
+        r = r + [""] * (len(head) - len(r))
+        forms.add(r[at])
+        for i, nm in enumerate((r[j] for j in picks), start=1):
             if nm == "":
                 continue
-            k = (r[0], by_name[nm]); rk, bn = best.get(k, (99, -1))
+            k = (r[at], by_name[nm]); rk, bn = best.get(k, (99, -1))
             best[k] = (min(rk, i), max(bn, BONUS[fname]))
             shown.setdefault(k, i)
 
@@ -100,10 +106,12 @@ def none_last_year():
                 placed[who[0]] = squash(r[1])
     sent, listed = set(), set()
     for fname in ("past-round1", "past-round2", "past-singapore"):
-        _, frows = rows(fname, PAST)
+        head, frows = rows(fname, PAST)
+        at, picks = form_columns(head)
         for r in frows:
-            e = r[0].lower(); sent.add(e)  # a row with every choice blank is still a form
-            listed.update((e, squash(nm)) for nm in r[1:] if nm != "")
+            r = r + [""] * (len(head) - len(r))
+            e = r[at].lower(); sent.add(e)  # a row with every choice blank is still a form
+            listed.update((e, squash(r[j])) for j in picks if r[j] != "")
     return {e for e, c in placed.items() if e in sent and (e, c) not in listed}
 
 if WITH_PAST:

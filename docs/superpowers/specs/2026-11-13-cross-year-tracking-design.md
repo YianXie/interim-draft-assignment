@@ -58,9 +58,9 @@ Optional, and all four or none. Each is `.xlsx`, first sheet `Fernhollow`, heade
 | File | Columns |
 |---|---|
 | `past-allocation.xlsx` | Course Code, Course Name, Sponsor 1, Sponsor 2, … (as many Sponsor columns as the fullest course needs; cells hold names) |
-| `past-round1.xlsx` | Email, Choice 1 to Choice 7 |
-| `past-round2.xlsx` | Email, Choice 1 to Choice 3 |
-| `past-singapore.xlsx` | Email, Choice 1 to Choice 5 |
+| `past-round1.xlsx` | Timestamp, Email, Choice 1 to Choice 7, Enhancing Learning or Safety, Notable Priorities, Final Questions or Comments (laid out like `round1.xlsx` since 2026-11-15) |
+| `past-round2.xlsx` | Timestamp, Email, Choice 1 to Choice 3 |
+| `past-singapore.xlsx` | Timestamp, Email, Choice 1 to Choice 5, Enhancing Learning or Safety, Additional Comments or Questions |
 
 - Past course names are compared only with `past-allocation.xlsx`, never with this year's course list, because courses change between years. A past choice naming a course that is not in the allocation file is accepted (the course did not run). *(Amended during the build, 2026-11-14: a past choice is compared with the allocation's course name ignoring case and extra spaces, as sponsor names are. Compared letter for letter, a choice typed in another letter case did not match, and the teacher read as None, which earns the new priority.)*
 - Past emails must be on `fernhollow.example`. An email not on this year's staff list is ignored (the person left).

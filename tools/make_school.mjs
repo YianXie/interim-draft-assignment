@@ -2,19 +2,15 @@
 // Usage: node tools/make_school.mjs
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { writeBook } from "../src/xlsx.js";
+import { HEADERS } from "../src/import.js";
+import { mulberry32, stamps, travel, enhancing, priorities, finalWords, singaporeWords } from "./answers.mjs";
 
 const SEED = 20261109;
-const N3 = 17; // free offered courses with 3 seats; the rest keep 2
+const ANSWER_SEED = 20261115; // timestamps and written answers only, so the choices below never move
+const N3 = 2; // free offered courses with 3 seats; the rest keep 2
+const N_INT = 44; // international courses; the last four are not offered
 const out = new URL("../fixtures/school/", import.meta.url);
 
-function mulberry32(a) {
-  return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 const rnd = mulberry32(SEED);
 function shuffle(a) {
   a = [...a];
@@ -45,12 +41,12 @@ const rename = (s) => renames[s] ?? s;
 // Courses
 const intNames = shuffle(REGION.flatMap((r) => ACTIVITY.map((a) => `${r} ${a}`)));
 const SCUBA_COURSE = "Kelvane Reef Diving";
-const intPool = intNames.slice(0, 29);
+const intPool = intNames.slice(0, N_INT - 1);
 const courses = [];
-for (let i = 1; i <= 30; i++) courses.push({ code: `INT-${String(i).padStart(2, "0")}`, name: i === 1 ? SCUBA_COURSE : intPool[i - 2], type: "International" });
+for (let i = 1; i <= N_INT; i++) courses.push({ code: `INT-${String(i).padStart(2, "0")}`, name: i === 1 ? SCUBA_COURSE : intPool[i - 2], type: "International" });
 const sgNames = shuffle(LOCAL).slice(0, 10);
 for (let i = 1; i <= 10; i++) courses.push({ code: `SG-${String(i).padStart(2, "0")}`, name: sgNames[i - 1], type: "Singapore" });
-const notOffered = new Set(["INT-27", "INT-28", "INT-29", "INT-30", "SG-09", "SG-10"]);
+const notOffered = new Set(["INT-41", "INT-42", "INT-43", "INT-44", "SG-09", "SG-10"]);
 const pairCourses = ["INT-02", "INT-03", "INT-04", "INT-05", "INT-06", "SG-01", "SG-02", "SG-03", "SG-04"];
 const free = courses.filter((c) => !notOffered.has(c.code) && c.code !== "INT-01" && !pairCourses.includes(c.code));
 const threes = new Set(shuffle(free.map((c) => c.code)).slice(0, N3));
@@ -72,7 +68,7 @@ const people = pairs.map((n, i) => {
 let k = 0;
 people[k].cert = "Scuba certificate"; people[k].returning = "INT-01"; people[k].form = false; k++;
 for (const code of pairCourses) for (let j = 0; j < 2; j++) { people[k].returning = code; people[k].form = false; k++; }
-people[k].returning = "INT-28"; k++; // returning sponsor on a not-offered course, sends a form
+people[k].returning = "INT-42"; k++; // returning sponsor on a not-offered course, sends a form
 for (let j = 0; j < 6; j++) people[k++].form = false;
 const staff = shuffle(people);
 
@@ -89,15 +85,24 @@ for (const p of staff.filter((p) => p.form)) {
   if (rnd() < 0.6 || !got) sg.push([p.email, ...pickWeighted(sgCodes, sgW, 5).map((c) => c.name)]);
 }
 
-const H = (n) => Array.from({ length: n }, (_, i) => `Choice ${i + 1}`);
+// Each form row as the office gets it: the time it was sent, then email and choices, then the written answers.
+const say = mulberry32(ANSWER_SEED);
+const others = (email) => staff.filter((p) => p.email !== email).map((p) => p.name);
+const sent = (form, rows, answers) => {
+  const times = stamps(say, form, rows.length);
+  const n = HEADERS[`${form}.xlsx`].filter((h) => h.startsWith("Choice ")).length;
+  return rows.map(([email, ...picks], i) => [times[i], email, ...picks, ...Array(n - picks.length).fill(""), ...answers(email, picks)]);
+};
 const files = {
-  courses: [["Course Code", "Course Name", "Type", "Seats", "Offered", "Certificate"], ...courses.map((c) => [c.code, c.name, c.type, c.seats, c.offered ? "Yes" : "No", c.cert])],
-  staff: [["Email", "Name", "Certificates"], ...staff.map((p) => [p.email, p.name, p.cert])],
-  returning: [["Email", "Course Code"], ...staff.filter((p) => p.returning).map((p) => [p.email, p.returning])],
-  round1: [["Email", ...H(7)], ...r1],
-  round2: [["Email", ...H(3)], ...r2],
-  singapore: [["Email", ...H(5)], ...sg],
+  courses: [HEADERS["courses.xlsx"], ...courses.map((c) => [c.code, c.name, c.type, c.seats, c.offered ? "Yes" : "No", c.cert, ...travel(c)])],
+  staff: [HEADERS["staff.xlsx"], ...staff.map((p) => [p.email, p.name, p.cert])],
+  returning: [HEADERS["returning.xlsx"], ...staff.filter((p) => p.returning).map((p) => [p.email, p.returning])],
+  round1: [HEADERS["round1.xlsx"], ...sent("round1", r1, (email, picks) => [enhancing(say, picks, "International"), priorities(say, others(email)), finalWords(say, picks)])],
+  round2: [HEADERS["round2.xlsx"], ...sent("round2", r2, () => [])],
+  singapore: [HEADERS["singapore.xlsx"], ...sent("singapore", sg, (email, picks) => [enhancing(say, picks, "Singapore"), singaporeWords(say, picks)])],
 };
 await mkdir(out, { recursive: true });
 for (const [name, rows] of Object.entries(files)) await writeFile(new URL(`${name}.xlsx`, out), await writeBook([{ name: "Fernhollow", rows }]));
-console.log(`school written: ${staff.length} staff, ${courses.length} courses, ${courses.filter((c) => c.seats === 3 && c.offered).length} three-seat`);
+const seats = courses.filter((c) => c.offered).reduce((n, c) => n + c.seats, 0);
+if (seats < staff.length) throw new Error(`offered seats ${seats} are fewer than the ${staff.length} staff`);
+console.log(`school written: ${staff.length} staff, ${courses.length} courses, ${courses.filter((c) => c.seats === 3 && c.offered).length} three-seat, ${seats} offered seats`);

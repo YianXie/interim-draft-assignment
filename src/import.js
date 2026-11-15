@@ -9,16 +9,24 @@ export const SLOTS = ["courses.xlsx", "staff.xlsx", "returning.xlsx", "round1.xl
 const SHEET = "Fernhollow";
 const DOMAIN = "@fernhollow.example";
 const choices = (n) => Array.from({ length: n }, (_, i) => `Choice ${i + 1}`);
-const HEADERS = {
-  "courses.xlsx": ["Course Code", "Course Name", "Type", "Seats", "Offered", "Certificate"],
+// The forms are laid out like the office's: Timestamp, Email, the choices, then the written answers. Courses end with
+// where the course flies to and its vendor. Those extra columns must be there, under these headers, but are not read.
+const ANSWERS = {
+  round1: ["Enhancing Learning or Safety", "Notable Priorities", "Final Questions or Comments"],
+  round2: [],
+  singapore: ["Enhancing Learning or Safety", "Additional Comments or Questions"],
+};
+const form = (name, n) => ["Timestamp", "Email", ...choices(n), ...ANSWERS[name]];
+export const HEADERS = {
+  "courses.xlsx": ["Course Code", "Course Name", "Type", "Seats", "Offered", "Certificate", "Arrival Country", "Arrival City", "Vendor Link"],
   "staff.xlsx": ["Email", "Name", "Certificates"],
   "returning.xlsx": ["Email", "Course Code"],
-  "round1.xlsx": ["Email", ...choices(7)],
-  "round2.xlsx": ["Email", ...choices(3)],
-  "singapore.xlsx": ["Email", ...choices(5)],
-  "past-round1.xlsx": ["Email", ...choices(7)],
-  "past-round2.xlsx": ["Email", ...choices(3)],
-  "past-singapore.xlsx": ["Email", ...choices(5)],
+  "round1.xlsx": form("round1", 7),
+  "round2.xlsx": form("round2", 3),
+  "singapore.xlsx": form("singapore", 5),
+  "past-round1.xlsx": form("round1", 7),
+  "past-round2.xlsx": form("round2", 3),
+  "past-singapore.xlsx": form("singapore", 5),
 };
 const ALLOCATION = PAST_SLOTS[0];
 const FORMS = { "round1.xlsx": "Round 1", "round2.xlsx": "Round 2", "singapore.xlsx": "Singapore" };
@@ -47,7 +55,8 @@ function headerRow(file, head) {
 }
 
 // Checks sheet name and headers, returns [{ n, cells }] for non-empty rows, n being the sheet row number.
-// In a past file a value under no header refuses the row: a sponsor typed one column too far would otherwise be lost.
+// In a past file or a form, a value under no header refuses the row: a sponsor or a choice typed one column too far
+// would otherwise be lost, since the answers after the choices are not read.
 async function table(file, bytes) {
   let book;
   try {
@@ -63,14 +72,14 @@ async function table(file, bytes) {
     refuse(file, 1, `headers must be exactly: ${list}`);
   }
   const rows = rest.map((cells, i) => ({ n: i + 2, cells })).filter((r) => r.cells.some((c) => !blank(c)));
-  if (PAST_SLOTS.includes(file)) {
+  if (PAST_SLOTS.includes(file) || file in FORMS) {
     for (const r of rows) if (r.cells.slice(want.length).some((c) => !blank(c))) refuse(file, r.n, "value outside the headed columns");
   }
   return rows;
 }
 
-function email(file, r, seen) {
-  const e = normEmail(r.cells[0]);
+function email(file, r, seen, at = 0) {
+  const e = normEmail(r.cells[at]);
   if (!e) refuse(file, r.n, "email is empty");
   if (!e.endsWith(DOMAIN) || e.length === DOMAIN.length) refuse(file, r.n, "email is not on fernhollow.example");
   if (seen.has(e)) refuse(file, r.n, "email appears twice in this file");
@@ -109,9 +118,14 @@ function readStaff(file, rows) {
   });
 }
 
+// returning.xlsx gives cells [Course Code]; a form gives just its choices, Choice 1 first, and nothing after them.
 function readEmailRows(file, rows) {
   const seen = new Set();
-  return rows.map((r) => ({ n: r.n, email: email(file, r, seen), cells: r.cells.slice(1) }));
+  const head = HEADERS[file];
+  const at = head.indexOf("Email");
+  const first = head.indexOf("Choice 1");
+  const until = first < 0 ? head.length : first + head.filter((h) => h.startsWith("Choice ")).length;
+  return rows.map((r) => ({ n: r.n, email: email(file, r, seen, at), cells: r.cells.slice(first < 0 ? at + 1 : first, until) }));
 }
 
 // Last year's allocation: [{ n, course, sponsors }], course being the Course Name and sponsors the names as written.
