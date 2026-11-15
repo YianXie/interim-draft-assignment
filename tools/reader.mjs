@@ -5,9 +5,10 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { parseFiles, formAnswers, SLOTS, FIT, HEADERS } from "../src/import.js";
-import { writeBook } from "../src/xlsx.js";
+import { parseFiles, formAnswers, SLOTS, FIT } from "../src/import.js";
 import { readAll } from "./reader/read.mjs";
+import { reach, makeAsk } from "./reader/model.mjs";
+import { fitBook } from "./reader/book.mjs";
 
 const { values: opt } = parseArgs({
   options: {
@@ -44,26 +45,14 @@ const order = FORMS.map(([, form]) => form);
 answers.sort((a, b) => (a.email < b.email ? -1 : a.email > b.email ? 1 : order.indexOf(a.form) - order.indexOf(b.form)));
 
 const prompt = await readFile(opt.prompt, "utf8");
-const ask = async (system, user) => {
-  const res = await fetch(new URL("/api/chat", opt.host), {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      model: opt.model,
-      stream: false,
-      think: false,
-      options: { temperature: 0, seed: 1 },
-      messages: [{ role: "system", content: system }, { role: "user", content: user }],
-    }),
-  });
-  if (!res.ok) throw new Error(`${opt.host} answered ${res.status}: ${await res.text()}`);
-  return (await res.json()).message?.content ?? "";
-};
-
-const { rows, answersSheet, dropped, notRead } = await readAll({ school, answers, ask, prompt });
-await writeFile(opt.out, await writeBook([
-  { name: "Fernhollow", rows: [HEADERS[FIT], ...rows] },
-  { name: "Answers", rows: [["Email", "Form", "Answer"], ...answersSheet] },
-]));
+try {
+  await reach({ host: opt.host });
+} catch (e) {
+  console.error(e.message);
+  process.exit(1);
+}
+const { rows, answersSheet, dropped, notRead, errors } = await readAll({ school, answers, ask: makeAsk({ host: opt.host, model: opt.model }), prompt });
+for (const e of errors) console.error(`a model call failed: ${e}`);
+await writeFile(opt.out, await fitBook({ rows, answersSheet }));
 const read = new Set(answers.map((a) => a.email).filter((e) => !notRead.includes(e)));
 console.log(`teachers read ${read.size}, rows ${rows.length}, dropped ${dropped}, not read ${notRead.length}`);

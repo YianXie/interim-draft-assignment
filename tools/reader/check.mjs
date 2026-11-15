@@ -3,6 +3,21 @@ import { KINDS } from "../../src/import.js";
 
 const norm = (s) => s.split(/\s+/).filter(Boolean).join(" ");
 const str = (v) => (typeof v === "string" ? v : "");
+const WORD = /[\p{L}\p{N}\p{M}]/u;
+const JOIN = /['’-]/;
+// True when the quote is in the answer as whole words: it does not start or end inside a word of the answer, so
+// "qualified" is not found in "unqualified", nor "swim" in "can't swim" read as "t swim". An apostrophe or hyphen
+// with a letter beyond it is part of the word ("can't", "non-swimmer").
+function inAnswer(said, quote) {
+  const joined = (at, step) => WORD.test(said[at] ?? "") || (JOIN.test(said[at] ?? "") && WORD.test(said[at + step] ?? ""));
+  for (let i = said.indexOf(quote); i !== -1; i = said.indexOf(quote, i + 1)) {
+    const end = i + quote.length;
+    const startsClean = !WORD.test(quote[0]) || !joined(i - 1, -1);
+    const endsClean = !WORD.test(quote[quote.length - 1]) || !joined(end, 1);
+    if (startsClean && endsClean) return true;
+  }
+  return false;
+}
 
 // The tags in a reply, as [{ kind, tag, quote, courses }], or null when the reply cannot be read.
 // Takes {"tags": [...]} or {"sentences": [{ tags }]}, with or without a code fence around it.
@@ -30,7 +45,7 @@ export function parseReply(raw) {
 }
 
 // fit.xlsx rows [Email, Course Code, Kind, Fact, Quote] for one answer's tags, and how many tags were dropped.
-// A tag is dropped when its quote is not word for word in the answer (whitespace collapsed), a course is not one the
+// A tag is dropped when its quote is not word for word in the answer (whitespace collapsed, whole words only), a course is not one the
 // teacher ranked on that form, its kind is not one of the five, or its quote or label is empty.
 export function checkTags(tags, { email, answer, ranked }) {
   const said = norm(answer);
@@ -42,7 +57,7 @@ export function checkTags(tags, { email, answer, ranked }) {
     const quote = norm(t.quote);
     const fact = t.tag.trim();
     const codes = t.courses.map((c) => codeOf.get(typeof c === "string" ? c.trim() : c));
-    if (!kind || !quote || !fact || !said.includes(quote) || codes.some((c) => c === undefined)) {
+    if (!kind || !quote || !fact || !inAnswer(said, quote) || codes.some((c) => c === undefined)) {
       dropped++;
       continue;
     }

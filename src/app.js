@@ -223,25 +223,34 @@ const title = (t) => `<h2 tabindex="-1">${t}</h2>`;
 // opened: the card reached from a row. A To do item is the same body without the last-year and fit lines, which would not fit there.
 function teacherBody(id, opened = false) {
   const c = Mock.placedOn(id), mail = Mock.contact(id), last = opened ? Mock.lastYearLine(id) : "", fit = opened ? Mock.fitLine(id) : "";
-  // The fit line is one more line on the card, so one fewer option is listed for it, and one more with the last-year line too,
-  // to stay inside the panel's words. Every option is still under All options.
+  // The fit line is one more line on the card, so one fewer option is listed for it, and one more with the last-year line too.
+  // Long Fact labels can still run the opened card over the panel's words, so with the fit line options are dropped until
+  // the card, Back included, fits. Every option is still under All options.
   const shorter = fit ? (last ? 2 : 1) : 0;
-  const opts = Mock.optionsFor(id).filter((o) => o.choice !== "Not on their list").slice(0, 5 - shorter);
-  let round = null;
-  const rows = opts.map((o) => {
-    const [n, r] = o.choice.split(" choice, ");
-    const head = r === round ? "" : `<div class="row r-opt head"><span>${round === null ? "Move to" : ""}</span><span>${esc(r)}</span><span></span></div>`;
-    round = r;
-    return `${head}<button class="row r-opt" data-row data-act="moveTo" data-id="${id}" data-c="${esc(o.cid)}" data-k="o-${esc(o.cid)}"><span>${esc(o.name)}</span><span class="q">${esc(n)}</span><span class="q">${esc(warns(o))}</span></button>`;
-  }).join("");
-  return `${title(L(id))}
+  const all = Mock.optionsFor(id).filter((o) => o.choice !== "Not on their list");
+  const body = (n) => {
+    let round = null;
+    const rows = all.slice(0, n).map((o) => {
+      const [k, r] = o.choice.split(" choice, ");
+      const head = r === round ? "" : `<div class="row r-opt head"><span>${round === null ? "Move to" : ""}</span><span>${esc(r)}</span><span></span></div>`;
+      round = r;
+      return `${head}<button class="row r-opt" data-row data-act="moveTo" data-id="${id}" data-c="${esc(o.cid)}" data-k="o-${esc(o.cid)}"><span>${esc(o.name)}</span><span class="q">${esc(k)}</span><span class="q">${esc(warns(o))}</span></button>`;
+    }).join("");
+    return `${title(L(id))}
     <p class="under ${c ? "" : "need"}">${c ? esc(Mock.course(c).name) : "Not placed"}</p>
     <p class="why"><span class="q">Why</span>&ensp;${esc(Mock.reason(id))}</p>${last ? `\n    <p class="q" data-last>${esc(last)}</p>` : ""}${fit ? `\n    <p class="q" data-fit>${esc(fit)}</p>` : ""}
     ${mail ? `<p class="q gap">${esc(mail)}</p>` : ""}
     ${!c && !Mock.state.left.has(id) ? `<div class="acts"><button class="btn" data-act="leave" data-id="${id}" data-k="lv">Leave unplaced</button></div>` : ""}
     ${rows ? `<div class="gap" data-rows>${rows}</div>` : ""}
     <div class="links"><button class="link" data-act="open" data-to="move" data-id="${id}" data-k="all">All options</button></div>`;
+  };
+  let n = 5 - shorter;
+  if (fit) while (n > 0 && htmlWords(back() + body(n)) > PANEL_WORDS) n--;
+  return body(n);
 }
+// The opened card's word budget (seed/measure.cjs, detail), and its words counted the way measure.cjs counts them.
+const PANEL_WORDS = 60;
+const htmlWords = (html) => html.replace(/<[^>]*>/g, " ").replace(/&[a-z]+;/g, " ").split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
 function noFormBody(tids) {
   return `${title(`${tids.length === 1 ? "1 person" : `${tids.length} people`} with no form`)}
     <div class="gap" data-rows>${tids.map((id) => `<button class="row r-two" data-row data-teacher="${id}" data-k="n-${id}"><span>${L(id)}</span></button>`).join("")}</div>
