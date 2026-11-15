@@ -12,4 +12,10 @@ Run it on the machine where Ollama is running, from this folder:
 python3 run.py . qwen3.5:27b prompt_v3.txt
 ```
 
+To try Ollama's forced JSON as well (some models refuse it), put `FORMAT=json` in front:
+
+```bash
+FORMAT=json python3 run.py . qwen3.5:27b prompt_v3.txt
+```
+
 The arguments are the folder, the model, the prompt file, the cases module and `twice` or `once` (twice checks the reply is the same on a rerun). The result goes in `results/`.

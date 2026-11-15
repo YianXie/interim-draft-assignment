@@ -1,9 +1,14 @@
 // Sends each written answer to the model and keeps the tags that pass the checks. ask(system, user) is the model.
 import { parseReply, checkTags } from "./check.mjs";
 
+// Sent after a reply that is not valid JSON, with that reply, so the second try is a different request: at temperature 0
+// with a fixed seed, asking the same question again gives the same broken reply.
+export const FIX_JSON = "That reply is not valid JSON, so it could not be read. Send the same tags again as valid JSON only, in the shape asked for, with nothing else.";
+
 // school is parseFiles' School; answers are [{ email, form: "Round 1"|"Singapore", answer }].
 // Gives the fit.xlsx rows, the Answers sheet rows (every answer, read or not), tags dropped, the emails not read, and each
-// distinct message from a model call that failed. A failed call counts as an unreadable reply: retried once, then not read.
+// distinct message from a model call that failed. A reply that cannot be read is retried once, with the broken reply and
+// FIX_JSON after it; a failed call is retried once as it was. Then the teacher is not read.
 export async function readAll({ school, answers, ask, prompt }) {
   const course = new Map(school.courses.map((c) => [c.id, c]));
   const teacher = new Map(school.teachers.map((t) => [t.email, t]));
@@ -17,15 +22,18 @@ export async function readAll({ school, answers, ask, prompt }) {
       .sort((a, b) => a.rank - b.rank)
       .map((p) => ({ id: p.course, name: course.get(p.course).name }));
     const user = `Ranked courses: ${ranked.map((c) => c.name).join("; ")}\nAnswer: ${answer}`;
-    const once = async () => {
+    const attempt = async (prior) => {
       try {
-        return parseReply(await ask(prompt, user));
+        const raw = await ask(prompt, user, prior);
+        return { raw, tags: parseReply(raw) };
       } catch (e) {
         if (!errors.includes(e.message)) errors.push(e.message);
-        return null;
+        return { raw: null, tags: null };
       }
     };
-    const tags = (await once()) ?? (await once());
+    let got = await attempt([]);
+    if (!got.tags) got = await attempt(got.raw === null ? [] : [{ role: "assistant", content: got.raw }, { role: "user", content: FIX_JSON }]);
+    const { tags } = got;
     if (!tags) {
       if (!notRead.includes(email)) notRead.push(email);
       continue;

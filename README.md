@@ -25,7 +25,7 @@ It has only ever seen invented data: an invented school, invented people, invent
 ## Written answers
 
 - `fit.xlsx` is an optional file on Start, after the six. It holds what the reader found in the written answers, checked by the office: one row per fact, tied to a course where the teacher tied it to one.
-- The reader, `tools/reader.mjs`, is run by hand on a machine with Ollama running: `node tools/reader.mjs --dir <folder with the six>`. `--out`, `--host`, `--model` and `--prompt` change where it writes, which address and model it uses, and the prompt file. It drops any quote not word for word in the answer and ends with a one-line summary.
+- The reader, `tools/reader.mjs`, is run by hand on a machine with Ollama running: `node tools/reader.mjs --dir <folder with the six>`. `--out`, `--host`, `--model` and `--prompt` change where it writes, which address and model it uses, and the prompt file; `--format json` asks Ollama to force valid JSON, for models that support it. It never overwrites an existing file. A reply that is not valid JSON is sent back once with a request to fix it. It drops any quote not word for word in the answer and ends with a one-line summary.
 - The office checks and corrects every row in Excel before adding the file. The page never calls a model.
 - With it, the draft uses fit only as the last tie-break. Each teacher's panel and the download show what was found.
 - Use sample data and Download sample data stay the six. An invented `fit.xlsx` is in `fixtures/fit`; add it on Start by hand, as the office would.

@@ -1,7 +1,7 @@
 // Writes fit.xlsx from the written answers in round1.xlsx and singapore.xlsx, with a model running locally in Ollama.
 // Run by hand, never by the page. The office checks every row in Excel before fit.xlsx goes on Start.
 // Usage: node tools/reader.mjs --dir <folder with the six> [--out fit.xlsx] [--host http://127.0.0.1:11434]
-//        [--model qwen3.5:9b] [--prompt tools/reader-test/prompt_v3.txt]
+//        [--model qwen3.5:9b] [--prompt tools/reader-test/prompt_v3.txt] [--format json]
 import { readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -18,11 +18,12 @@ const { values: opt } = parseArgs({
     out: { type: "string", default: FIT },
     host: { type: "string", default: "http://127.0.0.1:11434" },
     model: { type: "string", default: "qwen3.5:9b" },
+    format: { type: "string" },
     prompt: { type: "string", default: fileURLToPath(new URL("reader-test/prompt_v3.txt", import.meta.url)) },
   },
 });
 if (!opt.dir) {
-  console.error("usage: node tools/reader.mjs --dir <folder with the six> [--out fit.xlsx] [--host URL] [--model NAME] [--prompt FILE]");
+  console.error("usage: node tools/reader.mjs --dir <folder with the six> [--out fit.xlsx] [--host URL] [--model NAME] [--prompt FILE] [--format json]");
   process.exit(1);
 }
 
@@ -58,7 +59,7 @@ try {
   console.error(e.message);
   process.exit(1);
 }
-const { rows, answersSheet, dropped, notRead, errors } = await readAll({ school, answers, ask: makeAsk({ host: opt.host, model: opt.model }), prompt });
+const { rows, answersSheet, dropped, notRead, errors } = await readAll({ school, answers, ask: makeAsk({ host: opt.host, model: opt.model, format: opt.format }), prompt });
 for (const e of errors) console.error(`a model call failed: ${e}`);
 const read = new Set(answers.map((a) => a.email).filter((e) => !notRead.includes(e)));
 if (!read.size) {

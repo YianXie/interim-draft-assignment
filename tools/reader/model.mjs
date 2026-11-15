@@ -12,9 +12,11 @@ export async function reach({ host, fetch = globalThis.fetch }) {
   if (!res.ok) throw new Error(`cannot reach the model at ${host}: it answered ${res.status}`);
 }
 
-// ask(system, user): the model's reply text. Throws on a failed call or an answer that is not 200.
-export function makeAsk({ host, model, fetch = globalThis.fetch }) {
-  return async (system, user) => {
+// ask(system, user, prior): the model's reply text; prior is any later turns, sent after the user's message.
+// format ("json", or a JSON schema) asks Ollama to force valid JSON; it is sent only when given, since some models refuse it.
+// Throws on a failed call or an answer that is not 200.
+export function makeAsk({ host, model, format, fetch = globalThis.fetch }) {
+  return async (system, user, prior = []) => {
     const res = await fetch(new URL("/api/chat", host), {
       method: "POST",
       redirect: "error",
@@ -24,7 +26,8 @@ export function makeAsk({ host, model, fetch = globalThis.fetch }) {
         stream: false,
         think: false,
         options: { temperature: 0, seed: 1 },
-        messages: [{ role: "system", content: system }, { role: "user", content: user }],
+        ...(format === undefined ? {} : { format }),
+        messages: [{ role: "system", content: system }, { role: "user", content: user }, ...prior],
       }),
     });
     if (!res.ok) throw new Error(`${host} answered ${res.status}: ${await res.text()}`);

@@ -74,7 +74,7 @@ A Node script, `tools/reader.mjs`, run by hand on the machine where Ollama is ru
 - **In:** the six files (it needs the forms for the answers and choices, `courses.xlsx` for names and codes, `staff.xlsx` to check emails). It refuses them as the page would.
 - **What it reads:** "Enhancing Learning or Safety" in `round1.xlsx` and in `singapore.xlsx`. A teacher on both gets both answers read, each with the courses ranked on that form. Round 2 has no answers.
 - **The model:** Ollama's chat API, temperature 0, fixed seed, thinking off. Address (default `http://127.0.0.1:11434`), model name and prompt file are settings, so moving to another machine or model changes no code. Starting prompt: `tools/reader-test/prompt_v3.txt`.
-- **Checks on every reply:** strip a code fence; the reply must parse; each quote must be word for word in that answer; each course must be one this teacher ranked on that form. A row that fails is dropped and counted. A reply that cannot be read is retried once, then the teacher is listed as not read.
+- **Checks on every reply:** strip a code fence; the reply must parse; each quote must be word for word in that answer; each course must be one this teacher ranked on that form. A row that fails is dropped and counted. A reply that cannot be read is retried once, sent back with a line saying it was not valid JSON (asking the same question again gives the same reply at temperature 0), then the teacher is listed as not read. Added 2026-11-15 after `qwen3.5:27b` broke the JSON in 9 of 20 test replies.
 - **Out:** `fit.xlsx`, and a short summary in the terminal (teachers read, rows written, rows dropped, teachers not read).
 
 ## `fit.xlsx`

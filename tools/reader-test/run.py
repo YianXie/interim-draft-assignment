@@ -1,5 +1,6 @@
 import json, re, sys, time, urllib.request
 # Usage: python3 run.py <this folder> [model] [prompt file] [cases module] [twice|once]
+# FORMAT=json before the command asks Ollama to force valid JSON (some models refuse it).
 # Sends each invented answer in cases.py to Ollama on this machine and scores the reply. Invented data only.
 sys.path.insert(0, sys.argv[1])
 MODEL = sys.argv[2] if len(sys.argv) > 2 else "qwen3.5:9b"
@@ -9,10 +10,14 @@ SYSTEM = open(os.path.join(sys.argv[1], PROMPT)).read()
 CASEMOD = sys.argv[4] if len(sys.argv) > 4 else "cases"
 CASES = importlib.import_module(CASEMOD).CASES
 TWICE = (sys.argv[5] if len(sys.argv) > 5 else "twice") == "twice"
-def call(c):
+FORMAT = os.environ.get("FORMAT")
+# Same words as FIX_JSON in tools/reader/read.mjs: sent with a reply that is not valid JSON, as the one retry.
+FIX_JSON = "That reply is not valid JSON, so it could not be read. Send the same tags again as valid JSON only, in the shape asked for, with nothing else."
+def call(c, prior=()):
     body = {"model": MODEL, "stream": False, "think": False, "options": {"temperature": 0, "seed": 1},
             "messages": [{"role": "system", "content": SYSTEM},
-                         {"role": "user", "content": "Ranked courses: " + "; ".join(c["ranked"]) + "\nAnswer: " + c["text"]}]}
+                         {"role": "user", "content": "Ranked courses: " + "; ".join(c["ranked"]) + "\nAnswer: " + c["text"]}, *prior]}
+    if FORMAT: body["format"] = FORMAT
     t = time.time()
     d = json.load(urllib.request.urlopen(urllib.request.Request("http://localhost:11434/api/chat", json.dumps(body).encode()), timeout=300))
     return d["message"]["content"], time.time() - t
@@ -26,8 +31,11 @@ for c in CASES:
     raw1, secs = call(c); raw2 = call(c)[0] if TWICE else raw1
     r = dict(id=c["id"], note=c["note"], secs=round(secs, 1), same=raw1 == raw2, problems=[], raw=raw1)
     try: tags = parse(raw1)
-    except Exception as e:
-        r["problems"].append("unreadable reply"); out.append(r); continue
+    except Exception:
+        r["retried"] = call(c, [{"role": "assistant", "content": raw1}, {"role": "user", "content": FIX_JSON}])[0]
+        try: tags = parse(r["retried"])
+        except Exception:
+            r["problems"].append("unreadable reply, also on the retry"); out.append(r); continue
     r["tags"] = tags
     for t in tags:
         if norm(t.get("quote", "")) not in norm(c["text"]): r["problems"].append(f"quote not in text: {t.get('quote')!r}")
@@ -46,8 +54,9 @@ for c in CASES:
         if isinstance(want, tuple) and not set(want[1]) <= set(got): r["problems"].append(f"wrong courses for {kw!r}: got {got}")
         if kind and not any(t.get("kind") == kind for t in hits): r["problems"].append(f"wrong kind for {kw!r}: {[t.get('kind') for t in hits]}")
     out.append(r)
-    print(c["id"], c["note"], "| OK" if not r["problems"] else "| " + "; ".join(r["problems"]), "| same twice" if r["same"] else "| DIFFERENT twice", f"| {r['secs']}s", flush=True)
-json.dump(out, open(sys.argv[1] + f"/results/results-{MODEL.replace(':','-')}-{PROMPT[:-4]}-{CASEMOD}.json", "w"), indent=1)
+    print(c["id"], c["note"], "| OK" if not r["problems"] else "| " + "; ".join(r["problems"]), "| same twice" if r["same"] else "| DIFFERENT twice", f"| {r['secs']}s", "| read on the retry" if "retried" in r and "tags" in r else "", flush=True)
+json.dump(out, open(sys.argv[1] + f"/results/results-{MODEL.replace(':','-')}-{PROMPT[:-4]}-{CASEMOD}{'-' + FORMAT if FORMAT else ''}.json", "w"), indent=1)
 ok = sum(not r["problems"] for r in out)
 print("misses:", sum(p.startswith("missed") for r in out for p in r["problems"]), "of", sum(len(c["expect"]) for c in CASES), "expected")
+print("read on the retry:", sum("retried" in r and "tags" in r for r in out))
 print(f"\nclean cases: {ok}/{len(out)}; identical on rerun: {sum(r['same'] for r in out)}/{len(out)}; tags: {sum(len(r.get('tags', [])) for r in out)}; bad quotes: {sum(p.startswith('quote not') for r in out for p in r['problems'])}")
