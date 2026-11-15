@@ -1,5 +1,5 @@
 import { Mock } from "./state.js";
-import { parseFiles, SLOTS, PAST_SLOTS } from "./import.js";
+import { parseFiles, SLOTS, PAST_SLOTS, FIT } from "./import.js";
 import { RESULT_LABEL } from "./past.js";
 import { loadHighs, solveDraft, toDraft } from "./solver.js";
 import { recheck } from "./recheck.js";
@@ -52,7 +52,7 @@ function startOver() {
   saving.catch(() => {}).then(() => loadFailed || wipe()).then(toStart, toStart);
 }
 
-const KNOWN = [...SLOTS, ...PAST_SLOTS];
+const KNOWN = [...SLOTS, ...PAST_SLOTS, FIT];
 const readBytes = (f) => f.arrayBuffer().then((b) => new Uint8Array(b), () => new Uint8Array());
 // Drops are handled strictly in order, so a later file always replaces an earlier one of the same name.
 function addFiles(list) {
@@ -119,6 +119,7 @@ const ABOUT = {
   "past-round1.xlsx": "Last year's Round 1 forms, laid out like round1.xlsx",
   "past-round2.xlsx": "Last year's Round 2 forms, laid out like round2.xlsx",
   "past-singapore.xlsx": "Last year's Singapore forms, laid out like singapore.xlsx",
+  [FIT]: "Optional: what the reader found in the answers, checked by the office",
 };
 let startTab = "now"; // now or past: which files Start lists. Either tab takes any file dropped.
 
@@ -149,7 +150,11 @@ function startTabs() {
 function startView() {
   if (phase === "failed") return `<h1 class="big" data-big>Couldn't build a draft. Reload and try again.</h1>`;
   const others = Object.keys(slots).filter((n) => !KNOWN.includes(n));
-  const now = [...SLOTS, ...others].filter((n) => slots[n]);
+  // fit.xlsx is optional and never holds up Build: a placeholder after the six until it is added. Once last year's files
+  // are in, the placeholder goes, so a short window that scrolls to Build still shows the heading; an added fit.xlsx stays.
+  const six = SLOTS.filter((n) => slots[n]);
+  const fitRow = six.length === SLOTS.length && (slots[FIT] || !PAST_SLOTS.some((n) => slots[n]));
+  const now = [...six, ...(fitRow ? [FIT] : []), ...others.filter((n) => slots[n])];
   const past = PAST_SLOTS;
   return `<div class="narrow drop" data-drop>
     <h1 class="big" data-big>${startTab === "now" ? "Drop the six files here" : "Drop last year's four files here"}</h1>
@@ -215,10 +220,13 @@ const card = (inner) => `<section class="card" data-panel>${inner}</section>`;
 const back = () => `<button class="link back" data-act="back" data-k="back">Back</button>`;
 const title = (t) => `<h2 tabindex="-1">${t}</h2>`;
 
-// opened: the card reached from a row. A To do item is the same body without the last-year line, which would not fit there.
+// opened: the card reached from a row. A To do item is the same body without the last-year and fit lines, which would not fit there.
 function teacherBody(id, opened = false) {
-  const c = Mock.placedOn(id), mail = Mock.contact(id), last = opened ? Mock.lastYearLine(id) : "";
-  const opts = Mock.optionsFor(id).filter((o) => o.choice !== "Not on their list").slice(0, 5);
+  const c = Mock.placedOn(id), mail = Mock.contact(id), last = opened ? Mock.lastYearLine(id) : "", fit = opened ? Mock.fitLine(id) : "";
+  // The fit line is one more line on the card, so one fewer option is listed for it, and one more with the last-year line too,
+  // to stay inside the panel's words. Every option is still under All options.
+  const shorter = fit ? (last ? 2 : 1) : 0;
+  const opts = Mock.optionsFor(id).filter((o) => o.choice !== "Not on their list").slice(0, 5 - shorter);
   let round = null;
   const rows = opts.map((o) => {
     const [n, r] = o.choice.split(" choice, ");
@@ -228,7 +236,7 @@ function teacherBody(id, opened = false) {
   }).join("");
   return `${title(L(id))}
     <p class="under ${c ? "" : "need"}">${c ? esc(Mock.course(c).name) : "Not placed"}</p>
-    <p class="why"><span class="q">Why</span>&ensp;${esc(Mock.reason(id))}</p>${last ? `\n    <p class="q" data-last>${esc(last)}</p>` : ""}
+    <p class="why"><span class="q">Why</span>&ensp;${esc(Mock.reason(id))}</p>${last ? `\n    <p class="q" data-last>${esc(last)}</p>` : ""}${fit ? `\n    <p class="q" data-fit>${esc(fit)}</p>` : ""}
     ${mail ? `<p class="q gap">${esc(mail)}</p>` : ""}
     ${!c && !Mock.state.left.has(id) ? `<div class="acts"><button class="btn" data-act="leave" data-id="${id}" data-k="lv">Leave unplaced</button></div>` : ""}
     ${rows ? `<div class="gap" data-rows>${rows}</div>` : ""}
@@ -347,9 +355,9 @@ function teachersHome() {
   return `${bigLine()}${tools("teachers")}
     <div data-rows>${list.map((t) => {
       const c = Mock.placedOn(t.id), cn = c ? Mock.course(c).name : "Not placed";
-      // Search also finds last year's result, in the card's words and in the download's.
+      // Search also finds last year's result, in the card's words and in the download's, and with names on what their form showed.
       const was = Mock.past() && Mock.lastYear(t.id);
-      return `<button class="row r-teacher" data-row data-teacher="${t.id}" data-k="t-${t.id}" data-q="${esc([who(t.id), cn, Mock.lastYearLine(t.id), was ? RESULT_LABEL[was.result] : ""].filter(Boolean).join(" "))}">
+      return `<button class="row r-teacher" data-row data-teacher="${t.id}" data-k="t-${t.id}" data-q="${esc([who(t.id), cn, Mock.lastYearLine(t.id), was ? RESULT_LABEL[was.result] : "", Mock.fitSearch(t.id)].filter(Boolean).join(" "))}">
         <span>${L(t.id)}</span><span class="${c ? "" : "need"}">${esc(cn)}</span></button>`;
     }).join("")}<div class="row q" data-empty hidden>No matches</div></div>`;
 }
