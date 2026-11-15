@@ -1,0 +1,502 @@
+[
+ {
+  "id": 1,
+  "note": "per-course, short names",
+  "secs": 19.1,
+  "same": true,
+  "problems": [],
+  "raw": "{\n  \"tags\": [\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"hiking\",\n      \"quote\": \"hiking\",\n      \"courses\": [\n        \"Tarrow Ridge Trekking\",\n        \"Ashfell Highlands Camping\",\n        \"Morwen Coast Kayaking\"\n      ]\n    },\n    {\n      \"kind\": \"skill\",\n      \"tag\": \"tent pitching\",\n      \"quote\": \"tent pitching\",\n      \"courses\": [\n        \"Tarrow Ridge Trekking\",\n        \"Ashfell Highlands Camping\",\n        \"Morwen Coast Kayaking\"\n      ]\n    },\n    {\n      \"kind\": \"skill\",\n      \"tag\": \"cooking outdoors\",\n      \"quote\": \"cooking outdoors\",\n      \"courses\": [\n        \"Tarrow Ridge Trekking\",\n        \"Ashfell Highlands Camping\",\n        \"Morwen Coast Kayaking\"\n      ]\n    },\n    {\n      \"kind\": \"skill\",\n      \"tag\": \"navigation\",\n      \"quote\": \"navigation\",\n      \"courses\": [\n        \"Tarrow Ridge Trekking\",\n        \"Ashfell Highlands Camping\",\n        \"Morwen Coast Kayaking\"\n      ]\n    },\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"climbing\",\n      \"quote\": \"I am a climber\",\n      \"courses\": [\n        \"Halvik Peaks Climbing\"\n      ]\n    },\n    {\n      \"kind\": \"certificate\",\n      \"tag\": \"level 2 certification\",\n      \"quote\": \"level 2 certification\",\n      \"courses\": [\n        \"Halvik Peaks Climbing\"\n      ]\n    },\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"cycling\",\n      \"quote\": \"I cycled there\",\n      \"courses\": [\n        \"Sundra Valley Cycling\"\n      ]\n    },\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"multi-day rides\",\n      \"quote\": \"multi-day rides\",\n      \"courses\": [\n        \"Sundra Valley Cycling\"\n      ]\n    }\n  ]\n}",
+  "tags": [
+   {
+    "kind": "experience",
+    "tag": "hiking",
+    "quote": "hiking",
+    "courses": [
+     "Tarrow Ridge Trekking",
+     "Ashfell Highlands Camping",
+     "Morwen Coast Kayaking"
+    ]
+   },
+   {
+    "kind": "skill",
+    "tag": "tent pitching",
+    "quote": "tent pitching",
+    "courses": [
+     "Tarrow Ridge Trekking",
+     "Ashfell Highlands Camping",
+     "Morwen Coast Kayaking"
+    ]
+   },
+   {
+    "kind": "skill",
+    "tag": "cooking outdoors",
+    "quote": "cooking outdoors",
+    "courses": [
+     "Tarrow Ridge Trekking",
+     "Ashfell Highlands Camping",
+     "Morwen Coast Kayaking"
+    ]
+   },
+   {
+    "kind": "skill",
+    "tag": "navigation",
+    "quote": "navigation",
+    "courses": [
+     "Tarrow Ridge Trekking",
+     "Ashfell Highlands Camping",
+     "Morwen Coast Kayaking"
+    ]
+   },
+   {
+    "kind": "experience",
+    "tag": "climbing",
+    "quote": "I am a climber",
+    "courses": [
+     "Halvik Peaks Climbing"
+    ]
+   },
+   {
+    "kind": "certificate",
+    "tag": "level 2 certification",
+    "quote": "level 2 certification",
+    "courses": [
+     "Halvik Peaks Climbing"
+    ]
+   },
+   {
+    "kind": "experience",
+    "tag": "cycling",
+    "quote": "I cycled there",
+    "courses": [
+     "Sundra Valley Cycling"
+    ]
+   },
+   {
+    "kind": "experience",
+    "tag": "multi-day rides",
+    "quote": "multi-day rides",
+    "courses": [
+     "Sundra Valley Cycling"
+    ]
+   }
+  ]
+ },
+ {
+  "id": 2,
+  "note": "general facts only",
+  "secs": 9.3,
+  "same": true,
+  "problems": [],
+  "raw": "{\n  \"tags\": [\n    {\n      \"kind\": \"certificate\",\n      \"tag\": \"first aider\",\n      \"quote\": \"qualified first aider (renewed this year)\",\n      \"courses\": []\n    },\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"led overnight trips\",\n      \"quote\": \"have led overnight trips for six years\",\n      \"courses\": []\n    },\n    {\n      \"kind\": \"language\",\n      \"tag\": \"Mandarin\",\n      \"quote\": \"speak Mandarin\",\n      \"courses\": []\n    },\n    {\n      \"kind\": \"language\",\n      \"tag\": \"Korean\",\n      \"quote\": \"Korean\",\n      \"courses\": []\n    }\n  ]\n}",
+  "tags": [
+   {
+    "kind": "certificate",
+    "tag": "first aider",
+    "quote": "qualified first aider (renewed this year)",
+    "courses": []
+   },
+   {
+    "kind": "experience",
+    "tag": "led overnight trips",
+    "quote": "have led overnight trips for six years",
+    "courses": []
+   },
+   {
+    "kind": "language",
+    "tag": "Mandarin",
+    "quote": "speak Mandarin",
+    "courses": []
+   },
+   {
+    "kind": "language",
+    "tag": "Korean",
+    "quote": "Korean",
+    "courses": []
+   }
+  ]
+ },
+ {
+  "id": 3,
+  "note": "N/A",
+  "secs": 3.2,
+  "same": true,
+  "problems": [],
+  "raw": "{\"tags\":[]}",
+  "tags": []
+ },
+ {
+  "id": 4,
+  "note": "vague enthusiasm",
+  "secs": 0.9,
+  "same": true,
+  "problems": [],
+  "raw": "{\"tags\":[]}",
+  "tags": []
+ },
+ {
+  "id": 5,
+  "note": "negation",
+  "secs": 6.6,
+  "same": true,
+  "problems": [],
+  "raw": "{\n  \"tags\": [\n    {\n      \"kind\": \"limitation\",\n      \"tag\": \"no diving experience\",\n      \"quote\": \"I have no diving experience\",\n      \"courses\": []\n    },\n    {\n      \"kind\": \"skill\",\n      \"tag\": \"swim well\",\n      \"quote\": \"can swim well\",\n      \"courses\": [\n        \"Kelvane Reef Diving\"\n      ]\n    },\n    {\n      \"kind\": \"certificate\",\n      \"tag\": \"lifeguard award\",\n      \"quote\": \"hold a lifeguard award\",\n      \"courses\": [\n        \"Kelvane Reef Diving\"\n      ]\n    }\n  ]\n}",
+  "tags": [
+   {
+    "kind": "limitation",
+    "tag": "no diving experience",
+    "quote": "I have no diving experience",
+    "courses": []
+   },
+   {
+    "kind": "skill",
+    "tag": "swim well",
+    "quote": "can swim well",
+    "courses": [
+     "Kelvane Reef Diving"
+    ]
+   },
+   {
+    "kind": "certificate",
+    "tag": "lifeguard award",
+    "quote": "hold a lifeguard award",
+    "courses": [
+     "Kelvane Reef Diving"
+    ]
+   }
+  ]
+ },
+ {
+  "id": 6,
+  "note": "other people's skills",
+  "secs": 0.7,
+  "same": true,
+  "problems": [
+   "unreadable reply"
+  ],
+  "raw": "{\"tags\":[]"
+ },
+ {
+  "id": 7,
+  "note": "wishes and plans",
+  "secs": 0.8,
+  "same": true,
+  "problems": [
+   "unreadable reply"
+  ],
+  "raw": "{\"tags\":[]"
+ },
+ {
+  "id": 8,
+  "note": "instruction aimed at the model",
+  "secs": 1.2,
+  "same": true,
+  "problems": [
+   "unreadable reply"
+  ],
+  "raw": "{\"tags\":[]"
+ },
+ {
+  "id": 9,
+  "note": "limitations",
+  "secs": 7.3,
+  "same": true,
+  "problems": [],
+  "raw": "{\n  \"tags\": [\n    {\n      \"kind\": \"limitation\",\n      \"tag\": \"afraid of heights\",\n      \"quote\": \"I am afraid of heights\",\n      \"courses\": [\n        \"Halvik Peaks Climbing\"\n      ]\n    },\n    {\n      \"kind\": \"limitation\",\n      \"tag\": \"cannot do long descents\",\n      \"quote\": \"cannot do long descents\",\n      \"courses\": [\n        \"Halvik Peaks Climbing\"\n      ]\n    },\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"trained as a chef\",\n      \"quote\": \"I trained as a chef\",\n      \"courses\": [\n        \"Dovrenne Culture and Cooking\"\n      ]\n    }\n  ]\n}",
+  "tags": [
+   {
+    "kind": "limitation",
+    "tag": "afraid of heights",
+    "quote": "I am afraid of heights",
+    "courses": [
+     "Halvik Peaks Climbing"
+    ]
+   },
+   {
+    "kind": "limitation",
+    "tag": "cannot do long descents",
+    "quote": "cannot do long descents",
+    "courses": [
+     "Halvik Peaks Climbing"
+    ]
+   },
+   {
+    "kind": "experience",
+    "tag": "trained as a chef",
+    "quote": "I trained as a chef",
+    "courses": [
+     "Dovrenne Culture and Cooking"
+    ]
+   }
+  ]
+ },
+ {
+  "id": 10,
+  "note": "language tied to a place",
+  "secs": 5.9,
+  "same": true,
+  "problems": [
+   "wrong courses for 'three years': got []"
+  ],
+  "raw": "{\n  \"tags\": [\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"lived in Dovrenne\",\n      \"quote\": \"I lived in Dovrenne for three years\",\n      \"courses\": []\n    },\n    {\n      \"kind\": \"language\",\n      \"tag\": \"Dovrenne language\",\n      \"quote\": \"speak the language fluently\",\n      \"courses\": [\"Dovrenne Culture and Cooking\"]\n    },\n    {\n      \"kind\": \"language\",\n      \"tag\": \"Spanish\",\n      \"quote\": \"basic Spanish\",\n      \"courses\": []\n    }\n  ]\n}",
+  "tags": [
+   {
+    "kind": "experience",
+    "tag": "lived in Dovrenne",
+    "quote": "I lived in Dovrenne for three years",
+    "courses": []
+   },
+   {
+    "kind": "language",
+    "tag": "Dovrenne language",
+    "quote": "speak the language fluently",
+    "courses": [
+     "Dovrenne Culture and Cooking"
+    ]
+   },
+   {
+    "kind": "language",
+    "tag": "Spanish",
+    "quote": "basic Spanish",
+    "courses": []
+   }
+  ]
+ },
+ {
+  "id": 11,
+  "note": "typos, informal",
+  "secs": 6.4,
+  "same": true,
+  "problems": [],
+  "raw": "{\n  \"tags\": [\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"kayaking\",\n      \"quote\": \"kyaking\",\n      \"courses\": []\n    },\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"rafting\",\n      \"quote\": \"rafting\",\n      \"courses\": []\n    },\n    {\n      \"kind\": \"certificate\",\n      \"tag\": \"swiftwater rescue cert\",\n      \"quote\": \"swiftwater rescue cert\",\n      \"courses\": []\n    },\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"minibus driving\",\n      \"quote\": \"drove minibus\",\n      \"courses\": []\n    }\n  ]\n}",
+  "tags": [
+   {
+    "kind": "experience",
+    "tag": "kayaking",
+    "quote": "kyaking",
+    "courses": []
+   },
+   {
+    "kind": "experience",
+    "tag": "rafting",
+    "quote": "rafting",
+    "courses": []
+   },
+   {
+    "kind": "certificate",
+    "tag": "swiftwater rescue cert",
+    "quote": "swiftwater rescue cert",
+    "courses": []
+   },
+   {
+    "kind": "experience",
+    "tag": "minibus driving",
+    "quote": "drove minibus",
+    "courses": []
+   }
+  ]
+ },
+ {
+  "id": 12,
+  "note": "one fact buried in a long answer",
+  "secs": 1.4,
+  "same": true,
+  "problems": [
+   "missed: 'four years'"
+  ],
+  "raw": "{\"tags\":[]}",
+  "tags": []
+ },
+ {
+  "id": 13,
+  "note": "co-sponsor mention",
+  "secs": 0.6,
+  "same": true,
+  "problems": [
+   "unreadable reply"
+  ],
+  "raw": "{\"tags\":[]"
+ },
+ {
+  "id": 14,
+  "note": "returning sponsor claim",
+  "secs": 7.2,
+  "same": true,
+  "problems": [],
+  "raw": "{\n  \"tags\": [\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"sponsored rafting\",\n      \"quote\": \"I have sponsored Pellam River Rafting for the last three years\",\n      \"courses\": [\n        \"Pellam River Rafting\"\n      ]\n    },\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"knows route\",\n      \"quote\": \"and know the outfitter and the route well\",\n      \"courses\": [\n        \"Pellam River Rafting\"\n      ]\n    },\n    {\n      \"kind\": \"certificate\",\n      \"tag\": \"CPR certificate\",\n      \"quote\": \"I also hold a current CPR certificate\",\n      \"courses\": []\n    }\n  ]\n}",
+  "tags": [
+   {
+    "kind": "experience",
+    "tag": "sponsored rafting",
+    "quote": "I have sponsored Pellam River Rafting for the last three years",
+    "courses": [
+     "Pellam River Rafting"
+    ]
+   },
+   {
+    "kind": "experience",
+    "tag": "knows route",
+    "quote": "and know the outfitter and the route well",
+    "courses": [
+     "Pellam River Rafting"
+    ]
+   },
+   {
+    "kind": "certificate",
+    "tag": "CPR certificate",
+    "quote": "I also hold a current CPR certificate",
+    "courses": []
+   }
+  ]
+ },
+ {
+  "id": 15,
+  "note": "one qualification, two courses",
+  "secs": 6.1,
+  "same": true,
+  "problems": [],
+  "raw": "{\n  \"tags\": [\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"led reef surveys\",\n      \"quote\": \"run the reef surveys on Lumen Bay Marine Science\",\n      \"courses\": [\n        \"Lumen Bay Marine Science\"\n      ]\n    },\n    {\n      \"kind\": \"certificate\",\n      \"tag\": \"PADI Advanced Open Water diver\",\n      \"quote\": \"I am a PADI Advanced Open Water diver\",\n      \"courses\": [\n        \"Kelvane Reef Diving\"\n      ]\n    }\n  ]\n}",
+  "tags": [
+   {
+    "kind": "experience",
+    "tag": "led reef surveys",
+    "quote": "run the reef surveys on Lumen Bay Marine Science",
+    "courses": [
+     "Lumen Bay Marine Science"
+    ]
+   },
+   {
+    "kind": "certificate",
+    "tag": "PADI Advanced Open Water diver",
+    "quote": "I am a PADI Advanced Open Water diver",
+    "courses": [
+     "Kelvane Reef Diving"
+    ]
+   }
+  ]
+ },
+ {
+  "id": 16,
+  "note": "hedged claim",
+  "secs": 5.9,
+  "same": true,
+  "problems": [],
+  "raw": "{\n  \"tags\": [\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"climbing history\",\n      \"quote\": \"I think I might have done some climbing as a teenager but honestly nothing recent.\",\n      \"courses\": []\n    },\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"marathon running\",\n      \"quote\": \"I do run marathons.\",\n      \"courses\": []\n    }\n  ]\n}",
+  "tags": [
+   {
+    "kind": "experience",
+    "tag": "climbing history",
+    "quote": "I think I might have done some climbing as a teenager but honestly nothing recent.",
+    "courses": []
+   },
+   {
+    "kind": "experience",
+    "tag": "marathon running",
+    "quote": "I do run marathons.",
+    "courses": []
+   }
+  ]
+ },
+ {
+  "id": 17,
+  "note": "terse per-course notes",
+  "secs": 8.0,
+  "same": true,
+  "problems": [
+   "missed: 'road cyclist'"
+  ],
+  "raw": "{\n  \"tags\": [\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"trekking at altitude\",\n      \"quote\": \"trekked at altitude in 2019\",\n      \"courses\": [\n        \"Tarrow Ridge Trekking\"\n      ]\n    },\n    {\n      \"kind\": \"skill\",\n      \"tag\": \"basic bike repairs\",\n      \"quote\": \"can do basic bike repairs\",\n      \"courses\": [\n        \"Sundra Valley Cycling\"\n      ]\n    },\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"camping with family\",\n      \"quote\": \"I camp with my family most holidays\",\n      \"courses\": [\n        \"Ashfell Highlands Camping\"\n      ]\n    }\n  ]\n}",
+  "tags": [
+   {
+    "kind": "experience",
+    "tag": "trekking at altitude",
+    "quote": "trekked at altitude in 2019",
+    "courses": [
+     "Tarrow Ridge Trekking"
+    ]
+   },
+   {
+    "kind": "skill",
+    "tag": "basic bike repairs",
+    "quote": "can do basic bike repairs",
+    "courses": [
+     "Sundra Valley Cycling"
+    ]
+   },
+   {
+    "kind": "experience",
+    "tag": "camping with family",
+    "quote": "I camp with my family most holidays",
+    "courses": [
+     "Ashfell Highlands Camping"
+    ]
+   }
+  ]
+ },
+ {
+  "id": 18,
+  "note": "mentions a course they did not rank",
+  "secs": 9.2,
+  "same": true,
+  "problems": [],
+  "raw": "{\n  \"tags\": [\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"led trip\",\n      \"quote\": \"I led the Halvik Peaks trip at my old school in 2021\",\n      \"courses\": []\n    },\n    {\n      \"kind\": \"skill\",\n      \"tag\": \"manage rope work with teenagers\",\n      \"quote\": \"so I know how to manage rope work with teenagers\",\n      \"courses\": []\n    },\n    {\n      \"kind\": \"certificate\",\n      \"tag\": \"RYA Day Skipper\",\n      \"quote\": \"For Oshen I hold an RYA Day Skipper\",\n      \"courses\": [\n        \"Oshen Islands Sailing\"\n      ]\n    }\n  ]\n}",
+  "tags": [
+   {
+    "kind": "experience",
+    "tag": "led trip",
+    "quote": "I led the Halvik Peaks trip at my old school in 2021",
+    "courses": []
+   },
+   {
+    "kind": "skill",
+    "tag": "manage rope work with teenagers",
+    "quote": "so I know how to manage rope work with teenagers",
+    "courses": []
+   },
+   {
+    "kind": "certificate",
+    "tag": "RYA Day Skipper",
+    "quote": "For Oshen I hold an RYA Day Skipper",
+    "courses": [
+     "Oshen Islands Sailing"
+    ]
+   }
+  ]
+ },
+ {
+  "id": 19,
+  "note": "certificates with numbers and dates",
+  "secs": 7.5,
+  "same": true,
+  "problems": [],
+  "raw": "{\n  \"tags\": [\n    {\n      \"kind\": \"certificate\",\n      \"tag\": \"Wilderness First Responder\",\n      \"quote\": \"Wilderness First Responder (WFR), 80-hour course, expires 06/2027.\",\n      \"courses\": []\n    },\n    {\n      \"kind\": \"certificate\",\n      \"tag\": \"Class 3 driving licence\",\n      \"quote\": \"Class 3 driving licence.\",\n      \"courses\": []\n    },\n    {\n      \"kind\": \"experience\",\n      \"tag\": \"Swam competitively\",\n      \"quote\": \"Swam competitively to age 18.\",\n      \"courses\": []\n    }\n  ]\n}",
+  "tags": [
+   {
+    "kind": "certificate",
+    "tag": "Wilderness First Responder",
+    "quote": "Wilderness First Responder (WFR), 80-hour course, expires 06/2027.",
+    "courses": []
+   },
+   {
+    "kind": "certificate",
+    "tag": "Class 3 driving licence",
+    "quote": "Class 3 driving licence.",
+    "courses": []
+   },
+   {
+    "kind": "experience",
+    "tag": "Swam competitively",
+    "quote": "Swam competitively to age 18.",
+    "courses": []
+   }
+  ]
+ },
+ {
+  "id": 20,
+  "note": "safety opinions, no facts about self",
+  "secs": 1.2,
+  "same": true,
+  "problems": [],
+  "raw": "{\"tags\":[]}",
+  "tags": []
+ }
+]
