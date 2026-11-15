@@ -150,10 +150,10 @@ function startTabs() {
 function startView() {
   if (phase === "failed") return `<h1 class="big" data-big>Couldn't build a draft. Reload and try again.</h1>`;
   const others = Object.keys(slots).filter((n) => !KNOWN.includes(n));
-  // fit.xlsx is optional and never holds up Build: a placeholder after the six until it is added. Once last year's files
-  // are in, the placeholder goes, so a short window that scrolls to Build still shows the heading; an added fit.xlsx stays.
+  // fit.xlsx is optional and never holds up Build: a placeholder after the six until it is added. Its row makes the panel
+  // one row longer, so the panel's rows sit closer, and a short window that scrolls to Build still shows the heading.
   const six = SLOTS.filter((n) => slots[n]);
-  const fitRow = six.length === SLOTS.length && (slots[FIT] || !PAST_SLOTS.some((n) => slots[n]));
+  const fitRow = six.length === SLOTS.length;
   const now = [...six, ...(fitRow ? [FIT] : []), ...others.filter((n) => slots[n])];
   const past = PAST_SLOTS;
   return `<div class="narrow drop" data-drop>
@@ -163,7 +163,7 @@ function startView() {
     <button class="link sample" data-act="sample">Use sample data</button>
     <a class="link sample-zip" data-k="sample-zip" href="sample/${startTab === "now" ? "sample-this-year.zip" : "sample-last-year.zip"}" download>Download sample data</a></div>
     ${startTabs()}
-    <div class="gap" data-rows data-start-panel="now"${startTab === "now" ? "" : " hidden"}>
+    <div class="gap${fitRow ? " tight" : ""}" data-rows data-start-panel="now"${startTab === "now" ? "" : " hidden"}>
       <p class="q intro">Needed every year. Each file name must match exactly.</p>
       ${now.map(slotRow).join("")}</div>
     <div class="gap" data-rows data-start-panel="past"${startTab === "past" ? "" : " hidden"}>

@@ -296,20 +296,41 @@ test("budgets: Start with the fit row, and an opened teacher with a fit", async 
   }
 });
 
+// Dropped in the default window, then measured, as past.spec.mjs does: the scroll to Build happens in the short window.
+const DEFAULT_WINDOW = { width: 1280, height: 720 };
 test("budgets: Start with last year's four, without and with fit.xlsx", async ({ page }) => {
   watchPage(page);
-  // The window the budgets are measured in, from the start, so Build is scrolled to in that window.
-  await page.setViewportSize({ width: 1366, height: 820 });
   await page.goto("/");
   await page.locator('[data-k="files"]').setInputFiles([...schoolFiles(), ...pastFiles]);
   await expect(buildButton(page)).toBeEnabled();
-  // With last year's files in, an empty fit.xlsx row is not shown: Start is as it was.
-  await expect(placeholder(page)).toHaveCount(0);
+  await expect(placeholder(page)).toBeVisible();
   await measureStart(page);
+  await page.setViewportSize(DEFAULT_WINDOW);
   await dropFiles(page, [fitFile]);
   await expect(rightOf(page, FIT)).toHaveText("ready");
   await expect(buildButton(page)).toBeEnabled();
   await measureStart(page);
+});
+
+test("budgets: Start with the ten and fit.xlsx chosen together", async ({ page }) => {
+  watchPage(page);
+  await page.goto("/");
+  await page.locator('[data-k="files"]').setInputFiles([...schoolFiles(), ...pastFiles, fitFile]);
+  await expect(rightOf(page, FIT)).toHaveText("ready");
+  await expect(buildButton(page)).toBeEnabled();
+  await measureStart(page);
+});
+
+test("Build is in view with the ten and fit.xlsx, on a short window", async ({ page }) => {
+  const short = { width: 1366, height: 680 };
+  await page.setViewportSize(short);
+  await page.goto("/");
+  await page.locator('[data-k="files"]').setInputFiles([...schoolFiles(), ...pastFiles, fitFile]);
+  await expect(rightOf(page, FIT)).toHaveText("ready");
+  await expect(buildButton(page)).toBeEnabled();
+  const box = await buildButton(page).boundingBox();
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(short.height);
 });
 
 test("budgets: an opened teacher with a fit and a last-year line", async ({ page }) => {
