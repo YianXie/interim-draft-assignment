@@ -1,0 +1,52 @@
+// The reader's checks on one model reply. Pure: no files, no network.
+import { KINDS } from "../../src/import.js";
+
+const norm = (s) => s.split(/\s+/).filter(Boolean).join(" ");
+const str = (v) => (typeof v === "string" ? v : "");
+
+// The tags in a reply, as [{ kind, tag, quote, courses }], or null when the reply cannot be read.
+// Takes {"tags": [...]} or {"sentences": [{ tags }]}, with or without a code fence around it.
+export function parseReply(raw) {
+  const s = String(raw ?? "").trim().replace(/^```(?:json)?\s*|\s*```$/g, "");
+  let d;
+  try {
+    d = JSON.parse(s);
+  } catch {
+    return null;
+  }
+  if (!d || typeof d !== "object" || Array.isArray(d)) return null;
+  let tags;
+  if (Array.isArray(d.tags)) tags = d.tags;
+  else if (Array.isArray(d.sentences)) tags = d.sentences.flatMap((x) => (x && Array.isArray(x.tags) ? x.tags : []));
+  else return null;
+  return tags
+    .filter((t) => t && typeof t === "object")
+    .map((t) => ({
+      kind: str(t.kind),
+      tag: str(t.tag),
+      quote: str(t.quote),
+      courses: Array.isArray(t.courses) ? t.courses : typeof t.courses === "string" && t.courses ? [t.courses] : [],
+    }));
+}
+
+// fit.xlsx rows [Email, Course Code, Kind, Fact, Quote] for one answer's tags, and how many tags were dropped.
+// A tag is dropped when its quote is not word for word in the answer (whitespace collapsed), a course is not one the
+// teacher ranked on that form, its kind is not one of the five, or its quote or label is empty.
+export function checkTags(tags, { email, answer, ranked }) {
+  const said = norm(answer);
+  const codeOf = new Map(ranked.map((c) => [c.name, c.id]));
+  const rows = [];
+  let dropped = 0;
+  for (const t of tags) {
+    const kind = KINDS.find((k) => k.toLowerCase() === t.kind.trim().toLowerCase());
+    const quote = norm(t.quote);
+    const fact = t.tag.trim();
+    const codes = t.courses.map((c) => codeOf.get(typeof c === "string" ? c.trim() : c));
+    if (!kind || !quote || !fact || !said.includes(quote) || codes.some((c) => c === undefined)) {
+      dropped++;
+      continue;
+    }
+    for (const code of codes.length ? [...new Set(codes)] : [""]) rows.push([email, code, kind, fact, quote]);
+  }
+  return { rows, dropped };
+}

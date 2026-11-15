@@ -185,6 +185,20 @@ const SECTION = (file, fn) => async (bytes) => {
   }
 };
 
+// For the reader, not the page: the "Enhancing Learning or Safety" answers on round1.xlsx or singapore.xlsx, as
+// [{ email, answer }] in sheet order, blank answers left out. Throws with the page's line if the file does not fit.
+export async function formAnswers(file, bytes) {
+  const at = HEADERS[file].indexOf("Enhancing Learning or Safety");
+  try {
+    const rows = await table(file, bytes);
+    const emails = readEmailRows(file, rows).map((r) => r.email);
+    return rows.map((r, i) => ({ email: emails[i], answer: text(r.cells[at]) })).filter((a) => a.answer);
+  } catch (e) {
+    if (e instanceof Refusal) throw new Error(e.message);
+    throw e;
+  }
+}
+
 export async function parseFiles(files, random = secureRandom) {
   const slots = {};
   const bytesOf = {};
