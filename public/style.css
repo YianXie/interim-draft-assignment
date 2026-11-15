@@ -118,6 +118,8 @@ button.row:hover { background: var(--hover); }
 .choose { display: inline-flex; align-items: center; margin-top: 8px; cursor: pointer; }
 .choose:focus-within { outline: 3px solid var(--blue); outline-offset: 2px; }
 .links .choose { margin-top: 0; }
+.links a.link { display: inline-flex; align-items: center; text-decoration: none; }
+.links a.link:hover { text-decoration: underline; }
 .choose input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 
 .start-tabs { margin-top: 22px; border-bottom: 1px solid var(--rule); }

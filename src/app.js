@@ -155,7 +155,8 @@ function startView() {
     <h1 class="big" data-big>${startTab === "now" ? "Drop the six files here" : "Drop last year's four files here"}</h1>
     <p class="sub"><span>Invented school</span>&ensp;<span>Interim 2028</span></p>
     <div class="links"><label class="link choose">Choose files<input type="file" multiple accept=".xlsx" data-k="files"></label>
-    <button class="link sample" data-act="sample">Use sample data</button></div>
+    <button class="link sample" data-act="sample">Use sample data</button>
+    <a class="link sample-zip" data-k="sample-zip" href="sample/${startTab === "now" ? "sample-this-year.zip" : "sample-last-year.zip"}" download>Download sample data</a></div>
     ${startTabs()}
     <div class="gap" data-rows data-start-panel="now"${startTab === "now" ? "" : " hidden"}>
       <p class="q intro">Needed every year. Each file name must match exactly.</p>

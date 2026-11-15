@@ -1,4 +1,6 @@
 import { test, expect } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { unzipSync } from "fflate";
 import { SLOTS, PAST_SLOTS } from "../../src/import.js";
 import { buildButton, buildDraft, watchPage } from "./helpers.mjs";
 
@@ -41,5 +43,24 @@ test("Use sample data on the Last year tab never replaces a file already added",
   await page.getByRole("button", { name: "Use sample data" }).click();
   for (const name of [...SLOTS.slice(1), ...PAST_SLOTS]) await expect(page.locator(`[data-slot="${name}"]`)).toContainText("ready");
   await expect(page.locator('[data-slot="courses.xlsx"] [data-line]')).toHaveText("Not a readable .xlsx file");
+  await expect(buildButton(page)).toBeDisabled();
+});
+
+// Presses Download sample data on the given start tab and lists the files in the zip that arrives.
+async function sampleZip(page, startTab) {
+  await page.goto("/");
+  await page.locator(`[data-start-tab="${startTab}"]`).click();
+  const [d] = await Promise.all([page.waitForEvent("download"), page.getByRole("link", { name: "Download sample data" }).click()]);
+  return { name: d.suggestedFilename(), files: Object.keys(unzipSync(new Uint8Array(readFileSync(await d.path())))).sort() };
+}
+
+test("Download sample data gives the six files on This year and last year's four on Last year, unchanged", async ({ page }) => {
+  const now = await sampleZip(page, "now");
+  expect(now.name).toBe("sample-this-year.zip");
+  expect(now.files).toEqual([...SLOTS].sort());
+  const past = await sampleZip(page, "past");
+  expect(past.name).toBe("sample-last-year.zip");
+  expect(past.files).toEqual([...PAST_SLOTS].sort());
+  // Pressing it adds nothing to the page.
   await expect(buildButton(page)).toBeDisabled();
 });
