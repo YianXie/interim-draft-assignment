@@ -1,6 +1,6 @@
 # Fit file: design
 
-Status: draft for the owner's review, 2026-11-15. Nothing built.
+Status: built on branch `fit-file`, 2026-11-15. Not merged; merging is the owner's call.
 
 ## Why
 

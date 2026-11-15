@@ -46,6 +46,8 @@ Each is `.xlsx`, first sheet named `Fernhollow`, headers in row 1, exact wording
 
 No gender columns. Timestamp (dd/mm/yyyy h:mm:ss), the written answers, Arrival Country, Arrival City and Vendor Link are there so the files match the office's layout (added 2026-11-15); their headers must be present, but the page reads nothing under them. A file that doesn't fit is refused with one plain line (file, row, problem), and all six must pass before Build unlocks. Any email outside `fernhollow.example` refuses that file.
 
+An optional seventh file, `fit.xlsx` (what the reader found in the written answers, checked by the office), is described in `docs/superpowers/specs/2026-11-15-fit-file-design.md` (added 2026-11-15).
+
 T numbers are created once at upload with a secure random source, then stored. Solver input is ordered by normalised email and by course code, never by T number, so the same files give the same draft.
 
 ## The draft

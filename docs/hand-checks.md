@@ -30,3 +30,4 @@ Four checks that a browser test cannot do. Use invented data only.
 ## Not done yet
 
 - **Not done.** Real Excel with last year's files: drop the six and `fixtures/past`'s four, press Build, press Download, and open the workbook in an activated copy of Excel. It must open with no repair prompt, with its Last year column on the Teachers sheet and its Last year sheet.
+- **Not done.** Real Excel with `fit.xlsx`: drop the six and `fixtures/fit/fit.xlsx`, press Build, press Download, and open the workbook in an activated copy of Excel. It must open with no repair prompt, with its From their form column on the Teachers sheet.
