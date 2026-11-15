@@ -34,7 +34,11 @@ export function parseReply(raw) {
   if (Array.isArray(d.tags)) tags = d.tags;
   else if (Array.isArray(d.sentences)) tags = d.sentences.flatMap((x) => (x && Array.isArray(x.tags) ? x.tags : []));
   else return null;
-  return tags
+  return shape(tags);
+}
+
+const shape = (tags) =>
+  tags
     .filter((t) => t && typeof t === "object")
     .map((t) => ({
       kind: str(t.kind),
@@ -42,6 +46,23 @@ export function parseReply(raw) {
       quote: str(t.quote),
       courses: Array.isArray(t.courses) ? t.courses : typeof t.courses === "string" && t.courses ? [t.courses] : [],
     }));
+
+// The tags in a reply that is not valid JSON, taken out one by one, or null when there are none. Each tag is a flat object
+// ({ kind, tag, quote, courses }), so it can be read on its own when the brackets around it are broken: qwen3.5:27b's
+// compact replies drop a "{" between sentences or add a "]" after an empty course list. Every tag still goes through checkTags.
+export function salvageTags(raw) {
+  const s = String(raw ?? "").replace(/\[\s*\]\s*\]/g, "[]");
+  const tags = [];
+  for (const m of s.matchAll(/\{[^{}]*\}/g)) {
+    let t;
+    try {
+      t = JSON.parse(m[0]);
+    } catch {
+      continue;
+    }
+    if (t && typeof t === "object" && !Array.isArray(t) && "quote" in t) tags.push(t);
+  }
+  return tags.length ? shape(tags) : null;
 }
 
 // fit.xlsx rows [Email, Course Code, Kind, Fact, Quote] for one answer's tags, and how many tags were dropped.

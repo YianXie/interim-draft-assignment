@@ -25,6 +25,17 @@ def parse(raw):
     s = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
     d = json.loads(s)
     return d["tags"] if "tags" in d else [t for x in d["sentences"] for t in x.get("tags", [])]
+# Same as salvageTags in tools/reader/check.mjs: each tag is a flat object, so it can be read on its own when the
+# brackets around it are broken. Used only after the retry, as the reader does.
+def salvage(raw):
+    s = re.sub(r"\[\s*\]\s*\]", "[]", raw or "")
+    tags = []
+    for m in re.findall(r"\{[^{}]*\}", s):
+        try: t = json.loads(m)
+        except Exception: continue
+        if isinstance(t, dict) and "quote" in t: tags.append(t)
+    if not tags: raise ValueError("no tags")
+    return tags
 norm = lambda s: " ".join(s.split())
 out = []
 for c in CASES:
@@ -35,7 +46,13 @@ for c in CASES:
         r["retried"] = call(c, [{"role": "assistant", "content": raw1}, {"role": "user", "content": FIX_JSON}])[0]
         try: tags = parse(r["retried"])
         except Exception:
-            r["problems"].append("unreadable reply, also on the retry"); out.append(r); continue
+            try:
+                tags = salvage(r["retried"])
+            except Exception:
+                try: tags = salvage(raw1)
+                except Exception:
+                    r["problems"].append("unreadable reply, also on the retry"); out.append(r); continue
+            r["salvaged"] = True
     r["tags"] = tags
     for t in tags:
         if norm(t.get("quote", "")) not in norm(c["text"]): r["problems"].append(f"quote not in text: {t.get('quote')!r}")
@@ -54,9 +71,9 @@ for c in CASES:
         if isinstance(want, tuple) and not set(want[1]) <= set(got): r["problems"].append(f"wrong courses for {kw!r}: got {got}")
         if kind and not any(t.get("kind") == kind for t in hits): r["problems"].append(f"wrong kind for {kw!r}: {[t.get('kind') for t in hits]}")
     out.append(r)
-    print(c["id"], c["note"], "| OK" if not r["problems"] else "| " + "; ".join(r["problems"]), "| same twice" if r["same"] else "| DIFFERENT twice", f"| {r['secs']}s", "| read on the retry" if "retried" in r and "tags" in r else "", flush=True)
+    print(c["id"], c["note"], "| OK" if not r["problems"] else "| " + "; ".join(r["problems"]), "| same twice" if r["same"] else "| DIFFERENT twice", f"| {r['secs']}s", ("| read tag by tag" if r.get("salvaged") else "| read on the retry") if "retried" in r and "tags" in r else "", flush=True)
 json.dump(out, open(sys.argv[1] + f"/results/results-{MODEL.replace(':','-')}-{PROMPT[:-4]}-{CASEMOD}{'-' + FORMAT if FORMAT else ''}.json", "w"), indent=1)
 ok = sum(not r["problems"] for r in out)
 print("misses:", sum(p.startswith("missed") for r in out for p in r["problems"]), "of", sum(len(c["expect"]) for c in CASES), "expected")
-print("read on the retry:", sum("retried" in r and "tags" in r for r in out))
+print("read on the retry:", sum("retried" in r and "tags" in r and not r.get("salvaged") for r in out), "| read tag by tag:", sum(bool(r.get("salvaged")) for r in out))
 print(f"\nclean cases: {ok}/{len(out)}; identical on rerun: {sum(r['same'] for r in out)}/{len(out)}; tags: {sum(len(r.get('tags', [])) for r in out)}; bad quotes: {sum(p.startswith('quote not') for r in out for p in r['problems'])}")

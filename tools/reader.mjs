@@ -59,7 +59,7 @@ try {
   console.error(e.message);
   process.exit(1);
 }
-const { rows, answersSheet, dropped, notRead, errors } = await readAll({ school, answers, ask: makeAsk({ host: opt.host, model: opt.model, format: opt.format }), prompt });
+const { rows, answersSheet, dropped, notRead, errors, salvaged } = await readAll({ school, answers, ask: makeAsk({ host: opt.host, model: opt.model, format: opt.format }), prompt });
 for (const e of errors) console.error(`a model call failed: ${e}`);
 const read = new Set(answers.map((a) => a.email).filter((e) => !notRead.includes(e)));
 if (!read.size) {
@@ -75,3 +75,4 @@ try {
   process.exit(1);
 }
 console.log(`teachers read ${read.size}, rows ${rows.length}, dropped ${dropped}, not read ${notRead.length}`);
+if (salvaged) console.log(`of those, ${salvaged} read tag by tag from a reply that was not valid JSON`);

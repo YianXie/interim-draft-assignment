@@ -4,6 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readAll, FIX_JSON } from "../../tools/reader/read.mjs";
+import { salvageTags } from "../../tools/reader/check.mjs";
 import { makeAsk } from "../../tools/reader/model.mjs";
 
 const EMAIL = "kit.lowe@fernhollow.example";
@@ -54,13 +55,50 @@ test("readAll still checks every quote in the corrected reply", async () => {
   assert.deepEqual(out.notRead, []);
 });
 
-test("readAll lists the teacher as not read when the corrected reply is broken too, and asks only twice", async () => {
+test("readAll takes the tags out of the corrected reply one by one when it is broken too, and asks only twice", async () => {
   let calls = 0;
   const ask = async () => (calls++, MISSING_BRACE);
   const out = await readAll({ school, answers, ask, prompt: "P" });
   assert.equal(calls, 2);
+  assert.deepEqual(out.notRead, []);
+  assert.equal(out.salvaged, 1);
+  assert.deepEqual(out.rows, [
+    [EMAIL, "", "Certificate", "qualified first aider", "qualified first aider"],
+    [EMAIL, "", "Language", "Mandarin", "Mandarin"],
+  ]);
+});
+
+test("readAll falls back to the first reply's tags when the corrected reply has none", async () => {
+  const ask = async (s, u, prior) => (prior.length ? "Sorry, here it is again." : EXTRA_BRACKET);
+  const out = await readAll({ school, answers, ask, prompt: "P" });
+  assert.deepEqual(out.rows, [[EMAIL, "", "Language", "Korean", "Korean"]]);
+  assert.equal(out.salvaged, 1);
+});
+
+test("readAll lists the teacher as not read when neither reply holds a tag", async () => {
+  let calls = 0;
+  const ask = async () => (calls++, '{"sentences":[{"starts":"I am a","tags":[]},"starts"\n]');
+  const out = await readAll({ school, answers, ask, prompt: "P" });
+  assert.equal(calls, 2);
   assert.deepEqual(out.notRead, [EMAIL]);
+  assert.equal(out.salvaged, 0);
+});
+
+test("salvaged tags pass the same checks: a stitched quote or an unranked course is dropped", async () => {
+  const broken = '{"sentences":[{"starts":"I","tags":[{"kind":"skill","tag":"first aid","quote":"first aider for six years","courses":[]}]},"starts":"I speak","tags":[{"kind":"language","tag":"Korean","quote":"Korean","courses":["Eskmere Coast Kayaking"]}]}]';
+  const out = await readAll({ school, answers, ask: async () => broken, prompt: "P" });
   assert.deepEqual(out.rows, []);
+  assert.equal(out.dropped, 2);
+  assert.deepEqual(out.notRead, []);
+});
+
+test("salvageTags reads the 27B's two slips, any key order, and gives null for prose", () => {
+  assert.deepEqual(salvageTags(MISSING_BRACE).map((t) => t.tag), ["qualified first aider", "Mandarin"]);
+  assert.deepEqual(salvageTags(EXTRA_BRACKET), [{ kind: "language", tag: "Korean", quote: "Korean", courses: [] }]);
+  assert.deepEqual(salvageTags('[{"quote":"Korean","courses":"C","tag":"Korean","kind":"language"}'), [{ kind: "language", tag: "Korean", quote: "Korean", courses: ["C"] }]);
+  assert.equal(salvageTags("I could not do that."), null);
+  assert.equal(salvageTags('{"starts":"I am","tags":[]}'), null);
+  assert.equal(salvageTags(null), null);
 });
 
 test("readAll retries a failed call as it was, without FIX_JSON", async () => {
