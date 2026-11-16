@@ -20,10 +20,11 @@ export function displayedRank(prefs, courseId) {
   return listings.length ? listings[0].rank : null;
 }
 
-export function toInstance(school) {
+// keep: [[tid, cid], …] for every teacher on a course now, or null for a fresh draft.
+export function toInstance(school, keep = null) {
   const teachers = [...school.teachers].sort(byKey((t) => key(t.email)));
   const courses = [...school.courses].sort(byKey((c) => c.id));
-  return {
+  const inst = {
     teachers: teachers.map((t) => ({
       id: t.id,
       quals: t.certificates,
@@ -40,6 +41,13 @@ export function toInstance(school) {
     weights: WEIGHTS,
     bonus: BONUS,
   };
+  if (keep) {
+    // By teacher email, then course code.
+    const email = new Map(school.teachers.map((t) => [t.id, key(t.email)]));
+    const k = (p) => (email.get(p.t) ?? "") + "\u0000" + p.c;
+    inst.kept = keep.map(([t, c]) => ({ t, c })).sort(byKey(k));
+  }
+  return inst;
 }
 
 const wrap = (t) => {
@@ -57,13 +65,20 @@ function build(inst) {
     else { cur.rank = Math.min(cur.rank, p.rank); cur.bonus = Math.max(cur.bonus, b); }
   }
   const submitters = new Set(inst.prefs.map((p) => p.t)), unticked = new Set(inst.unticked);
-  const repeaterOn = new Map(inst.teachers.filter((t) => t.repeater && t.incumbent).map((t) => [t.id, t.incumbent]));
-  const lockedCourses = new Set([...repeaterOn.values()].filter((c) => !unticked.has(c)));
+  // With a kept draft nobody is forced: a returning sponsor not on a course now was taken off it by the office.
+  const kept = inst.kept ?? null, keptT = new Set(kept ? kept.map((k) => k.t) : []), keptOn = new Map();
+  if (kept) for (const k of kept) keptOn.set(k.c, (keptOn.get(k.c) ?? 0) + 1);
+  const on = (c) => keptOn.get(c) ?? 0;
+  const repeaterOn = kept ? new Map() : new Map(inst.teachers.filter((t) => t.repeater && t.incumbent).map((t) => [t.id, t.incumbent]));
+  const lockedCourses = kept
+    ? new Set(inst.courses.filter((c) => !unticked.has(c.id) && on(c.id) > 0).map((c) => c.id))
+    : new Set([...repeaterOn.values()].filter((c) => !unticked.has(c)));
   const vars = [], byT = new Map(inst.teachers.map((t) => [t.id, []])), byC = new Map(inst.courses.map((c) => [c.id, []]));
   const forced = [];
   for (const c of inst.courses) {
-    if (unticked.has(c.id)) continue;
+    if (unticked.has(c.id) || on(c.id) >= c.max) continue;
     for (const t of inst.teachers) {
+      if (keptT.has(t.id)) continue;
       const inc = repeaterOn.get(t.id);
       if (inc && inc !== c.id) continue;
       if (!c.requires.every((r) => t.quals.includes(r))) continue;
@@ -82,9 +97,10 @@ function build(inst) {
     if (unticked.has(c.id)) return;
     const here = byC.get(c.id).map((v) => "+ " + v.name);
     if (lockedCourses.has(c.id)) {
+      if (on(c.id) >= c.max) return; // already full or over: nobody new, nothing short.
       const s = "s" + i; conts.push(s); shortTerms.push([1, s]);
-      rows.push(` r${r++}:\n${wrap([...here, "+ " + s])}\n >= ${c.min}`);
-      rows.push(` r${r++}:\n${wrap(here)}\n <= ${c.max}`);
+      rows.push(` r${r++}:\n${wrap([...here, "+ " + s])}\n >= ${c.min - on(c.id)}`);
+      if (here.length || !kept) rows.push(` r${r++}:\n${wrap(here)}\n <= ${c.max - on(c.id)}`);
     } else {
       const y = "y" + i; bins.push(y);
       if (here.length) {
@@ -120,10 +136,11 @@ function lpText(m, sense, terms, pins) {
 // [short seats (min), owed on a top-4 choice (max), score (max), no-form placed (min)]. pairs: one [tid, cid] per placed column.
 // With fit.xlsx, two more values follow: teachers on a course they fit (max), then teachers on the same course as in
 // the plain draft, the one built without fit.xlsx (max).
-export function solveDraft(highs, school) {
-  const inst = toInstance(school), m = build(inst), pins = [], values = [];
+// With keep ([[tid, cid], …], everyone on a course now), those teachers stay put and pairs holds only the new placements.
+export function solveDraft(highs, school, keep = null) {
+  const inst = toInstance(school, keep), m = build(inst), pins = [], values = [];
   let res;
-  const placed = () => m.vars.filter((v) => res.Columns[v.name] && res.Columns[v.name].Primal > 0.5);
+  const placed = () => (res ? m.vars.filter((v) => res.Columns[v.name] && res.Columns[v.name].Primal > 0.5) : []);
   const run = (sense, terms) => {
     if (!terms.length) { values.push(0); return true; }
     res = highs.solve(lpText(m, sense, terms, pins), OPTIONS);
