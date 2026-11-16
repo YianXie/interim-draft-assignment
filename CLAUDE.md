@@ -68,7 +68,7 @@ Data flow: **files → `School` → solver → `Mock` state → snapshots in Ind
 - `tests/unit/` (`node:test`) cover import, solver vs expected JSON, recheck (one broken draft per rule), reasons, export, past, fit, reader. `*-fixture.mjs` files are helpers that parse the fixture folders.
 - `tests/e2e/` (Playwright, Chromium) drive real uploads and screens. `helpers.mjs` collects page errors and CSP violations; `words.mjs` is the forbidden-words check; `network.spec.mjs` asserts zero outside requests.
 - Screen budgets: `tests/e2e/measure-source.mjs` holds `BUDGETS` and `INSPECT`, copied from `seed/measure.cjs` and locked by SHA-256 in `tests/e2e/lock.json` (checked by `tests/unit/lock.test.mjs`). Do not edit them. Pages mark up `data-rows`, `data-row` and `data-panel` for this measurement; Start/To do use the `first` budget, lists `list`, an open reason `detail`.
-- `docs/hand-checks.md` lists checks done by hand in real Excel/Chrome, three still not done.
+- `docs/hand-checks.md` lists the seven checks done by hand in real Excel/Chrome.
 
 ## Other folders
 

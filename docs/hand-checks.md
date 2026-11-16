@@ -1,6 +1,6 @@
 # Hand checks
 
-Four checks that a browser test cannot do. Use invented data only.
+Seven checks that a browser test cannot do. Use invented data only.
 
 ## 1. Real Excel
 
@@ -27,8 +27,22 @@ Four checks that a browser test cannot do. Use invented data only.
 2. Double-click `start-demo.command`.
 3. Tell the demo story: drop, Build, open a teacher, Move to, Undo, move again, names on and off, reload, Download, find the change in the workbook.
 
-## Not done yet
+## 5. Real Excel with last year's files
 
-- **Not done.** Real Excel with last year's files: drop the six and `fixtures/past`'s four, press Build, press Download, and open the workbook in an activated copy of Excel. It must open with no repair prompt, with its Last year column on the Teachers sheet and its Last year sheet.
-- **Not done.** Real Excel with `fit.xlsx`: drop the six and `fixtures/fit/fit.xlsx`, press Build, press Download, and open the workbook in an activated copy of Excel. It must open with no repair prompt, with its From their form column on the Teachers sheet.
-- **Not done.** Real Excel after Add forms: drop the four needed files (not `round2.xlsx` or `singapore.xlsx`), press Build, add `round2.xlsx` and `singapore.xlsx` with Add forms, press Download, and open the workbook in an activated copy of Excel. It must open with no repair prompt.
+1. Drop the six and `fixtures/past`'s four, press Build, press Download.
+2. Open the workbook in an activated copy of Excel.
+3. It must open with no repair prompt, with its Last year column on the Teachers sheet and its Last year sheet.
+
+## 6. Real Excel with `fit.xlsx`
+
+1. Drop the six and `fixtures/fit/fit.xlsx`, press Build, press Download.
+2. Open the workbook in an activated copy of Excel.
+3. It must open with no repair prompt, with its From their form column on the Teachers sheet.
+
+## 7. Real Excel after Add forms
+
+1. Drop the four needed files (not `round2.xlsx` or `singapore.xlsx`) and press Build.
+2. Add `round2.xlsx` and `singapore.xlsx` with Add forms, then press Download.
+3. Open the workbook in an activated copy of Excel. It must open with no repair prompt.
+
+Checks 5, 6 and 7 passed on 2026-11-16, on commit c64667f.

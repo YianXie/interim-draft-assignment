@@ -45,7 +45,7 @@ It has only ever seen invented data: an invented school, invented people, invent
 - `npm run check` builds, runs the unit tests and the browser tests, and ends with `CHECK OK`.
 - `npm run check:final` does the same with the browser tests repeated five times.
 - Both start their own server on port 4173. With the demo already open there, run them on another port: `INTERIM_PORT=4174 npm run check`.
-- `docs/hand-checks.md` lists the four checks done by hand, and three not done yet.
+- `docs/hand-checks.md` lists the seven checks done by hand.
 
 ## Things to know
 
