@@ -184,6 +184,20 @@ test("names off: the card, History and the download hold no name or email", asyn
 });
 const addedCount = (page) => page.locator("#main [data-row]").first().evaluate((r) => r.querySelector("span").lastChild.textContent.trim().split(" ").at(-1));
 
+test("the card says forms are not stored, and after Add and place each file says file not added again", async ({ page }) => {
+  watchPage(page);
+  await buildRoundOne(page);
+  const note = "Forms are read, never stored in this browser, so after Add and place each file says file not added again.";
+  await openCard(page);
+  await expect(page.locator("#main [data-later-note]")).toHaveText(note);
+  await page.getByRole("button", { name: "Back" }).click();
+  await addBoth(page);
+  await openCard(page);
+  await expect(page.locator("#main [data-later-note]")).toHaveText(note);
+  // With nothing added, a row is a placeholder, not a slot.
+  for (const f of LATER) await expect(page.locator(`#main [data-placeholder="${f}"]`)).toContainText("file not added");
+});
+
 test("the Add forms card fits the detail budget", async ({ page }) => {
   watchPage(page);
   await buildRoundOne(page);

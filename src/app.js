@@ -461,6 +461,7 @@ async function addLater() {
 function formsCard() {
   const others = Object.keys(laterSlots).filter((n) => !LATER.includes(n));
   return card(`<div data-drop>${back()}${title("Add forms")}
+    <p class="q intro" data-later-note>Forms are read, never stored in this browser, so after Add and place each file says file not added again.</p>
     <div class="gap" data-rows>${[...LATER, ...others].map((n) => slotRow(n, laterSlots, laterHeld)).join("")}</div>
     <div class="links"><label class="link choose">Choose files<input type="file" multiple accept=".xlsx" data-k="later-files"></label></div>
     ${laterFailed ? `<p class="need gap" data-failed>Couldn't place anyone. Nothing changed.</p>` : ""}
