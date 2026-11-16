@@ -48,6 +48,7 @@ function remember(snap) {
   });
 }
 function startOver() {
+  if (!window.confirm("Delete the draft, every version and what was read from the files? This cannot be undone.")) return;
   const toStart = () => location.reload();
   saving.catch(() => {}).then(() => loadFailed || wipe()).then(toStart, toStart);
 }

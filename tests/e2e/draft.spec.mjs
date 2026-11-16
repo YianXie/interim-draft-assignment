@@ -300,6 +300,7 @@ test("teacher row order does not change when invented names change", async ({ pa
     expect(ids).toEqual([...ids].sort());
     // A built draft is remembered, so the second school needs a Start of its own.
     await page.getByRole("button", { name: "History" }).click();
+    page.once("dialog", (d) => d.accept());
     await page.getByRole("button", { name: "Start over" }).click();
     await expect(page.locator("[data-slot]")).toHaveCount(6);
   }

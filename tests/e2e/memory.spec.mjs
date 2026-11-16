@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readBook } from "../../src/xlsx.js";
 import { buildButton, buildDraft, dropSchool, measure, schoolFiles, watchPage } from "./helpers.mjs";
+import { forbiddenIn } from "./words.mjs";
 
 const BUILD = 1; // The Build snapshot is always version 1.
 
@@ -132,6 +133,7 @@ test("a load that fails never overwrites the saved draft", async ({ page }) => {
   await expect(saved(page)).toHaveText("");
   await expect(saved(page)).not.toHaveAttribute("data-version");
   await history(page);
+  page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Start over" }).click();
   await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(4);
   expect(await stored(page)).toEqual({ upload: 1, snapshots: 2 });
@@ -315,6 +317,7 @@ test("Start over wipes both stores and returns to Start", async ({ page }) => {
   await savedAt(page, 2);
   expect(await stored(page)).toEqual({ upload: 1, snapshots: 2 });
   await history(page);
+  page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Start over" }).click();
   await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(4);
   await expect(page.locator("[data-result]")).toHaveCount(0);
@@ -322,6 +325,24 @@ test("Start over wipes both stores and returns to Start", async ({ page }) => {
   expect(await stored(page)).toEqual({ upload: 0, snapshots: 0 });
   await page.reload();
   await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(4);
+});
+
+test("Start over asks first, and Cancel keeps everything", async ({ page }) => {
+  await goBuild(page);
+  await moveOne(page, placedIds(await placements(page), 1)[0]);
+  await savedAt(page, 2);
+  await history(page);
+  const asked = page.waitForEvent("dialog");
+  const click = page.getByRole("button", { name: "Start over" }).click();
+  const dialog = await asked;
+  expect(dialog.type()).toBe("confirm");
+  expect(forbiddenIn([dialog.message()])).toEqual([]);
+  await dialog.dismiss();
+  await click;
+  await expect(page.getByRole("button", { name: "Start over" })).toBeVisible();
+  expect(await stored(page)).toEqual({ upload: 1, snapshots: 2 });
+  await page.reload();
+  await expect(page.locator("[data-result]")).not.toHaveCount(0);
 });
 
 // Opens the first placed teacher who chose their course on a form, on the Move screen.
