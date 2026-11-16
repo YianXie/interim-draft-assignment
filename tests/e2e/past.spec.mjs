@@ -300,8 +300,8 @@ test("search for 'none of their' lists only those teachers", async ({ page }) =>
   await expect(rows).toHaveCount(TEACHERS);
   await search(page).fill("none of their");
   await expect(rows).toHaveCount(none);
-  // The rows themselves do not change: T number and course, as before.
-  expect(await rows.first().locator("span").count()).toBe(2);
+  // The rows themselves do not change: T number, code and course, as before.
+  expect(await rows.first().locator("span").count()).toBe(3);
   for (const id of await rows.evaluateAll((els) => els.map((e) => e.dataset.teacher))) {
     await page.locator(`#main [data-teacher="${id}"]`).click();
     await expect(last(page)).toHaveText("Last year: none of their choices");
@@ -323,8 +323,8 @@ test("search finds the download's labels too", async ({ page }) => {
     await search(page).fill(typed);
     await expect(rows, typed).toHaveCount(n);
   }
-  // The label is in the search text only: a row still shows its T number and course, nothing more.
-  expect(await rows.first().locator("span").count()).toBe(2);
+  // The label is in the search text only: a row still shows its T number, code and course, nothing more.
+  expect(await rows.first().locator("span").count()).toBe(3);
   expect(await page.locator("#main [data-rows]").innerText()).not.toMatch(/top 4|5 to 7|not found|none/i);
 });
 

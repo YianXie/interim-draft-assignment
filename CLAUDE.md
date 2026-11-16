@@ -12,7 +12,7 @@ A laptop-only demo (Interim Draft Assistant): six invented `.xlsx` files become 
 - **Never loosen an existing check** without the owner's yes. "Done" means pasted output of `npm run check` ending in `CHECK OK`.
 - **Screen fixes: rename or remove, never add a sentence.** Screens have word/size budgets (below).
 - On-screen wording says "best draft found", never "proven", "optimal" or "secure". The forbidden-word list is in `tests/e2e/words.mjs` (also: Keep, Kept, Swap, mixed, gender, Sample school, …) and is matched whole-word, case-insensitive, over visible text, `title`/`aria-label`/`placeholder`/`value`, and every workbook string.
-- The page must never make outside requests. The CSP meta in `public/index.html` must stay the first element in `<head>`; no inline scripts, no outside links. The page never calls a model.
+- The page must never make outside requests. The CSP meta in `public/index.html` must stay the first element in `<head>`; no inline scripts, and no outside links except the one plain link to the project's GitHub page (owner-approved 2026-11-16). The page never calls a model.
 - Dependencies are pinned exactly in `package.json`. `src/xlsx.js` is the only file that imports `hucre`.
 
 ## Commands

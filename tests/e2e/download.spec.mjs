@@ -30,7 +30,7 @@ async function moveOne(page) {
   await page.getByRole("button", { name: "All options" }).click();
   await page.getByRole("button", { name: "Not placed", exact: true }).click();
 }
-const screenPairs = (page) => page.locator("#main [data-row][data-teacher]").evaluateAll((els) => els.map((e) => [...e.querySelectorAll("span")].map((s) => s.textContent)));
+const screenPairs = (page) => page.locator("#main [data-row][data-teacher]").evaluateAll((els) => els.map((e) => ["name", "course"].map((k) => e.querySelector(`[data-cell="${k}"]`).textContent)));
 
 test("workbook equals the screen after moves", async ({ page }) => {
   await goBuild(page);
@@ -48,7 +48,7 @@ test("workbook equals the screen after moves", async ({ page }) => {
   expect(changes[1][2]).toMatch(/^Moved .+ to not placed$/);
   // Courses: each course's sponsors are the ones the Courses tab lists.
   await tab(page, "Courses").click();
-  const listed = await page.locator("#main [data-row][data-course]").evaluateAll((els) => els.map((e) => [e.querySelector("span").textContent, [...e.querySelectorAll(".pair span")].map((s) => s.textContent).sort()]));
+  const listed = await page.locator("#main [data-row][data-course]").evaluateAll((els) => els.map((e) => [e.querySelector('[data-cell="name"]').textContent, [...e.querySelectorAll(".pair span")].map((s) => s.textContent).sort()]));
   const courses = sheetOf(dl, "Courses");
   for (const [name, sponsors] of listed) {
     const r = courses.find((x) => x[1] === name);

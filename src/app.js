@@ -135,6 +135,10 @@ let startTab = "now"; // now or past: which files Start lists. Either tab takes 
 
 // An icon only, so the row keeps its words. Removing a file lets the same name be dropped again.
 const X_ICON = `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+// The project's own page on GitHub. A plain link: nothing is fetched from it, and the page's policy still blocks every outside request.
+const REPO = "https://github.com/YianXie/interim-draft-assignment";
+const GH_ICON = `<svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>`;
+const repoLink = (withText) => `<a class="repo" data-repo data-k="repo" href="${REPO}" target="_blank" rel="noopener noreferrer"${withText ? "" : ` aria-label="GitHub" title="GitHub"`}>${GH_ICON}${withText ? "<span>GitHub</span>" : ""}</a>`;
 const removeBtn = (name, h = held) => (h.has(name) ? `<button class="x" data-act="remove" data-file="${esc(name)}" aria-label="Remove ${esc(name)}">${X_ICON}</button>` : "");
 // Start passes nothing and reads its own files; the Add forms card passes its own, so neither ever sees the other's.
 function slotRow(name, s = slots, h = held) {
@@ -190,7 +194,8 @@ function startView() {
       <p class="q intro">Optional: add all four or none. With them, each teacher's result last year is on their card and in the download, and anyone who got none of their choices last year is put on a top-4 choice first where the rules allow.</p>
       ${past.map((n) => slotRow(n)).join("")}</div>
     <div class="acts"><button class="btn fill" data-act="build" data-k="build"${canBuild() ? "" : " disabled"}>${phase === "building" ? "Building" : "Build"}</button></div>
-  </div>${aboutPanel()}`;
+  </div>${aboutPanel()}
+  <p class="narrow repo-line">${repoLink(true)}</p>`;
 }
 
 // How the page and the draft work, folded under Start. Its open state lives here, since every render rewrites the page.
@@ -285,6 +290,7 @@ function topBar() {
     <div class="right">
       <button class="switch" role="switch" data-names data-k="names" aria-checked="${Mock.state.namesOn}">Show names <span class="track"><span class="knob"></span></span></button>
       <button class="plain" data-download data-k="download" title="${Mock.state.namesOn ? "Download with names" : "Download with T numbers"}">Download</button>
+      ${repoLink(false)}
     </div></div>`;
 }
 const bottomLine = () => `<div class="wrap"><span data-saved></span>
@@ -491,37 +497,54 @@ function todoBody(item) {
   if (item.kind === "course") return courseBody(item.cid);
   return item.kind === "teacher" ? teacherBody(item.tid) : noFormBody(item.tids);
 }
+// One line and a preview per To do item, for the side list beside the open item.
+function todoPreview(item) {
+  if (item.kind === "course") {
+    const f = worst(item.cid);
+    return [esc(Mock.course(item.cid).name), f ? esc(shortNeed(f.text)) : ""];
+  }
+  if (item.kind === "teacher") return [L(item.tid), "Not placed"];
+  return ["No form", item.tids.length === 1 ? "1 person" : `${item.tids.length} people`];
+}
+function todoNav(list) {
+  return `<nav class="todo-nav" aria-label="To do list" data-rows>${list.map((item, i) => {
+    const [name, preview] = todoPreview(item);
+    return `<button class="todo-item${item.kind === "noForm" ? "" : " need-item"}" data-act="pick" data-i="${i}" data-k="ti-${i}"${i === view.idx ? ` aria-current="true"` : ""}>
+      <span class="todo-n">${i + 1}</span><span class="todo-text"><span>${name}</span><small class="q">${preview}</small></span></button>`;
+  }).join("")}</nav>`;
+}
 function todoHome() {
   const list = Mock.todo(), s = Mock.summary();
   view.idx = list.length ? view.idx % list.length : 0;
   const body = list.length ? `<section class="card" data-panel data-rows>
       ${list.length > 1 ? `<button class="link nextbtn" data-act="next" data-k="nx">Next</button>` : ""}
       ${todoBody(list[view.idx])}</section>` : "";
-  return `<div class="narrow home">${bigLine()}
-    <p class="sub">best draft found&ensp;${s.placed} of ${s.teachers} teachers placed</p>${body}</div>`;
+  return `<div class="home${list.length > 1 ? " todo-layout" : ""}"><div class="narrow">${bigLine()}
+    <p class="sub">best draft found&ensp;${s.placed} of ${s.teachers} teachers placed</p>${body}</div>${list.length > 1 ? todoNav(list) : ""}</div>`;
 }
 const tools = (which) => `<div class="tools"><input class="search" type="search" placeholder="Search" aria-label="Search" data-search="${which}" data-k="${which}-q" value="${esc(view.q[which])}"></div>`;
 function coursesHome() {
   const weight = (c) => { const f = worst(c.id); return !f ? 2 : f.level === "needs" ? 0 : 1; };
   const list = [...Mock.courses()].sort((a, b) => weight(a) - weight(b) || a.name.localeCompare(b.name));
   return `${bigLine()}${tools("courses")}
-    <div data-rows>${list.map((c) => {
+    <div data-rows><div class="row r-course head" data-head><span>Code</span><span>Course</span><span>Sponsors</span><span>Status</span></div>${list.map((c) => {
       const f = worst(c.id), sp = Mock.sponsors(c.id);
-      return `<button class="row r-course" data-row data-course="${esc(c.id)}" data-q="${esc(c.name + " " + sp.map(who).join(" "))}" data-k="c-${esc(c.id)}">
-        <span>${esc(c.name)}</span><span class="pair">${sp.map((t) => `<span>${L(t)}</span>`).join("")}</span>
+      return `<button class="row r-course" data-row data-course="${esc(c.id)}" data-q="${esc(c.id + " " + c.name + " " + sp.map(who).join(" "))}" data-k="c-${esc(c.id)}">
+        <span class="code" data-cell="code">${esc(c.id)}</span><span data-cell="name">${esc(c.name)}</span><span class="pair">${sp.map((t) => `<span>${L(t)}</span>`).join("")}</span>
         <span class="${f && f.level === "needs" ? "need" : "q"}">${f ? esc(shortNeed(f.text)) : ""}</span></button>`;
     }).join("")}<div class="row q" data-empty hidden>No matches</div></div>`;
 }
 function teachersHome() {
   const order = Mock.state.namesOn ? (a, b) => teacherOrder(b.id) - teacherOrder(a.id) || byId(a, b) : byId;
-  const list = [...Mock.teachers()].sort(order);
+  const list = [...Mock.teachers()].sort(order), tags = Mock.fit();
   return `${bigLine()}${tools("teachers")}
-    <div data-rows>${list.map((t) => {
+    <div data-rows><div class="row r-teacher${tags ? " r-tags" : ""} head" data-head><span>Teacher</span><span>Code</span><span>Course</span>${tags ? "<span>Tags</span>" : ""}</div>${list.map((t) => {
       const c = Mock.placedOn(t.id), cn = c ? Mock.course(c).name : "Not placed";
       // Search also finds last year's result, in the card's words and in the download's, and with names on what their form showed.
       const was = Mock.past() && Mock.lastYear(t.id);
-      return `<button class="row r-teacher" data-row data-teacher="${t.id}" data-k="t-${t.id}" data-q="${esc([who(t.id), cn, Mock.lastYearLine(t.id), was ? RESULT_LABEL[was.result] : "", Mock.fitSearch(t.id)].filter(Boolean).join(" "))}">
-        <span>${L(t.id)}</span><span class="${c ? "" : "need"}">${esc(cn)}</span></button>`;
+      const tagList = tags ? Mock.fitTags(t.id) : [];
+      return `<button class="row r-teacher${tags ? " r-tags" : ""}" data-row data-teacher="${t.id}" data-k="t-${t.id}" data-q="${esc([who(t.id), c, cn, Mock.lastYearLine(t.id), was ? RESULT_LABEL[was.result] : "", Mock.fitSearch(t.id), ...tagList].filter(Boolean).join(" "))}">
+        <span data-cell="name">${L(t.id)}</span><span class="code" data-cell="code">${c ? esc(c) : ""}</span><span class="${c ? "" : "need"}" data-cell="course">${esc(cn)}</span>${tags ? `<span class="tags" data-cell="tags">${tagList.map((x) => `<span class="tag">${esc(x)}</span>`).join("")}</span>` : ""}</button>`;
     }).join("")}<div class="row q" data-empty hidden>No matches</div></div>`;
 }
 
@@ -610,6 +633,7 @@ document.addEventListener("click", (e) => {
     case "addLater": addLater(); break;
     case "back": pop(); break;
     case "next": view.idx += 1; render(); break;
+    case "pick": view.idx = Number(d.i); render(); break;
     case "moveTo": Mock.move(d.id, d.c || null); if (top_() && top_().k === "move") pop(); break;
     case "leave": Mock.leave([d.id]); break;
     case "leaveGroup": Mock.leave(Mock.todo().find((i) => i.kind === "noForm")?.tids ?? []); break;

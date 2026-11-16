@@ -126,8 +126,8 @@ test("search finds a teacher by Fact with names on only", async ({ page }) => {
   await expect(rows).not.toHaveCount(0);
   const found = await rows.evaluateAll((els) => els.map((e) => e.dataset.teacher));
   expect(found.every((id) => want.on[id])).toBe(true);
-  // The rows themselves do not change: name and course, as before.
-  expect(await rows.first().locator("span").count()).toBe(2);
+  // The rows themselves do not change: name, code, course and tags, as before.
+  expect(await rows.first().locator("[data-cell]").count()).toBe(4);
   await names(page).click();
   await expect(names(page)).toHaveAttribute("aria-checked", "false");
   await search(page).fill("first aid");

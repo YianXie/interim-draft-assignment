@@ -103,6 +103,8 @@ function fitLine(tid) {
 }
 // What the Teachers list search also matches: the Fact labels, with names on only.
 const fitSearch = (tid) => (S.namesOn ? fitRows(tid).map((r) => r.fact).join(" ") : "");
+// The Tags column on the Teachers list: each Fact label once with names on, each Kind once with names off.
+const fitTags = (tid) => [...new Set(fitRows(tid).map((r) => (S.namesOn ? factText(r) : r.kind)))];
 
 function status(cid) {
   const c = C.get(cid);
@@ -284,5 +286,5 @@ function describe(snap) {
   return "Undid the last change";
 }
 
-export const Mock = { state: S, school: () => D, on, onSnapshot, init, build, teacher, course, teachers, courses, allCourses, label, contact, placedOn, sponsors, seatsLeft, choice, choiceText, past, lastYear, lastYearLine, thisYear, fit, fitLine, fitSearch, status, reason,
+export const Mock = { state: S, school: () => D, on, onSnapshot, init, build, teacher, course, teachers, courses, allCourses, label, contact, placedOn, sponsors, seatsLeft, choice, choiceText, past, lastYear, lastYearLine, thisYear, fit, fitLine, fitSearch, fitTags, status, reason,
   teacherFlags, courseFlags, todo, summary, optionsFor, whoAsked, move, leave, addForms, undo, canUndo, restore, setNames, describe, handOff, history: () => [...S.history] };

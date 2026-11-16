@@ -45,7 +45,7 @@ export function lineFor(rows, cid, namesOn) {
 export async function expectedLines(page, namesOn) {
   const { emailOf, rowsOf, courseId } = await fitFixture();
   const rows = await page.locator("#main [data-row][data-teacher]").evaluateAll((els) =>
-    els.map((e) => ({ id: e.dataset.teacher, name: e.children[0].textContent, course: e.children[1].textContent })));
+    els.map((e) => ({ id: e.dataset.teacher, name: e.querySelector('[data-cell="name"]').textContent, course: e.querySelector('[data-cell="course"]').textContent })));
   expect(rows.length).toBeGreaterThan(0);
   return Object.fromEntries(rows.map((r) => {
     const email = emailOf.get(r.name);

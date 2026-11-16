@@ -26,7 +26,7 @@ const reloaded = async (page) => { await page.reload(); await expect(page.locato
 async function placements(page) {
   await tab(page, "Teachers").click();
   await expect(page.locator("#main [data-row][data-teacher]")).toHaveCount(96);
-  return page.locator("#main [data-row][data-teacher]").evaluateAll((els) => Object.fromEntries(els.map((e) => [e.dataset.teacher, e.children[1].textContent])));
+  return page.locator("#main [data-row][data-teacher]").evaluateAll((els) => Object.fromEntries(els.map((e) => [e.dataset.teacher, e.querySelector('[data-cell="course"]').textContent])));
 }
 const placedIds = (map, n) => Object.keys(map).filter((id) => map[id] !== "Not placed").slice(0, n);
 

@@ -41,7 +41,7 @@ async function buildRoundOne(page) {
 // Every teacher's course as the Teachers tab shows it, by T number.
 async function placements(page) {
   await tab(page, "Teachers").click();
-  const rows = await page.locator("#main [data-row][data-teacher]").evaluateAll((els) => els.map((e) => [e.dataset.teacher, e.querySelectorAll("span")[1].textContent]));
+  const rows = await page.locator("#main [data-row][data-teacher]").evaluateAll((els) => els.map((e) => [e.dataset.teacher, e.querySelector('[data-cell="course"]').textContent]));
   return Object.fromEntries(rows);
 }
 const onCourse = (all) => Object.fromEntries(Object.entries(all).filter(([, c]) => c !== "Not placed"));
