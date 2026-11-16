@@ -257,13 +257,17 @@ function restore(version) {
 }
 // Round 2 or Singapore forms added to a built draft: the new School comes in (history stays), the solver's new placements
 // are added, and nobody already on a course moves. Anyone now placed, or who sent one of the added forms, is no longer left.
+// Teachers the office moved to Not placed by hand: not on a course, and moved. Add forms leaves them where they are.
+// Leave unplaced does not count: it never moves anyone.
+const handOff = () => D.teachers.filter((t) => !S.placements[t.id] && S.moved.has(t.id)).map((t) => t.id);
 function addForms(school, pairs, rounds, senders) {
   D = school;
   T = new Map(D.teachers.map((t) => [t.id, t]));
   C = new Map(D.courses.map((c) => [c.id, c]));
   for (const [t, c] of pairs) { S.placements[t] = c; S.moved.delete(t); }
-  const sent = new Set(senders);
-  for (const id of [...S.left]) if (S.placements[id] || sent.has(id)) S.left.delete(id);
+  // A sender comes back to the To do, unless the office moved them to Not placed by hand.
+  const sent = new Set(senders), off = new Set(handOff());
+  for (const id of [...S.left]) if (S.placements[id] || (sent.has(id) && !off.has(id))) S.left.delete(id);
   append({ type: "forms", rounds: [...rounds], placed: pairs.length }, shown());
 }
 function setNames(on_) { S.namesOn = !!on_; emit(); }
@@ -281,4 +285,4 @@ function describe(snap) {
 }
 
 export const Mock = { state: S, school: () => D, on, onSnapshot, init, build, teacher, course, teachers, courses, allCourses, label, contact, placedOn, sponsors, seatsLeft, choice, choiceText, past, lastYear, lastYearLine, thisYear, fit, fitLine, fitSearch, status, reason,
-  teacherFlags, courseFlags, todo, summary, optionsFor, whoAsked, move, leave, addForms, undo, canUndo, restore, setNames, describe, history: () => [...S.history] };
+  teacherFlags, courseFlags, todo, summary, optionsFor, whoAsked, move, leave, addForms, undo, canUndo, restore, setNames, describe, handOff, history: () => [...S.history] };

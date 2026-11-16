@@ -110,6 +110,16 @@ test("an unplaced returning sponsor is treated like anyone", () => {
   assert.ok(!r.pairs.some(([t, c]) => t === sponsor.id && c === course.id));
 });
 
+test("teachers held out get no new placement", () => {
+  const free = solveDraft(highs, later, keep);
+  const out = free.pairs.slice(0, 3).map(([t]) => t);
+  assert.equal(out.length, 3);
+  const r = solveDraft(highs, later, keep, out);
+  assert.equal(r.status, "Optimal");
+  for (const [t] of r.pairs) assert.ok(!out.includes(t), t);
+  assert.deepEqual(newProblems(later, keep, [...keep, ...r.pairs]), []);
+});
+
 test("same files, shuffled, different T numbers, same new placements by email", async () => {
   const a = await build(seeded(1));
   const b = await build(seeded(2));

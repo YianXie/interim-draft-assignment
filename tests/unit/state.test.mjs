@@ -313,6 +313,26 @@ test("left is cleared for senders and the newly placed only", async () => {
   assert.equal(Mock.placedOn(placed), cid);
 });
 
+test("someone moved to Not placed by hand stays off and stays left after addForms", async () => {
+  const { base, highs, firstDraft, read } = await roundOne();
+  Mock.init(base);
+  Mock.build(firstDraft);
+  const sent = new Set(read.senders);
+  const off = base.teachers.find((t) => Mock.placedOn(t.id) && sent.has(t.id) && !t.returning);
+  const open = base.teachers.find((t) => !Mock.placedOn(t.id) && sent.has(t.id));
+  assert.ok(off && open);
+  Mock.move(off.id, null);
+  Mock.leave([open.id]);
+  assert.deepEqual(Mock.handOff(), [off.id]);
+  const solved = solveDraft(highs, read.school, placedPairs(), Mock.handOff());
+  assert.equal(solved.status, "Optimal");
+  assert.ok(!solved.pairs.some(([t]) => t === off.id));
+  Mock.addForms(read.school, solved.pairs, read.rounds, read.senders);
+  assert.equal(Mock.placedOn(off.id), null);
+  assert.ok(Mock.state.left.has(off.id), "still off the To do");
+  assert.ok(!Mock.state.left.has(open.id), "Leave unplaced does not hold a sender off");
+});
+
 test("describe a forms event", () => {
   const say = (rounds, placed) => Mock.describe({ event: { type: "forms", rounds, placed } });
   assert.equal(say(["Round 2"], 7), "Added Round 2 forms, placed 7");

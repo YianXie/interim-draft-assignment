@@ -21,7 +21,8 @@ export function displayedRank(prefs, courseId) {
 }
 
 // keep: [[tid, cid], …] for every teacher on a course now, or null for a fresh draft.
-export function toInstance(school, keep = null) {
+// out: T numbers held off every course, the teachers the office moved to Not placed by hand. Used with keep only.
+export function toInstance(school, keep = null, out = []) {
   const teachers = [...school.teachers].sort(byKey((t) => key(t.email)));
   const courses = [...school.courses].sort(byKey((c) => c.id));
   const inst = {
@@ -46,6 +47,7 @@ export function toInstance(school, keep = null) {
     const email = new Map(school.teachers.map((t) => [t.id, key(t.email)]));
     const k = (p) => (email.get(p.t) ?? "") + "\u0000" + p.c;
     inst.kept = keep.map(([t, c]) => ({ t, c })).sort(byKey(k));
+    inst.out = [...out].sort(byKey((t) => email.get(t) ?? ""));
   }
   return inst;
 }
@@ -66,7 +68,8 @@ function build(inst) {
   }
   const submitters = new Set(inst.prefs.map((p) => p.t)), unticked = new Set(inst.unticked);
   // With a kept draft nobody is forced: a returning sponsor not on a course now was taken off it by the office.
-  const kept = inst.kept ?? null, keptT = new Set(kept ? kept.map((k) => k.t) : []), keptOn = new Map();
+  // Kept teachers and those held out get no variables.
+  const kept = inst.kept ?? null, keptT = new Set(kept ? [...kept.map((k) => k.t), ...inst.out] : []), keptOn = new Map();
   if (kept) for (const k of kept) keptOn.set(k.c, (keptOn.get(k.c) ?? 0) + 1);
   const on = (c) => keptOn.get(c) ?? 0;
   const repeaterOn = kept ? new Map() : new Map(inst.teachers.filter((t) => t.repeater && t.incumbent).map((t) => [t.id, t.incumbent]));
@@ -137,8 +140,9 @@ function lpText(m, sense, terms, pins) {
 // With fit.xlsx, two more values follow: teachers on a course they fit (max), then teachers on the same course as in
 // the plain draft, the one built without fit.xlsx (max).
 // With keep ([[tid, cid], …], everyone on a course now), those teachers stay put and pairs holds only the new placements.
-export function solveDraft(highs, school, keep = null) {
-  const inst = toInstance(school, keep), m = build(inst), pins = [], values = [];
+// out lists teachers the office moved to Not placed by hand: they stay off every course.
+export function solveDraft(highs, school, keep = null, out = []) {
+  const inst = toInstance(school, keep, out), m = build(inst), pins = [], values = [];
   let res;
   const placed = () => (res ? m.vars.filter((v) => res.Columns[v.name] && res.Columns[v.name].Primal > 0.5) : []);
   const run = (sense, terms) => {

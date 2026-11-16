@@ -15,7 +15,7 @@ The office allocates International Round 1, then International Round 2, then Sin
 ## Decisions (owner, 2026-11-16)
 
 1. **Everyone placed now stays where they are**, whether the solver or the office put them there and whether or not that breaks a rule.
-2. **"Leave unplaced" does not stop the new solve.** Anyone not on a course can be placed. After the solve, a teacher stays marked as left only if they are still unplaced and sent none of the added forms.
+2. **"Leave unplaced" does not stop the new solve, but a hand move to Not placed does** (changed 2026-11-16 after the final review). Anyone not on a course can be placed, except a teacher the office moved to Not placed by hand (not on a course and in `moved`): they stay off every course. After the solve, a teacher stays marked as left only if they are still unplaced and either sent none of the added forms or were moved to Not placed by hand.
 3. **A course that already has sponsors and empty seats is filled first.** It counts like a returning-sponsor course today: fewest empty seats is the first priority.
 4. **Undo takes back the placements only.** The added forms stay in the school, so cards and the download keep showing the new choices.
 

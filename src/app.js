@@ -443,7 +443,7 @@ async function addLater() {
     if (phase !== "draft") return;
     // Read after the await: from here to addForms nothing yields, so a move made while Placing is in keep and stands.
     const keep = Mock.teachers().filter((t) => Mock.placedOn(t.id)).map((t) => [t.id, Mock.placedOn(t.id)]);
-    const { status, pairs } = solveDraft(highs, read.school, keep);
+    const { status, pairs } = solveDraft(highs, read.school, keep, Mock.handOff());
     if (status !== "Optimal" || newProblems(read.school, keep, [...keep, ...pairs]).length) { laterFailed = true; return; }
     // The upload is written first; the snapshot addForms makes is queued after it, so a failed upload write stops it too.
     inOrder(() => replaceUpload(read.school));

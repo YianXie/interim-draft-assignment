@@ -97,6 +97,20 @@ test("Add forms on a Round 1 draft places people and nobody on a course moves", 
   expect(watch.problems).toEqual([]);
 });
 
+test("someone moved to Not placed by hand is still not placed after Add forms", async ({ page }) => {
+  const watch = watchPage(page);
+  await buildRoundOne(page);
+  const all = await placements(page);
+  const id = Object.keys(onCourse(all))[0];
+  await page.locator(`#main [data-teacher="${id}"]`).click();
+  await page.getByRole("button", { name: "All options" }).click();
+  await page.locator('[data-k="np"]').click();
+  await expect.poll(async () => (await placements(page))[id]).toBe("Not placed");
+  await addBoth(page);
+  expect((await placements(page))[id]).toBe("Not placed");
+  expect(watch.problems).toEqual([]);
+});
+
 test("Undo after Add forms puts placements back and reload keeps the forms", async ({ page }) => {
   const watch = watchPage(page);
   await buildRoundOne(page);
