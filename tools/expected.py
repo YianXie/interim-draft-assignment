@@ -4,8 +4,14 @@ Run: uv run --no-project --isolated --with ortools --with openpyxl tools/expecte
 With --past it also reads fixtures/past/*.xlsx, adds the priority for those who got none of their choices
 last year as the second of four, and writes fixtures/expected-past.json instead.
 With --fit it also reads fixtures/fit/fit.xlsx and adds, after every other priority, most teachers on a course they fit;
-it writes fixtures/expected-fit.json, or fixtures/expected-past-fit.json with --past --fit. The keep stage is not computed here."""
+it writes fixtures/expected-fit.json, or fixtures/expected-past-fit.json with --past --fit. The keep stage is not computed here.
+With --later (alone) it builds on a kept draft, fixtures/later/kept.json ([{email, course}]): the kept teachers get no
+variables and stay where they are, even where that breaks a rule; a course's free seats are its seats minus its kept
+teachers; an offered course with a kept teacher runs and may stay short, and the first priority is its empty seats;
+an offered course with nobody kept runs full or not at all; a returning sponsor who is not kept is like anyone else.
+It writes fixtures/expected-later.json, where placed and running count kept and new teachers together."""
 import json, sys
+from collections import Counter
 from pathlib import Path
 from openpyxl import load_workbook
 from ortools.sat.python import cp_model as cp
@@ -14,8 +20,10 @@ ROOT = Path(__file__).resolve().parent.parent
 SCHOOL = ROOT / "fixtures" / "school"
 PAST = ROOT / "fixtures" / "past"
 FIT = ROOT / "fixtures" / "fit"
-if sys.argv[1:] not in ([], ["--past"], ["--fit"], ["--past", "--fit"]):
-    sys.exit("usage: expected.py [--past] [--fit]")
+LATER = ROOT / "fixtures" / "later"
+if sys.argv[1:] not in ([], ["--past"], ["--fit"], ["--past", "--fit"], ["--later"]):
+    sys.exit("usage: expected.py [--past] [--fit] | --later")
+WITH_LATER = "--later" in sys.argv[1:]
 WITH_PAST = "--past" in sys.argv[1:]
 WITH_FIT = "--fit" in sys.argv[1:]
 WEIGHTS = [7, 6, 5, 4, 3, 2, 1]
@@ -57,13 +65,23 @@ for fname in ("round1", "round2", "singapore"):
 
 # A returning sponsor whose course is not offered is an ordinary teacher.
 rep = {e: c for e, c in sponsor.items() if courses[c]["offered"]}
+kept = {}
+if WITH_LATER:
+    kept = {r["email"]: r["course"] for r in json.loads((LATER / "kept.json").read_text())}
+    assert all(e in people for e in kept) and all(c in courses for c in kept.values()), "kept.json names someone unknown"
+    rep = {}  # a kept sponsor gets no variable; a sponsor who is not kept was taken off by the office: like anyone else
+held = Counter(kept.values())  # course -> kept teachers on it
 locked = set(rep.values())
 
 m = cp.CpModel(); x = {}
 for c, cd in sorted(courses.items()):
     if not cd["offered"]:
         continue
+    if held[c] >= cd["seats"]:
+        continue  # at or over its seats with kept teachers: nobody new
     for e in sorted(people):
+        if e in kept:
+            continue
         if e in rep and rep[e] != c:
             continue
         if cd["cert"] and cd["cert"] not in people[e]["certs"]:
@@ -81,6 +99,12 @@ for c, cd in sorted(courses.items()):
     if not cd["offered"]:
         continue
     here = [v for (_, b), v in x.items() if b == c]
+    if held[c]:
+        # Runs already: new teachers fill at most its free seats, and every free seat left empty counts.
+        room = max(0, cd["seats"] - held[c])
+        s = m.new_int_var(0, room, f"s_{c}"); short.append(s)
+        m.add(sum(here) <= room); m.add(sum(here) + s >= room)
+        continue
     r = m.new_bool_var(f"r_{c}"); running[c] = r
     m.add(sum(here) <= cd["seats"] * r); m.add(sum(here) >= r)
     if c in locked:
@@ -141,13 +165,19 @@ def solve(sense, expr):
 values = []
 for sense, ts in stages:
     e = sum(c * v for c, v in ts); v = solve(sense, e); values.append(v); m.add(e == v)
-placed = sum(x.values()); nrun = sum(running.values())
+placed = len(kept) + sum(x.values()); nrun = len(held) + sum(running.values())
 res = dict(values=values, placedMin=solve("min", placed), placedMax=solve("max", placed),
            runningMin=solve("min", nrun), runningMax=solve("max", nrun))
 if WITH_PAST:
     res["owed"] = len({e for e, _ in top4})  # how many teachers the second priority can count
-name = "expected" + ("-past" if WITH_PAST else "") + ("-fit" if WITH_FIT else "") + ".json"
+name = "expected" + ("-past" if WITH_PAST else "") + ("-fit" if WITH_FIT else "") + ("-later" if WITH_LATER else "") + ".json"
 (ROOT / "fixtures" / name).write_text(json.dumps(res, indent=2) + "\n")
+if WITH_LATER:
+    print(json.dumps(res))
+    if values[0] == 0:
+        sys.exit("kept.json leaves no running course short, so the first priority is not checked")
+    print(f"kept {len(kept)} on {len(held)} courses, new placed {res['placedMin'] - len(kept)}, short seats {values[0]}, new no-form placed {values[-1]}")
+    sys.exit(0)
 
 # Counts for the To do list, from the pinned result (all fixed once the values are pinned)
 n_off = sum(c["offered"] for c in courses.values())

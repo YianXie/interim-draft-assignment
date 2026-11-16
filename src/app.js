@@ -1,11 +1,11 @@
 import { Mock } from "./state.js";
-import { parseFiles, SLOTS, PAST_SLOTS, OPTIONAL, FIT } from "./import.js";
+import { parseFiles, readForms, LATER, SLOTS, PAST_SLOTS, OPTIONAL, FIT } from "./import.js";
 import { RESULT_LABEL } from "./past.js";
 import { loadHighs, solveDraft, toDraft } from "./solver.js";
-import { recheck } from "./recheck.js";
+import { recheck, newProblems } from "./recheck.js";
 import { sheetsFor, fileName } from "./export.js";
 import { writeBook } from "./xlsx.js";
-import { addSnapshot, loadAll, saveUpload, wipe } from "./store.js";
+import { addSnapshot, loadAll, replaceUpload, saveUpload, wipe } from "./store.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const L = (id) => esc(Mock.label(id));
@@ -127,14 +127,15 @@ let startTab = "now"; // now or past: which files Start lists. Either tab takes 
 
 // An icon only, so the row keeps its words. Removing a file lets the same name be dropped again.
 const X_ICON = `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
-const removeBtn = (name) => (held.has(name) ? `<button class="x" data-act="remove" data-file="${esc(name)}" aria-label="Remove ${esc(name)}">${X_ICON}</button>` : "");
-function slotRow(name) {
-  const row = slotRowBody(name);
-  if (!held.has(name)) return row;
-  return row.replace('class="row ', 'class="row r-x ').replace(/<\/div>$/, `${removeBtn(name)}</div>`);
+const removeBtn = (name, h = held) => (h.has(name) ? `<button class="x" data-act="remove" data-file="${esc(name)}" aria-label="Remove ${esc(name)}">${X_ICON}</button>` : "");
+// Start passes nothing and reads its own files; the Add forms card passes its own, so neither ever sees the other's.
+function slotRow(name, s = slots, h = held) {
+  const row = slotRowBody(name, s);
+  if (!h.has(name)) return row;
+  return row.replace('class="row ', 'class="row r-x ').replace(/<\/div>$/, `${removeBtn(name, h)}</div>`);
 }
-function slotRowBody(name) {
-  const v = slots[name], about = ABOUT[name] ? `<small class="q about">${esc(ABOUT[name])}</small>` : "";
+function slotRowBody(name, s = slots) {
+  const v = s[name], about = ABOUT[name] ? `<small class="q about">${esc(ABOUT[name])}</small>` : "";
   // Entries on last year's allocation that matched nobody on the staff list: a number only, never the entries.
   const lost = name === PAST_SLOTS[0] && parsed && parsed.past ? parsed.past.unmatched.length : 0;
   const head = `<span><b>${esc(name)}</b>${about}</span>`;
@@ -176,10 +177,10 @@ function startView() {
     ${startTabs()}
     <div class="gap${fitRow ? " tight" : ""}" data-rows data-start-panel="now"${startTab === "now" ? "" : " hidden"}>
       <p class="q intro">Needed every year. Each file name must match exactly. round2.xlsx and singapore.xlsx are optional, since those forms come after Round 1: a form file left out counts as nobody having sent that form.</p>
-      ${now.map(slotRow).join("")}</div>
+      ${now.map((n) => slotRow(n)).join("")}</div>
     <div class="gap" data-rows data-start-panel="past"${startTab === "past" ? "" : " hidden"}>
       <p class="q intro">Optional: add all four or none. With them, each teacher's result last year is on their card and in the download, and anyone who got none of their choices last year is put on a top-4 choice first where the rules allow.</p>
-      ${past.map(slotRow).join("")}</div>
+      ${past.map((n) => slotRow(n)).join("")}</div>
     <div class="acts"><button class="btn fill" data-act="build" data-k="build"${canBuild() ? "" : " disabled"}>${phase === "building" ? "Building" : "Build"}</button></div>
   </div>${aboutPanel()}`;
 }
@@ -222,6 +223,7 @@ function aboutPanel() {
       "Each teacher's card says why they are where they are, with facts only. It never names another teacher.",
       "You can move anyone anywhere. A move that breaks a rule, such as a full course or a missing certificate, is shown with a warning, not blocked.",
       "Undo and History step back through every change. Restore goes back to any earlier version.",
+      "Add forms brings in Round 2 or Singapore forms later. Everyone on a course stays; only open seats and unplaced teachers are worked out.",
     ])}</ul>
 
     <h3>Your data</h3>
@@ -279,6 +281,7 @@ function topBar() {
 }
 const bottomLine = () => `<div class="wrap"><span data-saved></span>
   ${Mock.canUndo() ? `<button class="link" data-act="undo" data-k="un">Undo</button>` : ""}
+  <button class="link" data-act="open" data-to="forms" data-k="forms">Add forms</button>
   <button class="link" data-act="open" data-to="history" data-k="hist">History</button></div>`;
 
 /* Opened items */
@@ -389,8 +392,84 @@ function historyCard() {
     <div class="links"><button class="link" data-act="startOver" data-k="so">Start over</button></div>`);
 }
 
+/* Add forms: round2.xlsx or singapore.xlsx brought into the built draft. The card's files are its own, never Start's,
+   and stay in memory until Add and place. Everyone on a course stays; only open seats and unplaced teachers are solved. */
+const laterHeld = new Map();
+let laterSlots = {};
+let laterRead = null; // readForms' answer once every file is ready
+let laterReading = 0;
+let laterQueue = Promise.resolve();
+let placing = false;
+let laterFailed = false;
+let laterGen = 0; // a read still running when the card is opened again is dropped
+function laterReset() {
+  laterGen += 1;
+  laterHeld.clear();
+  laterSlots = {};
+  laterRead = null;
+  laterFailed = false;
+}
+function addLaterFiles(list, remove = null) {
+  if (phase !== "draft") return;
+  const files = [...list], gen = laterGen;
+  laterReading += 1;
+  laterRead = null;
+  laterFailed = false;
+  render();
+  laterQueue = laterQueue.then(async () => {
+    try {
+      if (gen !== laterGen) return;
+      if (remove !== null) laterHeld.delete(remove);
+      for (const f of files) laterHeld.set(f.name, { name: f.name, bytes: await readBytes(f) });
+      const out = laterHeld.size ? await readForms(Mock.school(), [...laterHeld.values()]) : { school: null, slots: {} };
+      laterSlots = out.slots;
+      laterRead = out.school ? out : null;
+    } catch {
+      laterRead = null;
+    } finally {
+      laterReading -= 1;
+      render();
+    }
+  });
+}
+const canAdd = () => phase === "draft" && laterReading === 0 && !!laterRead && !placing;
+async function addLater() {
+  if (!canAdd()) return;
+  const read = laterRead;
+  placing = true;
+  render();
+  try {
+    const highs = await loadHighs({ locateFile: (f) => "/" + f });
+    if (phase !== "draft") return;
+    // Read after the await: from here to addForms nothing yields, so a move made while Placing is in keep and stands.
+    const keep = Mock.teachers().filter((t) => Mock.placedOn(t.id)).map((t) => [t.id, Mock.placedOn(t.id)]);
+    const { status, pairs } = solveDraft(highs, read.school, keep, Mock.handOff());
+    if (status !== "Optimal" || newProblems(read.school, keep, [...keep, ...pairs]).length) { laterFailed = true; return; }
+    // The upload is written first; the snapshot addForms makes is queued after it, so a failed upload write stops it too.
+    inOrder(() => replaceUpload(read.school));
+    placing = false;
+    laterReset();
+    Mock.addForms(read.school, pairs, read.rounds, read.senders);
+    if (top_() && top_().k === "forms") pop();
+  } catch {
+    laterFailed = true;
+  } finally {
+    placing = false;
+    render();
+  }
+}
+function formsCard() {
+  const others = Object.keys(laterSlots).filter((n) => !LATER.includes(n));
+  return card(`<div data-drop>${back()}${title("Add forms")}
+    <p class="q intro" data-later-note>Forms are read, never stored in this browser, so after Add and place each file says file not added again.</p>
+    <div class="gap" data-rows>${[...LATER, ...others].map((n) => slotRow(n, laterSlots, laterHeld)).join("")}</div>
+    <div class="links"><label class="link choose">Choose files<input type="file" multiple accept=".xlsx" data-k="later-files"></label></div>
+    ${laterFailed ? `<p class="need gap" data-failed>Couldn't place anyone. Nothing changed.</p>` : ""}
+    <div class="acts"><button class="btn fill" data-act="addLater" data-k="addLater"${canAdd() ? "" : " disabled"}>${placing ? "Placing" : "Add and place"}</button></div></div>`);
+}
+
 function frame(f) {
-  const map = { teacher: () => card(back() + teacherBody(f.id, true)), course: () => card(back() + courseBody(f.id)), move: () => moveCard(f), asked: () => askedCard(f), history: historyCard };
+  const map = { teacher: () => card(back() + teacherBody(f.id, true)), course: () => card(back() + courseBody(f.id)), move: () => moveCard(f), asked: () => askedCard(f), history: historyCard, forms: formsCard };
   return `<div class="narrow">${map[f.k]()}</div>`;
 }
 
@@ -505,8 +584,9 @@ document.addEventListener("click", (e) => {
   switch (d.act) {
     case "build": build(); break;
     case "sample": addFiles(sampleFiles()); break;
-    case "remove": addFiles([], d.file); break;
-    case "open": push({ k: d.to, id: d.id }); break;
+    case "remove": if (phase === "draft") addLaterFiles([], d.file); else addFiles([], d.file); break;
+    case "open": if (d.to === "forms") { if (top_()?.k === "forms") break; laterReset(); } push({ k: d.to, id: d.id }); break;
+    case "addLater": addLater(); break;
     case "back": pop(); break;
     case "next": view.idx += 1; render(); break;
     case "moveTo": Mock.move(d.id, d.c || null); if (top_() && top_().k === "move") pop(); break;
@@ -527,10 +607,16 @@ document.addEventListener("toggle", (e) => {
 }, true);
 document.addEventListener("change", (e) => {
   if (e.target.matches('[data-k="files"]')) { addFiles(e.target.files); e.target.value = ""; }
+  if (e.target.matches('[data-k="later-files"]')) { addLaterFiles(e.target.files); e.target.value = ""; }
 });
 // A file dropped anywhere on the page counts, and never makes the browser navigate to it.
 window.addEventListener("dragover", (e) => e.preventDefault());
-window.addEventListener("drop", (e) => { e.preventDefault(); addFiles(e.dataTransfer.files); });
+// While the Add forms card is open, a drop goes to the card; otherwise to Start.
+window.addEventListener("drop", (e) => {
+  e.preventDefault();
+  if (phase === "draft" && top_()?.k === "forms") addLaterFiles(e.dataTransfer.files);
+  else addFiles(e.dataTransfer.files);
+});
 
 Mock.on(render);
 Mock.onSnapshot(remember);
