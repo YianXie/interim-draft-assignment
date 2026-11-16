@@ -168,6 +168,41 @@ test("returning code not on the course list is refused", async () => {
   assert.equal(out.slots["returning.xlsx"], "returning.xlsx, row 3: course code is not on the course list");
 });
 
+// Rows are [Course Code, Course Name, Type, Seats, Offered, Certificate, ...]; returning rows are [Email, Course Code].
+const courseRow = (rows, code) => rows["courses.xlsx"].find((r) => r[0] === code);
+
+test("a returning sponsor without their course's certificate is refused", async () => {
+  const out = await run((rows) => {
+    const cert = rows["courses.xlsx"].slice(1).find((r) => r[5] && r[4] === "Yes");
+    const r = rows["returning.xlsx"][1];
+    const staff = rows["staff.xlsx"].find((x) => x[0] === r[0]);
+    assert.ok(!String(staff[2] ?? "").includes(cert[5]), "fixture: this sponsor lacks the certificate");
+    r[1] = cert[0];
+  });
+  assert.equal(out.school, null);
+  assert.equal(out.slots["returning.xlsx"], "returning.xlsx, row 2: this sponsor does not hold the certificate the course needs");
+});
+
+test("more returning sponsors than seats on an offered course refuses the first row over", async () => {
+  const out = await run((rows) => {
+    const ret = rows["returning.xlsx"];
+    const target = ret.slice(1).map((r) => courseRow(rows, r[1])).find((c) => c[4] === "Yes" && !c[5]);
+    const others = ret.slice(1).filter((r) => r[1] !== target[0]);
+    const already = ret.slice(1).length - others.length;
+    others.slice(0, target[3] - already + 1).forEach((r) => (r[1] = target[0]));
+  });
+  assert.equal(out.school, null);
+  assert.match(out.slots["returning.xlsx"], /^returning\.xlsx, row \d+: more returning sponsors than seats on this course$/);
+});
+
+test("any number of returning sponsors on a not-offered course still builds", async () => {
+  const out = await run((rows) => {
+    const closed = rows["courses.xlsx"].slice(1).find((r) => r[4] === "No");
+    rows["returning.xlsx"].slice(1, 6).forEach((r) => (r[1] = closed[0]));
+  });
+  assert.ok(out.school, JSON.stringify(out.slots));
+});
+
 test("seats not a positive whole number is refused", async () => {
   for (const bad of [0, -1, 2.5, "three", null]) {
     const out = await run((rows) => (rows["courses.xlsx"][5][3] = bad));

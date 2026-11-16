@@ -34,6 +34,7 @@ export function toInstance(school, keep = null, out = []) {
     })),
     courses: courses.map((c) => ({ id: c.id, min: c.seats, max: c.seats, requires: c.needs ? [c.needs] : [] })),
     prefs: teachers.flatMap((t) => t.prefs.map((p) => ({ t: t.id, c: p.course, rank: p.rank, round: p.round }))),
+    sent: teachers.filter((t) => t.submitted).map((t) => t.id),
     unticked: courses.filter((c) => !c.running).map((c) => c.id),
     owed: school.past ? teachers.filter((t) => t.lastYear && t.lastYear.result === "none").map((t) => t.id) : null,
     // "tid|cid" for each teacher and course with a row in fit.xlsx that is not a Limitation; by email, then course code.
@@ -60,13 +61,14 @@ const wrap = (t) => {
 const term = ([c, n]) => (c < 0 ? `- ${-c} ${n}` : `+ ${c} ${n}`);
 
 function build(inst) {
+  // A course listed more than once counts at its best single listing, never the rank of one with the round of another.
   const best = new Map();
   for (const p of inst.prefs) {
-    const k = p.t + "|" + p.c, b = inst.bonus[p.round], cur = best.get(k);
-    if (!cur) best.set(k, { rank: p.rank, bonus: b });
-    else { cur.rank = Math.min(cur.rank, p.rank); cur.bonus = Math.max(cur.bonus, b); }
+    const k = p.t + "|" + p.c, s = inst.weights[p.rank - 1] + inst.bonus[p.round];
+    if (!best.has(k) || s > best.get(k)) best.set(k, s);
   }
-  const submitters = new Set(inst.prefs.map((p) => p.t)), unticked = new Set(inst.unticked);
+  // Anyone who sent a form, even one with no choice filled in, goes only on a course they listed.
+  const submitters = new Set(inst.sent), unticked = new Set(inst.unticked);
   // With a kept draft nobody is forced: a returning sponsor not on a course now was taken off it by the office.
   // Kept teachers and those held out get no variables.
   const kept = inst.kept ?? null, keptT = new Set(kept ? [...kept.map((k) => k.t), ...inst.out] : []), keptOn = new Map();
@@ -112,7 +114,7 @@ function build(inst) {
       } else rows.push(` r${r++}: ${y} = 0`);
     }
   });
-  const score = vars.flatMap((v) => { const b = best.get(v.t + "|" + v.c); return b ? [[inst.weights[b.rank - 1] + b.bonus, v.name]] : []; });
+  const score = vars.flatMap((v) => { const s = best.get(v.t + "|" + v.c); return s === undefined ? [] : [[s, v.name]]; });
   const noForm = vars.filter((v) => !submitters.has(v.t) && !repeaterOn.has(v.t)).map((v) => [1, v.name]);
   const stages = [["min", shortTerms], ["max", score], ["min", noForm]];
   if (inst.owed !== null) {

@@ -260,9 +260,18 @@ export async function parseFiles(files, random = secureRandom) {
     if (!rows) continue;
     try {
       if (file === "returning.xlsx") {
+        // A returning sponsor stays on an offered course, so one who cannot be put there would leave no draft at all.
+        const certs = staff && new Map(staff.map((s) => [s.email, s.certificates]));
+        const back = new Map();
         for (const r of rows) {
           if (onStaff && !onStaff.has(r.email)) refuse(file, r.n, "email is not on the staff list");
-          if (courses && !byId.has(text(r.cells[0]))) refuse(file, r.n, "course code is not on the course list");
+          if (!courses) continue;
+          const c = byId.get(text(r.cells[0]));
+          if (!c) refuse(file, r.n, "course code is not on the course list");
+          if (!c.running) continue;
+          if (c.needs && certs && !certs.get(r.email)?.includes(c.needs)) refuse(file, r.n, "this sponsor does not hold the certificate the course needs");
+          back.set(c.id, (back.get(c.id) ?? 0) + 1);
+          if (back.get(c.id) > c.seats) refuse(file, r.n, "more returning sponsors than seats on this course");
         }
       } else checkForm(file, rows, onStaff, byName);
     } catch (e) {

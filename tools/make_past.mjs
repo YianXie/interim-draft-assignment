@@ -3,7 +3,8 @@
 // Usage: node tools/make_past.mjs
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { readBook, writeBook } from "../src/xlsx.js";
-import { HEADERS } from "../src/import.js";
+import { HEADERS, parseFiles, SLOTS } from "../src/import.js";
+import { loadHighs, solveDraft, displayedRank } from "../src/solver.js";
 import { mulberry32, stamps, enhancing, priorities, finalWords, singaporeWords } from "./answers.mjs";
 
 const SEED = 20261113;
@@ -11,8 +12,8 @@ const ANSWER_SEED = 20261116; // timestamps and written answers only, so nothing
 const NEW_STAFF = 8; // this year's staff who are in no past file
 const NOT_FOUND = 1; // sent a form last year and are left off the allocation
 const RETURNING_WITH_FORM = 3; // this year's returning sponsors who sent a form last year; the others sent none
-// Sent a form last year and were given a course that was not on it. 10 is everyone whose 1st to 4th choices this year
-// each have 19 or more people asking: the people a draft without last year's files tends to leave on a lower choice.
+// Sent a form last year and were given a course that was not on it. Those the draft without last year's files leaves
+// off a 1st to 4th choice come first (see below), so the new priority has someone to move.
 const UNLUCKY = 10;
 const LEFT = "Sponsor who left"; // a label, not a person: the one allocation entry that matches nobody
 const school = new URL("../fixtures/school/", import.meta.url);
@@ -65,12 +66,20 @@ const sendersNow = staff.filter((p) => shownNow.has(p.email) && !fixed.has(p.ema
 const asked = new Map(seatsLeft.map((c) => [c, 0]));
 for (const p of sendersNow) for (const c of top4Now(p)) asked.set(c, asked.get(c) + 1);
 
-// Who gets none of their choices last year: of those who sent a form this year and are not returning sponsors, the ones
-// whose 1st to 4th choices this year are all much-asked courses. The preference score alone tends to leave them on a
-// lower choice or unplaced, so they are the people the new priority moves.
+// Who gets none of their choices last year: of those who sent a form this year and are not returning sponsors, first
+// the ones this year's six files alone leave off a 1st to 4th choice or unplaced, since only they can be moved up by the
+// new priority; then the ones whose 1st to 4th choices this year are all much-asked courses. The plain draft comes from
+// the page's own solver; whether the past files then move anyone is checked against tools/expected.py, which shares no code.
+const plain = await (async () => {
+  const files = await Promise.all(SLOTS.map(async (name) => ({ name, bytes: new Uint8Array(await readFile(new URL(name, school))) })));
+  const { school: six } = await parseFiles(files, (n) => 0);
+  const on = new Map(solveDraft(await loadHighs({}), six).pairs);
+  return new Map(six.teachers.map((t) => [t.email, on.has(t.id) ? displayedRank(t.prefs, on.get(t.id)) : null]));
+})();
+const low = (p) => { const k = plain.get(p.email); return k === null || k > 4; };
 const crowd = (p) => Math.min(...top4Now(p).map((c) => asked.get(c)));
 const queue = shuffle(staff);
-const unlucky = queue.filter((p) => sendersNow.includes(p) && !ownCourse.has(p.email)).sort((a, b) => crowd(b) - crowd(a)).slice(0, UNLUCKY);
+const unlucky = queue.filter((p) => sendersNow.includes(p) && !ownCourse.has(p.email)).sort((a, b) => low(b) - low(a) || crowd(b) - crowd(a)).slice(0, UNLUCKY);
 const returning = queue.filter((p) => ownCourse.has(p.email));
 const rest = queue.filter((p) => !unlucky.includes(p) && !returning.includes(p));
 const absent = rest.slice(0, NEW_STAFF + NOT_FOUND); // not on last year's allocation: the new staff, then those not found

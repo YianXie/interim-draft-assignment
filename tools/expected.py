@@ -47,7 +47,7 @@ people = {r[0]: dict(name=r[1], certs={x.strip() for x in r[2].split(";") if x.s
 _, rrow = rows("returning")
 sponsor = {r[0]: r[1] for r in rrow}
 
-best = {}  # (email, course) -> (best rank, best bonus)
+best = {}  # (email, course) -> the best score of any one listing: rank weight plus round bonus, never mixed across listings
 shown = {}  # (email, course) -> the rank on the earliest of Round 1, Round 2, Singapore that lists the course
 forms = set()
 for fname in ("round1", "round2", "singapore"):
@@ -59,8 +59,8 @@ for fname in ("round1", "round2", "singapore"):
         for i, nm in enumerate((r[j] for j in picks), start=1):
             if nm == "":
                 continue
-            k = (r[at], by_name[nm]); rk, bn = best.get(k, (99, -1))
-            best[k] = (min(rk, i), max(bn, BONUS[fname]))
+            k = (r[at], by_name[nm])
+            best[k] = max(best.get(k, -1), WEIGHTS[i - 1] + BONUS[fname])
             shown.setdefault(k, i)
 
 # A returning sponsor whose course is not offered is an ordinary teacher.
@@ -112,7 +112,7 @@ for c, cd in sorted(courses.items()):
         m.add(sum(here) + s >= cd["seats"])
     else:
         m.add(sum(here) >= cd["seats"] * r)
-score = [(WEIGHTS[best[k][0] - 1] + best[k][1], v) for k, v in x.items() if k in best]
+score = [(best[k], v) for k, v in x.items() if k in best]
 noform = [v for (a, _), v in x.items() if a not in forms and a not in rep]
 stages = [("min", [(1, s) for s in short]), ("max", score), ("min", [(1, v) for v in noform])]
 

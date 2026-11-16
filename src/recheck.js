@@ -14,7 +14,8 @@ export function recheck(school, pairs) {
     const teacher = teachers.get(t), course = courses.get(c);
     if (!course || !course.running) { out.push({ code: "NOT_OFFERED", id: c }); continue; }
     if (!teacher) continue;
-    if (teacher.prefs.length && !teacher.prefs.some((p) => p.course === c) && teacher.returningCourse !== c) out.push({ code: "NOT_RANKED", id: t });
+    // Anyone who sent a form, even a blank one, goes only on a course they listed or the one they return to.
+    if ((teacher.submitted || teacher.prefs.length) && !teacher.prefs.some((p) => p.course === c) && teacher.returningCourse !== c) out.push({ code: "NOT_RANKED", id: t });
     if (course.needs && !teacher.certificates.includes(course.needs)) out.push({ code: "CERTIFICATE", id: t });
   }
   for (const t of school.teachers) {

@@ -56,7 +56,7 @@ T numbers are created once at upload with a secure random source, then stored. S
 
 Rules never broken: one course each; returning sponsors stay on their course (before calling `build`, clear `repeater` and `incumbent` for any returning sponsor whose course has Offered = No, so they are treated like any other teacher); teachers who sent a form only get courses they ranked; certificates; a course's seats are both its minimum and maximum, except that a course with a returning sponsor may run short.
 
-Priorities: (1) fewest empty seats on courses with a returning sponsor; (2) highest preference score (7 down to 1 for choice number, plus 20 for Round 1, 10 for Round 2, 0 for Singapore, taking the best of each where a course was ranked twice); (3) fewest people who sent no form.
+Priorities: (1) fewest empty seats on courses with a returning sponsor; (2) highest preference score (7 down to 1 for choice number, plus 20 for Round 1, 10 for Round 2, 0 for Singapore, where a course was ranked twice, the better of its two listings counts, never the rank of one with the round of the other; changed 2026-11-16); (3) fewest people who sent no form.
 
 About 40 lines of plain code then re-check every rule. On failure the page shows one fixed message. The page says "best draft found", never "proven", "optimal" or "secure".
 
