@@ -8,10 +8,6 @@
     "course": "INT-32"
   },
   {
-    "email": "ada.nettlefield@fernhollow.example",
-    "course": "INT-40"
-  },
-  {
     "email": "ada.quillfeather@fernhollow.example",
     "course": "INT-27"
   },
@@ -73,7 +69,7 @@
   },
   {
     "email": "dov.elderhaven@fernhollow.example",
-    "course": "INT-01"
+    "course": "INT-40"
   },
   {
     "email": "dov.quillfeather@fernhollow.example",
@@ -86,6 +82,10 @@
   {
     "email": "dov.willowmere@fernhollow.example",
     "course": "INT-01"
+  },
+  {
+    "email": "emeric.mossgrove@fernhollow.example",
+    "course": "INT-06"
   },
   {
     "email": "esme.nettlefield@fernhollow.example",

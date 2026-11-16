@@ -174,6 +174,8 @@ name = "expected" + ("-past" if WITH_PAST else "") + ("-fit" if WITH_FIT else ""
 (ROOT / "fixtures" / name).write_text(json.dumps(res, indent=2) + "\n")
 if WITH_LATER:
     print(json.dumps(res))
+    if values[0] == 0:
+        sys.exit("kept.json leaves no running course short, so the first priority is not checked")
     print(f"kept {len(kept)} on {len(held)} courses, new placed {res['placedMin'] - len(kept)}, short seats {values[0]}, new no-form placed {values[-1]}")
     sys.exit(0)
 

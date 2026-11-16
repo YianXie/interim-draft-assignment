@@ -1,6 +1,7 @@
 // Writes fixtures/later/kept.json: the draft solved from the four needed files (courses, staff, returning, round1),
-// by email and course code, with three changes that break rules, as the office might make before adding Round 2 and
-// Singapore forms. Every choice is made by email and course code, never by T number, so the file is the same each run.
+// by email and course code, with the changes the office might make before adding Round 2 and Singapore forms: three
+// that break rules (leaving one course that cannot be filled) and one returning sponsor taken off. Every choice is made
+// by email and course code, never by T number, so the file is the same each run.
 // Usage: node tools/make_later.mjs
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { parseFiles, readForms, LATER, SLOTS } from "../src/import.js";
@@ -35,13 +36,29 @@ kept.set(extra.email, full.id);
 const certCourse = courses.find((c) => c.needs);
 const noCert = free().find((t) => !t.certificates.includes(certCourse.needs));
 kept.set(noCert.email, certCourse.id);
-// 3. The first returning sponsor on their own course moves to the first course with room, needing no certificate,
-// that they listed on no form.
-const sponsor = teachers.find((t) => t.returning && kept.get(t.email) === t.returningCourse);
+// 3. The returning sponsor of that course moves to the first course with room, needing no certificate, that they
+// listed on no form. With them gone, nobody free holds the certificate, so that course must stay short: its empty
+// seats can only be counted by the first priority.
+const sponsor = teachers.find((t) => t.returning && t.returningCourse === certCourse.id && kept.get(t.email) === certCourse.id);
 const elsewhere = courses.find((c) => !c.needs && c.id !== sponsor.returningCourse && c.id !== full.id && count(c.id) < c.seats && !listed(sponsor, c.id));
 kept.set(sponsor.email, elsewhere.id);
+// 4. The office takes a returning sponsor off and gives the seat to someone else: the first sponsor still on their own
+// course, replaced by the first free teacher able to take it. No sponsor sent a form, so none listed their own course.
+// The course stays at its seats, so a sponsor treated like anyone cannot go back; a solve that forced them back would
+// put the course over its seats and place one more.
+const able = (t, c) => (!c.needs || t.certificates.includes(c.needs)) && (!t.submitted || listed(t, c.id));
+const dropped = teachers.find((t) => t.returning && kept.get(t.email) === t.returningCourse && !listed(t, t.returningCourse));
+if (!dropped) throw new Error("no returning sponsor on their own course");
+const own = courses.find((c) => c.id === dropped.returningCourse);
+kept.delete(dropped.email);
+const stand = free().find((t) => t !== dropped && able(t, own));
+kept.set(stand.email, own.id);
+if (count(own.id) < own.seats) throw new Error(`${own.id} has room for ${dropped.email} again`);
+const shortBy = certCourse.seats - count(certCourse.id) - free().filter((t) => able(t, certCourse)).length;
+if (count(certCourse.id) === 0 || shortBy <= 0) throw new Error(`${certCourse.id} is not a running course left short`);
 
 const rows = [...kept].map(([e, course]) => ({ email: e, course })).sort(byEmail);
 await mkdir(out, { recursive: true });
 await writeFile(new URL("kept.json", out), JSON.stringify(rows, null, 2) + "\n");
 console.log(`kept ${rows.length}: ${extra.email} over seats on ${full.id}, ${noCert.email} without ${certCourse.needs} on ${certCourse.id}, sponsor ${sponsor.email} moved ${sponsor.returningCourse} -> ${elsewhere.id}`);
+console.log(`sponsor ${dropped.email} taken off ${own.id} for ${stand.email}; ${certCourse.id} at least ${shortBy} of ${certCourse.seats} seats empty`);

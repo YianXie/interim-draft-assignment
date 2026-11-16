@@ -1,11 +1,11 @@
 {
   "values": [
-    0,
+    1,
     20,
-    3
+    2
   ],
-  "placedMin": 95,
-  "placedMax": 95,
+  "placedMin": 94,
+  "placedMax": 94,
   "runningMin": 46,
   "runningMax": 46
 }
