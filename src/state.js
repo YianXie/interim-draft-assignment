@@ -261,7 +261,7 @@ function addForms(school, pairs, rounds, senders) {
   D = school;
   T = new Map(D.teachers.map((t) => [t.id, t]));
   C = new Map(D.courses.map((c) => [c.id, c]));
-  for (const [t, c] of pairs) S.placements[t] = c;
+  for (const [t, c] of pairs) { S.placements[t] = c; S.moved.delete(t); }
   const sent = new Set(senders);
   for (const id of [...S.left]) if (S.placements[id] || sent.has(id)) S.left.delete(id);
   append({ type: "forms", rounds: [...rounds], placed: pairs.length }, shown());

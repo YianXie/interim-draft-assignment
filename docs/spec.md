@@ -78,7 +78,7 @@ Playwright does the real upload and reaches each screen, then evaluates the `INS
 
 ## Saving
 
-IndexedDB, loaded before page code starts: one record of the parsed upload (with names), one snapshot of the Build result, then one snapshot per edit. A snapshot holds who is placed where, who was moved by hand, who was left unplaced, and history entries as T numbers and course codes only. Words are built when shown or exported, so history follows the names switch. Reload shows the same draft with no re-upload.
+IndexedDB, loaded before page code starts: one record of the parsed upload (with names; Add forms replaces it and keeps the snapshots), one snapshot of the Build result, then one snapshot per edit. A snapshot holds who is placed where, who was moved by hand, who was left unplaced, and history entries as T numbers and course codes only. Words are built when shown or exported, so history follows the names switch. Reload shows the same draft with no re-upload.
 
 ## Download
 

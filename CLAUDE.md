@@ -58,7 +58,7 @@ Data flow: **files → `School` → solver → `Mock` state → snapshots in Ind
   Later forms are added on a built draft with `solveDraft(highs, school, keep)`: everyone in `keep` stays put and `pairs` holds only the new placements; the app accepts them only if `newProblems` (recheck.js) is empty.
 - `src/recheck.js` — independent plain re-check of every hard rule on a draft; imports nothing, especially not the solver.
 - `src/state.js` — `Mock`: the ported mock's in-memory state and all derived text (reasons ≤ 20 words that never name another teacher, flags, To do list, move/leave/undo/restore, names switch). Every change appends a snapshot holding only T numbers and course codes; words are built at display/export time so they follow the names switch.
-- `src/store.js` — IndexedDB `interim-demo`: one `upload` record (parsed School, with names) and one `snapshots` record per version. A new upload clears snapshots.
+- `src/store.js` — IndexedDB `interim-demo`: one `upload` record (parsed School, with names) and one `snapshots` record per version. A new upload clears snapshots; Add forms replaces the upload and keeps them.
 - `src/export.js` — sheets for the download (Courses, Teachers, Changes, plus Last year / Note when relevant), following the names switch; `cleanCell` strips XML-illegal characters.
 - `src/app.js` — DOM rendering and event wiring for Start, To do, Teachers, Courses; serialises IndexedDB writes so "Saved" is never claimed over a failed write.
 

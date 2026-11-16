@@ -440,6 +440,7 @@ async function addLater() {
   render();
   try {
     const highs = await loadHighs({ locateFile: (f) => "/" + f });
+    if (phase !== "draft") return;
     // Read after the await: from here to addForms nothing yields, so a move made while Placing is in keep and stands.
     const keep = Mock.teachers().filter((t) => Mock.placedOn(t.id)).map((t) => [t.id, Mock.placedOn(t.id)]);
     const { status, pairs } = solveDraft(highs, read.school, keep);
@@ -583,7 +584,7 @@ document.addEventListener("click", (e) => {
     case "build": build(); break;
     case "sample": addFiles(sampleFiles()); break;
     case "remove": if (phase === "draft") addLaterFiles([], d.file); else addFiles([], d.file); break;
-    case "open": if (d.to === "forms") laterReset(); push({ k: d.to, id: d.id }); break;
+    case "open": if (d.to === "forms") { if (top_()?.k === "forms") break; laterReset(); } push({ k: d.to, id: d.id }); break;
     case "addLater": addLater(); break;
     case "back": pop(); break;
     case "next": view.idx += 1; render(); break;

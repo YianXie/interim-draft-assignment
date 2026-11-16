@@ -273,7 +273,12 @@ test("addForms places the new pairs and nobody else moves", async () => {
   const added = new Map(solved.pairs);
   for (const t of base.teachers) assert.equal(Mock.placedOn(t.id), added.get(t.id) || before[t.id] || null, t.id);
   for (const [t] of solved.pairs) assert.equal(before[t], null, `${t} was not on a course`);
-  assert.deepEqual([...Mock.state.moved], moved);
+  const placedNow = new Set(solved.pairs.map(([t]) => t));
+  assert.deepEqual([...Mock.state.moved].filter(([t]) => !placedNow.has(t)), moved.filter(([t]) => !placedNow.has(t)));
+  for (const t of placedNow) {
+    assert.ok(!Mock.state.moved.has(t), `${t} is no longer moved by the office`);
+    assert.ok(!Mock.reason(t).startsWith("Moved by the office"), `${t} reason`);
+  }
   assert.deepEqual(Mock.history()[0].event, { type: "forms", rounds: ["Round 2", "Singapore"], placed: solved.pairs.length });
 });
 
