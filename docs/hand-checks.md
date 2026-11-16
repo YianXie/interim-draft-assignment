@@ -31,4 +31,4 @@ Four checks that a browser test cannot do. Use invented data only.
 
 - **Not done.** Real Excel with last year's files: drop the six and `fixtures/past`'s four, press Build, press Download, and open the workbook in an activated copy of Excel. It must open with no repair prompt, with its Last year column on the Teachers sheet and its Last year sheet.
 - **Not done.** Real Excel with `fit.xlsx`: drop the six and `fixtures/fit/fit.xlsx`, press Build, press Download, and open the workbook in an activated copy of Excel. It must open with no repair prompt, with its From their form column on the Teachers sheet.
-- **Not done.** Real Excel after Add forms: drop the six files, press Build, add `round2.xlsx` and `singapore.xlsx` with Add forms, press Download, and open the workbook in an activated copy of Excel. It must open with no repair prompt.
+- **Not done.** Real Excel after Add forms: drop the four needed files (not `round2.xlsx` or `singapore.xlsx`), press Build, add `round2.xlsx` and `singapore.xlsx` with Add forms, press Download, and open the workbook in an activated copy of Excel. It must open with no repair prompt.

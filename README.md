@@ -1,6 +1,6 @@
 # Interim Draft Assistant
 
-A laptop-only demo. Six spreadsheets become an editable, explained allocation draft that you can move people around in and download to Excel.
+A laptop-only demo. Six spreadsheets become an editable, explained allocation draft that you can move people around in and download to Excel. Only four are needed to build: `round2.xlsx` and `singapore.xlsx` can come later.
 
 It has only ever seen invented data: an invented school, invented people, invented preferences. It has never run on real data, so its drafts have not been compared with anything a real office placed. The placed count is a property of the invented data, not a result.
 
@@ -13,6 +13,16 @@ It has only ever seen invented data: an invented school, invented people, invent
 
 - Double-click `start-demo.command`. It builds the page if needed, starts the server on `http://127.0.0.1:4173`, and opens it. Closing its window stops the server.
 - Or in a terminal: `npm install`, `npm run build`, `npm run serve`, then open `http://127.0.0.1:4173`.
+
+## Round 2 and Singapore later
+
+- The office allocates International Round 1, then Round 2, then Singapore. So Build needs only `courses.xlsx`, `staff.xlsx`, `returning.xlsx` and `round1.xlsx`. On Start, `round2.xlsx` and `singapore.xlsx` say "optional, not added" until they are added. A form file left out counts as nobody having sent that form.
+- On a built draft, **Add forms** (next to History) takes `round2.xlsx`, `singapore.xlsx` or both. They are checked the same way as on Start, then **Add and place** places people from them.
+- Everyone on a course stays exactly where they are, even where that breaks a rule. Those broken rules keep showing as warnings. Only unplaced teachers and open seats are worked out. A course that already has sponsors but has empty seats is filled first.
+- Anyone the office moved to Not placed by hand stays off. "Leave unplaced" does not hold anyone off.
+- The result is shown only if it adds no new broken rule. Otherwise the card says "Couldn't place anyone. Nothing changed."
+- History gets one line, such as "Added Round 2 forms, placed 7". Undo takes back those placements; the added forms stay in. Adding a round that is already in replaces it.
+- The forms are read, never stored in the browser, so after Add and place each file says "file not added" again on the card.
 
 ## Last year's files
 
@@ -34,7 +44,7 @@ It has only ever seen invented data: an invented school, invented people, invent
 
 - `npm run check` builds, runs the unit tests and the browser tests, and ends with `CHECK OK`.
 - `npm run check:final` does the same with the browser tests repeated five times.
-- `docs/hand-checks.md` lists the four checks done by hand.
+- `docs/hand-checks.md` lists the four checks done by hand, and three not done yet.
 
 ## Things to know
 
