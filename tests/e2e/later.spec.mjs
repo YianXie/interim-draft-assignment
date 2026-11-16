@@ -180,3 +180,46 @@ test("the Add forms card fits the detail budget", async ({ page }) => {
   for (const f of LATER) await expect(slot(page, f)).toContainText("ready");
   await measure(page, "detail");
 });
+
+// While Placing, the solver is still starting up, and the office can still move people. Holding back highs.wasm opens that gap
+// without any wait: a move made in it must stand, so nobody placed by the office is put elsewhere by the added forms.
+test("a move made while Placing stands", async ({ page }) => {
+  const watch = watchPage(page);
+  let gate = null;
+  let hit;
+  const reached = new Promise((r) => { hit = r; });
+  await page.route("**/highs.wasm", async (route) => {
+    if (gate) { hit(); await gate; }
+    await route.continue();
+  });
+  await buildRoundOne(page);
+  // A first add shows who the forms place; Undo puts everyone back, and the same solve gives the same placements.
+  const before = await placements(page);
+  await addBoth(page);
+  const after = await placements(page);
+  const [y, z] = Object.entries(after).find(([id, c]) => before[id] === "Not placed" && c !== "Not placed");
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect.poll(async () => (await placements(page))[y]).toBe("Not placed");
+
+  let release;
+  gate = new Promise((r) => { release = r; });
+  await openCard(page);
+  await dropFiles(page, later());
+  for (const f of LATER) await expect(slot(page, f)).toContainText("ready");
+  await addButton(page).click();
+  await expect(addButton(page)).toHaveText("Placing");
+  await reached;
+  // Move them elsewhere while the solve waits.
+  await tab(page, "Teachers").click();
+  await page.locator(`#main [data-row][data-teacher="${y}"]`).click();
+  await page.getByRole("button", { name: "All options" }).click();
+  const row = page.locator('#main [data-act="moveTo"][data-c]:not([data-c=""])').filter({ hasNotText: z }).first();
+  const w = (await row.evaluate((e) => e.firstChild.textContent)).trim();
+  await row.click();
+  await expect(page.locator(`#main [data-row][data-teacher="${y}"]`)).toHaveCount(0);
+  release();
+  await page.getByRole("button", { name: "History", exact: true }).click();
+  await expect(page.locator("#main [data-row]").first()).toContainText(/Added Round 2 and Singapore forms, placed \d+$/);
+  expect((await placements(page))[y]).toBe(w);
+  expect(watch.problems).toEqual([]);
+});
