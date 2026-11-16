@@ -31,6 +31,8 @@ export const saveUpload = (school) => write(BOTH, (tx) => {
   tx.objectStore("snapshots").clear();
   tx.objectStore("upload").put(school, "school");
 });
+// The same upload with later forms added: the history goes on, so snapshots stay.
+export const replaceUpload = (school) => write(["upload"], (tx) => tx.objectStore("upload").put(school, "school"));
 export const addSnapshot = (s) => write(["snapshots"], (tx) => tx.objectStore("snapshots").put(s));
 export const wipe = () => write(BOTH, (tx) => BOTH.forEach((name) => tx.objectStore(name).clear()));
 

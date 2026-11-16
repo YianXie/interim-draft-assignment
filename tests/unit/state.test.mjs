@@ -242,3 +242,75 @@ test("optionsFor warns for every rule a move would break", () => {
   const noCert = school.teachers.find((t) => !t.certificates.includes(scuba.needs) && Mock.placedOn(t.id) !== scuba.id);
   assert.ok(Mock.optionsFor(noCert.id).find((o) => o.cid === scuba.id).warn.includes(`No ${scuba.needs.toLowerCase()} on file`));
 });
+
+// Add forms: round2.xlsx and singapore.xlsx brought into a built Round 1 draft. Everyone on a course stays.
+import { readFile } from "node:fs/promises";
+import { parseFiles, readForms, LATER, SLOTS } from "../../src/import.js";
+
+const laterDir = new URL("../../fixtures/school/", import.meta.url);
+const laterFile = async (name) => ({ name, bytes: new Uint8Array(await readFile(new URL(name, laterDir))) });
+async function roundOne() {
+  const base = (await parseFiles(await Promise.all(SLOTS.filter((n) => !LATER.includes(n)).map(laterFile)))).school;
+  const highs = await loadHighs({});
+  const first = solveDraft(highs, base);
+  const read = await readForms(base, await Promise.all(LATER.map(laterFile)));
+  return { base, highs, firstDraft: toDraft(base, first.pairs), read };
+}
+const placedPairs = () => Mock.teachers().filter((t) => Mock.placedOn(t.id)).map((t) => [t.id, Mock.placedOn(t.id)]);
+
+test("addForms places the new pairs and nobody else moves", async () => {
+  const { base, highs, firstDraft, read } = await roundOne();
+  Mock.init(base);
+  Mock.build(firstDraft);
+  const off = base.teachers.find((t) => Mock.placedOn(t.id));
+  Mock.move(off.id, null);
+  const before = { ...Mock.state.placements };
+  const moved = [...Mock.state.moved];
+  const solved = solveDraft(highs, read.school, placedPairs());
+  assert.equal(solved.status, "Optimal");
+  assert.ok(solved.pairs.length > 0, "the later forms place somebody");
+  Mock.addForms(read.school, solved.pairs, read.rounds, read.senders);
+  const added = new Map(solved.pairs);
+  for (const t of base.teachers) assert.equal(Mock.placedOn(t.id), added.get(t.id) || before[t.id] || null, t.id);
+  for (const [t] of solved.pairs) assert.equal(before[t], null, `${t} was not on a course`);
+  assert.deepEqual([...Mock.state.moved], moved);
+  assert.deepEqual(Mock.history()[0].event, { type: "forms", rounds: ["Round 2", "Singapore"], placed: solved.pairs.length });
+});
+
+test("undo after addForms restores placements, school stays", async () => {
+  const { base, highs, firstDraft, read } = await roundOne();
+  Mock.init(base);
+  Mock.build(firstDraft);
+  const before = { ...Mock.state.placements };
+  const solved = solveDraft(highs, read.school, placedPairs());
+  Mock.addForms(read.school, solved.pairs, read.rounds, read.senders);
+  Mock.undo();
+  assert.deepEqual(Mock.state.placements, before);
+  const sender = read.senders.find((id) => read.school.teachers.find((t) => t.id === id).prefs.some((p) => p.round === "Round 2"));
+  assert.ok(Mock.teacher(sender).prefs.some((p) => p.round === "Round 2"));
+  assert.ok(Mock.teacher(sender).submitted);
+});
+
+test("left is cleared for senders and the newly placed only", async () => {
+  const { base, firstDraft, read } = await roundOne();
+  Mock.init(base);
+  Mock.build(firstDraft);
+  const open = base.teachers.filter((t) => !Mock.placedOn(t.id)).map((t) => t.id);
+  assert.ok(open.length >= 3);
+  const [placed, sent, stays] = open;
+  Mock.leave(open);
+  const cid = Mock.courses()[0].id;
+  Mock.addForms(read.school, [[placed, cid]], ["Round 2"], [sent]);
+  assert.ok(!Mock.state.left.has(placed));
+  assert.ok(!Mock.state.left.has(sent));
+  assert.ok(Mock.state.left.has(stays));
+  assert.deepEqual(sorted(Mock.state.left), sorted(open.filter((id) => id !== placed && id !== sent)));
+  assert.equal(Mock.placedOn(placed), cid);
+});
+
+test("describe a forms event", () => {
+  const say = (rounds, placed) => Mock.describe({ event: { type: "forms", rounds, placed } });
+  assert.equal(say(["Round 2"], 7), "Added Round 2 forms, placed 7");
+  assert.equal(say(["Singapore"], 3), "Added Singapore forms, placed 3");
+  assert.equal(say(["Round 2", "Singapore"], 9), "Added Round 2 and Singapore forms, placed 9");
+});

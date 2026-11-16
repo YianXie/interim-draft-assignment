@@ -255,6 +255,17 @@ function restore(version) {
   load(h);
   append({ type: "restore", v: version }, was);
 }
+// Round 2 or Singapore forms added to a built draft: the new School comes in (history stays), the solver's new placements
+// are added, and nobody already on a course moves. Anyone now placed, or who sent one of the added forms, is no longer left.
+function addForms(school, pairs, rounds, senders) {
+  D = school;
+  T = new Map(D.teachers.map((t) => [t.id, t]));
+  C = new Map(D.courses.map((c) => [c.id, c]));
+  for (const [t, c] of pairs) S.placements[t] = c;
+  const sent = new Set(senders);
+  for (const id of [...S.left]) if (S.placements[id] || sent.has(id)) S.left.delete(id);
+  append({ type: "forms", rounds: [...rounds], placed: pairs.length }, shown());
+}
 function setNames(on_) { S.namesOn = !!on_; emit(); }
 
 // Plain words for a Snapshot, built now so they follow the names switch.
@@ -264,9 +275,10 @@ function describe(snap) {
   if (e.type === "build") return "First draft built from the forms";
   if (e.type === "move") return `Moved ${label(e.t)} to ${where(e.to)}`;
   if (e.type === "leave") return e.t.length === 1 ? `Left ${label(e.t[0])} unplaced` : `Left ${e.t.length} people unplaced`;
+  if (e.type === "forms") return `Added ${e.rounds.join(" and ")} forms, placed ${e.placed}`;
   if (e.type === "restore") return `Restored version ${e.v}`;
   return "Undid the last change";
 }
 
-export const Mock = { state: S, on, onSnapshot, init, build, teacher, course, teachers, courses, allCourses, label, contact, placedOn, sponsors, seatsLeft, choice, choiceText, past, lastYear, lastYearLine, thisYear, fit, fitLine, fitSearch, status, reason,
-  teacherFlags, courseFlags, todo, summary, optionsFor, whoAsked, move, leave, undo, canUndo, restore, setNames, describe, history: () => [...S.history] };
+export const Mock = { state: S, school: () => D, on, onSnapshot, init, build, teacher, course, teachers, courses, allCourses, label, contact, placedOn, sponsors, seatsLeft, choice, choiceText, past, lastYear, lastYearLine, thisYear, fit, fitLine, fitSearch, status, reason,
+  teacherFlags, courseFlags, todo, summary, optionsFor, whoAsked, move, leave, addForms, undo, canUndo, restore, setNames, describe, history: () => [...S.history] };
