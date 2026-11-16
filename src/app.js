@@ -22,6 +22,7 @@ let phase = "loading"; // loading, start, building, failed or draft
 let slots = {};
 let parsed = null;
 let reading = 0;
+let wasReady = false; // Build could be pressed at the last render
 let queue = Promise.resolve();
 
 /* Saving: one write at a time, in order. A write that fails stops the line, so "saved" is never claimed over a gap.
@@ -549,8 +550,11 @@ function render() {
     main.innerHTML = startView();
   }
   if (k) { const el = document.querySelector(`[data-k="${CSS.escape(k)}"]`); if (el) el.focus(); }
-  // Last year's rows make Start longer, so Build can end up below a short window just as it unlocks.
-  if (canBuild() && PAST_SLOTS.some((name) => slots[name])) document.querySelector('[data-k="build"]').scrollIntoView({ block: "nearest" });
+  // Last year's rows make Start longer, so Build can end up below a short window just as it unlocks. Only then: a later
+  // render, such as a Start tab, leaves the page where the office put it.
+  const ready = canBuild();
+  if (ready && !wasReady && PAST_SLOTS.some((name) => slots[name])) document.querySelector('[data-k="build"]').scrollIntoView({ block: "nearest" });
+  wasReady = ready;
 }
 
 function push(f) {
@@ -569,15 +573,24 @@ function setNames(on) {
 }
 
 // Builds the workbook from the draft as it is now, on the current switch, and hands it to the browser as a download.
+// If that fails, the button says so until the page next changes or a download works.
 async function download() {
-  const blob = new Blob([await writeBook(sheetsFor(Mock))], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = fileName(Mock);
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+  try {
+    const blob = new Blob([await writeBook(sheetsFor(Mock))], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName(Mock);
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+    const el = document.querySelector("[data-download]");
+    if (el) el.textContent = "Download"; // a try that works after one that failed
+  } catch (err) {
+    console.warn(err);
+    const el = document.querySelector("[data-download]");
+    if (el) el.textContent = "Download failed";
+  }
 }
 
 document.addEventListener("click", (e) => {
@@ -599,7 +612,7 @@ document.addEventListener("click", (e) => {
     case "next": view.idx += 1; render(); break;
     case "moveTo": Mock.move(d.id, d.c || null); if (top_() && top_().k === "move") pop(); break;
     case "leave": Mock.leave([d.id]); break;
-    case "leaveGroup": Mock.leave(Mock.todo().find((i) => i.kind === "noForm").tids); break;
+    case "leaveGroup": Mock.leave(Mock.todo().find((i) => i.kind === "noForm")?.tids ?? []); break;
     case "restore": Mock.restore(Number(d.v)); break;
     case "undo": Mock.undo(); break;
     case "startOver": startOver(); break;

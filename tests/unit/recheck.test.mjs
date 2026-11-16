@@ -4,7 +4,7 @@ import { readSchool } from "./school-fixture.mjs";
 import { loadHighs, solveDraft } from "../../src/solver.js";
 import { recheck, newProblems } from "../../src/recheck.js";
 
-const ALL_CODES = ["ONE_COURSE", "RETURNING_MOVED", "NOT_RANKED", "CERTIFICATE", "OVER_SEATS", "UNDER_SEATS", "NOT_OFFERED"];
+const ALL_CODES = ["ONE_COURSE", "RETURNING_MOVED", "NOT_RANKED", "CERTIFICATE", "OVER_SEATS", "UNDER_SEATS", "NOT_OFFERED", "NOT_A_TEACHER"];
 let school, pairs, courseOf, teacher, course;
 before(async () => {
   school = await readSchool();
@@ -48,6 +48,10 @@ const broken = {
     const rc = returningCourses();
     const [t] = pairs.find(([, c]) => !rc.has(c));
     return without(t);
+  },
+  NOT_A_TEACHER: () => {
+    const [t, c] = pairs[0];
+    return [...without(t), ["T0", c], [t, c]];
   },
   NOT_OFFERED: () => {
     const c = school.courses.find((x) => !x.running);

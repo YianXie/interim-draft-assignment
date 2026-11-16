@@ -184,13 +184,17 @@ function readFit(file, rows) {
 }
 
 // A form's emails must be on the staff list and its choices on the course list. Either list may be missing (that file
-// did not read), and then that part is skipped.
+// did not read), and then that part is skipped. Round 1 and Round 2 are the International forms, Singapore its own.
+const KIND = { "round1.xlsx": "International", "round2.xlsx": "International", "singapore.xlsx": "Singapore" };
 function checkForm(file, rows, onStaff, byName) {
   for (const r of rows) {
     if (onStaff && !onStaff.has(r.email)) refuse(file, r.n, "email is not on the staff list");
     if (!byName) continue;
     r.cells.forEach((c, i) => {
-      if (!blank(c) && !byName.has(text(c))) refuse(file, r.n, `Choice ${i + 1} is not on the course list`);
+      if (blank(c)) return;
+      const course = byName.get(text(c));
+      if (!course) refuse(file, r.n, `Choice ${i + 1} is not on the course list`);
+      if (course.kind !== KIND[file]) refuse(file, r.n, `Choice ${i + 1} is not ${KIND[file] === "Singapore" ? "a Singapore" : "an International"} course`);
     });
   }
 }

@@ -224,6 +224,15 @@ test("a certificate matches whatever its letter case or spacing, and takes the c
   assert.equal(t.returningCourse, code);
 });
 
+test("a choice of the wrong type of course is refused: Round 1 and 2 list International courses, Singapore lists Singapore", async () => {
+  const name = (rows, type) => rows["courses.xlsx"].slice(1).find((r) => r[2] === type)[1];
+  for (const [file, type] of [["round1.xlsx", "Singapore"], ["round2.xlsx", "Singapore"], ["singapore.xlsx", "International"]]) {
+    const out = await run((rows) => { rows[file][1][CHOICE(1)] = name(rows, type); });
+    assert.equal(out.school, null, file);
+    assert.equal(out.slots[file], `${file}, row 2: Choice 1 is not ${type === "Singapore" ? "an International" : "a Singapore"} course`);
+  }
+});
+
 test("seats not a positive whole number is refused", async () => {
   for (const bad of [0, -1, 2.5, "three", null]) {
     const out = await run((rows) => (rows["courses.xlsx"][5][3] = bad));

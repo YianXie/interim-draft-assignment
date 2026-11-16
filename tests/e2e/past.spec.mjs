@@ -337,6 +337,15 @@ test("Build is in view once ten files are ready, on a short window", async ({ pa
   expect(box.y + box.height).toBeLessThanOrEqual(short.height);
 });
 
+test("once Build is in view, switching Start tabs leaves the page where it was scrolled", async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 360 });
+  await startTen(page);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.getByRole("tab", { name: /^This year/ }).click();
+  await page.getByRole("tab", { name: /^Last year/ }).click();
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+});
+
 test("six files alone never move the page, however short the window", async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 360 });
   await dropSchool(page);

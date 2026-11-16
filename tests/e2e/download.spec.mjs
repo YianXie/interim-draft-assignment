@@ -141,3 +141,18 @@ test("Download needs no network and the policy stays untouched", async ({ page }
   expect(await watch.csp()).toEqual([]);
   expect(watch.problems).toEqual([]);
 });
+
+test("a download that fails says so on the button and throws nothing", async ({ page }) => {
+  const watch = watchPage(page);
+  await goBuild(page);
+  await page.evaluate(() => { window.__real = URL.createObjectURL; URL.createObjectURL = () => { throw new Error("stubbed download failure"); }; });
+  const button = page.locator("[data-download]");
+  await button.click();
+  await expect(button).toHaveText("Download failed");
+  // The next try works: the file arrives and the button says Download again.
+  await page.evaluate(() => { URL.createObjectURL = window.__real; });
+  const [d] = await Promise.all([page.waitForEvent("download"), button.click()]);
+  expect(d.suggestedFilename()).toMatch(/\.xlsx$/);
+  await expect(button).toHaveText("Download");
+  expect(watch.problems).toEqual([]);
+});

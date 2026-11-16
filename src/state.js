@@ -118,7 +118,7 @@ function verb(t, cid) {
   const c = C.get(cid);
   const st = status(cid);
   if (st === "not running") return "is not running";
-  if (c.needs && !t.certificates.includes(c.needs)) return `needs a ${c.needs.toLowerCase()}`;
+  if (c.needs && !t.certificates.includes(c.needs)) return `needs ${/^[aeiou]/i.test(c.needs) ? "an" : "a"} ${c.needs.toLowerCase()}`;
   if (st === "full" || st === "over") return "is full";
   return st === "short" ? "has a free seat" : "did not run";
 }

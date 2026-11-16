@@ -167,7 +167,7 @@ const files = {
   "past-singapore": [HEADERS["past-singapore.xlsx"], ...sent("singapore", sg, (email, picks) => [enhancing(say, picks, "Singapore"), singaporeWords(say, picks)])],
 };
 await mkdir(out, { recursive: true });
-for (const [name, table] of Object.entries(files)) await writeFile(new URL(`${name}.xlsx`, out), await writeBook([{ name: "Fernhollow", rows: table }]));
+for (const [name, table] of Object.entries(files)) await writeFile(new URL(`${name}.xlsx`, out), await writeBook([{ name: "Fernhollow", rows: table }], { modified: new Date(Date.UTC(2026, 10, 13)) })); // a fixed date: same tables, same bytes
 
 // Every count below is counted from the tables just written.
 const entries = files["past-allocation"].slice(1).flatMap(([, course, ...sponsors]) => sponsors.map((who) => [who, course]));
