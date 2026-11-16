@@ -7,6 +7,8 @@ const TYPES = {
   ".wasm": "application/wasm", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml", ".zip": "application/zip",
 };
 const root = join(process.cwd(), "dist");
+// 4173 unless INTERIM_PORT says otherwise, so the browser tests can run beside a demo that is already open.
+const port = Number(process.env.INTERIM_PORT) || 4173;
 
 createServer(async (req, res) => {
   try {
@@ -18,4 +20,4 @@ createServer(async (req, res) => {
   } catch {
     res.writeHead(404).end("Not found");
   }
-}).listen(4173, "127.0.0.1", () => console.log("http://127.0.0.1:4173"));
+}).listen(port, "127.0.0.1", () => console.log(`http://127.0.0.1:${port}`));

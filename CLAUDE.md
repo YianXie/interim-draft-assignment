@@ -22,7 +22,7 @@ Node 24+ is required (`start-demo.command` prepends `/opt/homebrew/bin` to PATH 
 ```bash
 npm install
 npm run build        # dist/: bundled app.js, public/, highs.wasm, fixtures as dist/sample + two sample zips
-npm run serve        # http://127.0.0.1:4173 (serves dist/, so build first)
+npm run serve        # http://127.0.0.1:4173 (serves dist/, so build first); INTERIM_PORT=4174 npm run serve for another port
 npm run check        # build + unit tests + Playwright, ends with CHECK OK
 npm run check:final  # same, Playwright repeated 5 times
 ```
@@ -35,7 +35,7 @@ node --test --test-name-pattern "some name" tests/unit/
 npm run build && npx playwright test tests/e2e/draft.spec.mjs
 ```
 
-Playwright starts its own `npm run serve` (`reuseExistingServer: false`), so stop any server already on 4173, and rebuild before e2e runs because it serves `dist/`. Browser tests must use no fixed waits.
+Playwright starts its own `npm run serve` (`reuseExistingServer: false`), so stop any server already on 4173 or run with another port (`INTERIM_PORT=4174 npm run check`; e2e tests take their origin from `ORIGIN` in `tests/e2e/helpers.mjs`), and rebuild before e2e runs because it serves `dist/`. Browser tests must use no fixed waits.
 
 Regenerating fixtures (needs `uv`; Python + OR-Tools are used only here):
 
@@ -43,6 +43,7 @@ Regenerating fixtures (needs `uv`; Python + OR-Tools are used only here):
 npm run fixtures        # fixtures/school + fixtures/expected.json
 npm run fixtures:past   # fixtures/past + expected-past.json
 npm run fixtures:fit    # fixtures/fit/fit.xlsx + expected-fit.json, expected-past-fit.json
+npm run fixtures:later  # fixtures/later/kept.json + expected-later.json
 ```
 
 The fit reader is run by hand against a local Ollama, never by the page or tests: `node tools/reader.mjs --dir <folder with the six>` (see README for flags). Prompt experiments live in `tools/reader-test/`.
@@ -67,7 +68,7 @@ Data flow: **files → `School` → solver → `Mock` state → snapshots in Ind
 - `tests/unit/` (`node:test`) cover import, solver vs expected JSON, recheck (one broken draft per rule), reasons, export, past, fit, reader. `*-fixture.mjs` files are helpers that parse the fixture folders.
 - `tests/e2e/` (Playwright, Chromium) drive real uploads and screens. `helpers.mjs` collects page errors and CSP violations; `words.mjs` is the forbidden-words check; `network.spec.mjs` asserts zero outside requests.
 - Screen budgets: `tests/e2e/measure-source.mjs` holds `BUDGETS` and `INSPECT`, copied from `seed/measure.cjs` and locked by SHA-256 in `tests/e2e/lock.json` (checked by `tests/unit/lock.test.mjs`). Do not edit them. Pages mark up `data-rows`, `data-row` and `data-panel` for this measurement; Start/To do use the `first` budget, lists `list`, an open reason `detail`.
-- `docs/hand-checks.md` lists checks done by hand in real Excel/Chrome, two still not done.
+- `docs/hand-checks.md` lists checks done by hand in real Excel/Chrome, three still not done.
 
 ## Other folders
 

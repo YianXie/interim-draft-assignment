@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readBook } from "../../src/xlsx.js";
-import { buildButton, buildDraft, dropSchool, measure, schoolFiles, watchPage } from "./helpers.mjs";
+import { ORIGIN, buildButton, buildDraft, dropSchool, measure, schoolFiles, watchPage } from "./helpers.mjs";
 import { forbiddenIn } from "./words.mjs";
 
 const BUILD = 1; // The Build snapshot is always version 1.
@@ -130,7 +130,7 @@ test("a load that fails never overwrites the saved draft", async ({ page }) => {
   await buildDraft(page);
   await moveOne(page, placedIds(await placements(page), 1)[0]);
   await expect(undo(page)).toBeVisible();
-  await expect(saved(page)).toHaveText("");
+  await expect(saved(page)).toHaveText("Not saved");
   await expect(saved(page)).not.toHaveAttribute("data-version");
   await history(page);
   page.once("dialog", (d) => d.accept());
@@ -170,8 +170,77 @@ test("the saved line waits for the write, and versions land in order", async ({ 
   expect(await stored(page)).toEqual({ upload: 1, snapshots: 3 });
 });
 
+test("a write that fails says Not saved, and nothing after it claims to be saved", async ({ page }) => {
+  await goBuild(page);
+  const [a, b] = placedIds(await placements(page), 2);
+  await page.evaluate(() => { IDBObjectStore.prototype.add = () => { throw new Error("stubbed write failure"); }; });
+  await moveOne(page, a);
+  await expect(saved(page)).toHaveText("Not saved");
+  await moveOne(page, b);
+  await expect(saved(page)).toHaveText("Not saved");
+  await savedAt(page, BUILD);
+});
+
+test("a second tab's versions are never overwritten: the first tab says Not saved", async ({ page, context }) => {
+  await goBuild(page);
+  const other = await context.newPage();
+  await other.goto("/");
+  await expect(other.locator("[data-result]")).toBeVisible();
+  await moveOne(other, placedIds(await placements(other), 1)[0]);
+  await savedAt(other, 2);
+  await expect(saved(other)).toHaveText("Saved in this browser");
+  const theirs = await placements(other);
+
+  await moveOne(page, placedIds(await placements(page), 2)[1]);
+  await expect(saved(page)).toHaveText("Not saved");
+  await reloaded(page);
+  await savedAt(page, 2);
+  expect(await placements(page)).toEqual(theirs);
+});
+
+test("after a second tab starts over and builds again, the first tab writes nothing into the new draft", async ({ page, context }) => {
+  await goBuild(page);
+  const other = await context.newPage();
+  await other.goto("/");
+  await expect(other.locator("[data-result]")).toBeVisible();
+  await history(other);
+  other.once("dialog", (d) => d.accept());
+  await other.getByRole("button", { name: "Start over" }).click();
+  await expect(other.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(4);
+  await goBuild(other);
+  await expect(saved(other)).toHaveText("Saved in this browser");
+  const theirs = await placements(other);
+
+  await moveOne(page, placedIds(await placements(page), 1)[0]);
+  await expect(saved(page)).toHaveText("Not saved");
+  expect(await stored(page)).toEqual({ upload: 1, snapshots: 1 });
+  await reloaded(page);
+  await savedAt(page, BUILD);
+  expect(await placements(page)).toEqual(theirs);
+});
+
+test("Start over in a tab whose draft another tab replaced leaves the newer draft alone", async ({ page, context }) => {
+  await goBuild(page);
+  const other = await context.newPage();
+  await other.goto("/");
+  await expect(other.locator("[data-result]")).toBeVisible();
+  await history(other);
+  other.once("dialog", (d) => d.accept());
+  await other.getByRole("button", { name: "Start over" }).click();
+  await expect(other.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(4);
+  await goBuild(other);
+  const theirs = await placements(other);
+
+  await history(page);
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Start over" }).click();
+  await expect(page.locator("[data-result]")).toBeVisible();
+  expect(await stored(page)).toEqual({ upload: 1, snapshots: 1 });
+  expect(await placements(page)).toEqual(theirs);
+});
+
 /* The kill test drives a real Chromium on a real profile, because a Playwright context keeps nothing on disk. */
-const BASE = "http://127.0.0.1:4173/";
+const BASE = `${ORIGIN}/`;
 let profile = null;
 let live = null;
 

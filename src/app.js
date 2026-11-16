@@ -25,24 +25,29 @@ let reading = 0;
 let queue = Promise.resolve();
 
 /* Saving: one write at a time, in order. A write that fails stops the line, so "saved" is never claimed over a gap.
-   After a failed load nothing is written or wiped for the whole session: a draft may still be on disk. */
+   After a failed load nothing is written or wiped for the whole session: a draft may still be on disk.
+   Either way the line says Not saved from then on, so the office knows a reload would lose work. */
 let loadFailed = false;
+let saveFailed = false;
 let savedVersion = null;
+let saveId = null; // the stored upload this tab writes to; another tab's upload makes every write here fail
 let saving = Promise.resolve();
 function inOrder(job) {
   if (loadFailed) return;
   saving = saving.then(job);
-  saving.catch(() => {});
+  saving.catch(() => { saveFailed = true; showSaved(); });
 }
 function showSaved() {
   const el = document.querySelector("[data-saved]");
-  if (!el || savedVersion === null) return;
-  el.dataset.version = savedVersion;
+  if (!el) return;
+  if (savedVersion !== null) el.dataset.version = savedVersion; // the newest version on disk, whatever the line says
+  if (loadFailed || saveFailed) { el.textContent = "Not saved"; return; }
+  if (savedVersion === null) return;
   el.textContent = savedVersion === Mock.state.version ? "Saved in this browser" : "";
 }
 function remember(snap) {
   inOrder(async () => {
-    await addSnapshot(snap);
+    await addSnapshot(snap, saveId);
     savedVersion = snap.version;
     showSaved();
   });
@@ -50,7 +55,7 @@ function remember(snap) {
 function startOver() {
   if (!window.confirm("Delete the draft, every version and what was read from the files? This cannot be undone.")) return;
   const toStart = () => location.reload();
-  saving.catch(() => {}).then(() => loadFailed || wipe()).then(toStart, toStart);
+  saving.catch(() => {}).then(() => loadFailed || wipe(saveId)).then(toStart, toStart);
 }
 
 const KNOWN = [...SLOTS, ...PAST_SLOTS, FIT];
@@ -98,7 +103,9 @@ async function build() {
   try {
     const { status, pairs } = solveDraft(await loadHighs({ locateFile: (f) => "/" + f }), school);
     if (status !== "Optimal" || recheck(school, pairs).length) { phase = "failed"; render(); return; }
-    inOrder(() => saveUpload(school));
+    const id = crypto.randomUUID();
+    saveId = id;
+    inOrder(() => saveUpload(school, id));
     Mock.init(school);
     Mock.build(toDraft(school, pairs));
     held.clear();
@@ -446,7 +453,8 @@ async function addLater() {
     const { status, pairs } = solveDraft(highs, read.school, keep, Mock.handOff());
     if (status !== "Optimal" || newProblems(read.school, keep, [...keep, ...pairs]).length) { laterFailed = true; return; }
     // The upload is written first; the snapshot addForms makes is queued after it, so a failed upload write stops it too.
-    inOrder(() => replaceUpload(read.school));
+    const next = Mock.state.version + 1; // the version Mock.addForms writes below
+    inOrder(() => replaceUpload(read.school, saveId, next));
     placing = false;
     laterReset();
     Mock.addForms(read.school, pairs, read.rounds, read.senders);
@@ -629,6 +637,7 @@ async function boot() {
   });
   if (saved) {
     savedVersion = saved.snapshots.at(-1).version;
+    saveId = saved.saveId;
     phase = "draft";
     Mock.init(saved.school, saved.snapshots);
   } else {

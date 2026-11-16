@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { buildDraft, dropSchool } from "./helpers.mjs";
+import { ORIGIN, buildDraft, dropSchool } from "./helpers.mjs";
 
-const ORIGIN = "http://127.0.0.1:4173";
 const POLICY = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; form-action 'none'; base-uri 'none'">`;
 // Nothing here is ever contacted: the address is reserved for documentation.
 const OUTSIDE = "http://198.51.100.1/";

@@ -40,10 +40,11 @@ def rows(name, folder=SCHOOL):
     return out[0], [r for r in out[1:] if any(c != "" for c in r)]
 
 _, crow = rows("courses")
-courses = {r[0]: dict(name=r[1], seats=int(r[3]), offered=r[4] == "Yes", cert=r[5]) for r in crow}
+squash = lambda s: " ".join(str(s).lower().split())  # a certificate is the same whatever its letter case or spacing
+courses = {r[0]: dict(name=r[1], seats=int(r[3]), offered=r[4] == "Yes", cert=squash(r[5])) for r in crow}
 by_name = {c["name"]: k for k, c in courses.items()}
 _, srow = rows("staff")
-people = {r[0]: dict(name=r[1], certs={x.strip() for x in r[2].split(";") if x.strip()}) for r in srow}
+people = {r[0]: dict(name=r[1], certs={squash(x) for x in r[2].split(";") if x.strip()}) for r in srow}
 _, rrow = rows("returning")
 sponsor = {r[0]: r[1] for r in rrow}
 

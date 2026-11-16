@@ -26,15 +26,26 @@ async function write(stores, work) {
   });
 }
 
+// Each upload carries a random id, saveId. A tab writes only while the stored upload is still the one it has, and never
+// over a version already written, so a second tab's work is never overwritten: the write fails instead.
+const mine = (tx, saveId, then) => {
+  const req = tx.objectStore("upload").get("school");
+  req.onsuccess = () => { if (req.result && req.result.saveId === saveId) then(); else tx.abort(); };
+};
 // A new upload starts a new history, so snapshots of an older one can never be read against it.
-export const saveUpload = (school) => write(BOTH, (tx) => {
+export const saveUpload = (school, saveId) => write(BOTH, (tx) => {
   tx.objectStore("snapshots").clear();
-  tx.objectStore("upload").put(school, "school");
+  tx.objectStore("upload").put({ ...school, saveId }, "school");
 });
-// The same upload with later forms added: the history goes on, so snapshots stay.
-export const replaceUpload = (school) => write(["upload"], (tx) => tx.objectStore("upload").put(school, "school"));
-export const addSnapshot = (s) => write(["snapshots"], (tx) => tx.objectStore("snapshots").put(s));
-export const wipe = () => write(BOTH, (tx) => BOTH.forEach((name) => tx.objectStore(name).clear()));
+// The same upload with later forms added: the history goes on, so snapshots stay. next is the version this tab writes
+// next; if another tab on the same upload already wrote it, the forms it added would no longer match, so nothing is written.
+export const replaceUpload = (school, saveId, next) => write(BOTH, (tx) => mine(tx, saveId, () => {
+  const taken = tx.objectStore("snapshots").count(next);
+  taken.onsuccess = () => { if (taken.result) tx.abort(); else tx.objectStore("upload").put({ ...school, saveId }, "school"); };
+}));
+export const addSnapshot = (s, saveId) => write(BOTH, (tx) => mine(tx, saveId, () => tx.objectStore("snapshots").add(s)));
+// Only this tab's own upload: a draft another tab built since is never wiped from here.
+export const wipe = (saveId) => write(BOTH, (tx) => mine(tx, saveId, () => BOTH.forEach((name) => tx.objectStore(name).clear())));
 
 // An upload with no snapshots never finished saving a draft, so it counts as nothing saved.
 export async function loadAll() {
@@ -43,7 +54,11 @@ export async function loadAll() {
     const tx = db.transaction(BOTH);
     const school = tx.objectStore("upload").get("school");
     const snapshots = tx.objectStore("snapshots").getAll();
-    tx.oncomplete = () => resolve(school.result && snapshots.result.length ? { school: school.result, snapshots: snapshots.result } : null);
+    tx.oncomplete = () => {
+      if (!school.result || !snapshots.result.length) return resolve(null);
+      const { saveId, ...rest } = school.result;
+      resolve({ school: rest, saveId, snapshots: snapshots.result });
+    };
     tx.onerror = tx.onabort = () => reject(tx.error);
   });
 }

@@ -1,14 +1,14 @@
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { readBook } from "../../src/xlsx.js";
-import { buildButton, dropSchool, buildDraft } from "./helpers.mjs";
+import { ORIGIN, buildButton, dropSchool, buildDraft } from "./helpers.mjs";
 
 const tab = (page, name) => page.getByRole("tab", { name });
 const names = (page) => page.getByRole("switch", { name: "Show names" });
 
 // The demo story, in the order it is told, on a fresh browser profile.
 test("the demo story end to end", async ({ browser }) => {
-  const context = await browser.newContext({ baseURL: "http://127.0.0.1:4173", acceptDownloads: true });
+  const context = await browser.newContext({ baseURL: ORIGIN, acceptDownloads: true });
   const page = await context.newPage();
   await dropSchool(page);
   await buildDraft(page);

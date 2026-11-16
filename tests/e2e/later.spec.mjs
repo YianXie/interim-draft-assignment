@@ -251,3 +251,38 @@ test("a move made while Placing stands", async ({ page }) => {
   expect((await placements(page))[y]).toBe(w);
   expect(watch.problems).toEqual([]);
 });
+
+// The rounds held in the stored upload, read the way a second tab would.
+const storedRounds = (page) => page.evaluate(() => new Promise((resolve, reject) => {
+  const open = indexedDB.open("interim-demo");
+  open.onerror = () => reject(open.error);
+  open.onsuccess = () => {
+    const req = open.result.transaction("upload").objectStore("upload").get("school");
+    req.onsuccess = () => { open.result.close(); resolve([...new Set(req.result.teachers.flatMap((t) => t.prefs.map((p) => p.round)))].sort()); };
+  };
+}));
+async function addOne(page, file) {
+  await openCard(page);
+  await page.locator('[data-k="later-files"]').setInputFiles(later().filter((p) => p.endsWith(file)));
+  await expect(slot(page, file)).toContainText("ready");
+  await addButton(page).click();
+  await expect(page.getByRole("heading", { name: "Add forms" })).toHaveCount(0, { timeout: 60_000 });
+}
+
+test("Add forms in a second tab never replaces the forms the first tab added", async ({ page, context }) => {
+  await buildRoundOne(page);
+  const other = await context.newPage();
+  await other.goto("/");
+  await expect(other.locator("[data-result]")).toBeVisible();
+
+  await addOne(page, "round2.xlsx");
+  await expect(page.locator("[data-saved]")).toHaveText("Saved in this browser");
+  const ours = await placements(page);
+  await addOne(other, "singapore.xlsx");
+  await expect(other.locator("[data-saved]")).toHaveText("Not saved");
+
+  expect(await storedRounds(page)).toEqual(["Round 1", "Round 2"]);
+  await page.reload();
+  await expect(page.locator("[data-result]")).toBeVisible();
+  expect(await placements(page)).toEqual(ours);
+});

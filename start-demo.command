@@ -2,6 +2,7 @@
 # Double-click from Finder: starts the local server, opens the page, stops the server when this window closes.
 cd "$(dirname "$0")" || exit 1
 export PATH="/opt/homebrew/bin:$PATH"
+unset INTERIM_PORT # the demo is always on 4173, the address opened below
 
 npm run build || exit 1
 

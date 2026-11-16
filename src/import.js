@@ -55,6 +55,8 @@ const refuse = (file, row, problem) => {
 const blank = (v) => v === null || v === undefined || String(v).trim() === "";
 const text = (v) => (blank(v) ? "" : String(v).trim());
 const normEmail = (v) => text(v).toLowerCase();
+// A certificate is the same one whatever its letter case or spacing; the course list's spelling is the one kept.
+const normCert = (v) => text(v).toLowerCase().replace(/\s+/g, " ");
 
 // The header row a file must have. Last year's allocation has as many Sponsor columns as it needs, from one up.
 function headerRow(file, head) {
@@ -261,7 +263,7 @@ export async function parseFiles(files, random = secureRandom) {
     try {
       if (file === "returning.xlsx") {
         // A returning sponsor stays on an offered course, so one who cannot be put there would leave no draft at all.
-        const certs = staff && new Map(staff.map((s) => [s.email, s.certificates]));
+        const certs = staff && new Map(staff.map((s) => [s.email, s.certificates.map(normCert)]));
         const back = new Map();
         for (const r of rows) {
           if (onStaff && !onStaff.has(r.email)) refuse(file, r.n, "email is not on the staff list");
@@ -269,7 +271,7 @@ export async function parseFiles(files, random = secureRandom) {
           const c = byId.get(text(r.cells[0]));
           if (!c) refuse(file, r.n, "course code is not on the course list");
           if (!c.running) continue;
-          if (c.needs && certs && !certs.get(r.email)?.includes(c.needs)) refuse(file, r.n, "this sponsor does not hold the certificate the course needs");
+          if (c.needs && certs && !certs.get(r.email)?.includes(normCert(c.needs))) refuse(file, r.n, "this sponsor does not hold the certificate the course needs");
           back.set(c.id, (back.get(c.id) ?? 0) + 1);
           if (back.get(c.id) > c.seats) refuse(file, r.n, "more returning sponsors than seats on this course");
         }
@@ -315,6 +317,10 @@ export async function parseFiles(files, random = secureRandom) {
     slots["staff.xlsx"] = "staff.xlsx: more than 900 people";
     return { school: null, slots };
   }
+  const spelling = new Map();
+  for (const c of courses) if (c.needs && !spelling.has(normCert(c.needs))) spelling.set(normCert(c.needs), c.needs);
+  const cert = (v) => spelling.get(normCert(v)) ?? v;
+  for (const c of courses) if (c.needs) c.needs = cert(c.needs);
   const teachers = new Map();
   for (const s of staff) {
     const j = random(pool.length);
@@ -323,7 +329,7 @@ export async function parseFiles(files, random = secureRandom) {
     pool.pop();
     teachers.set(s.email, {
       id, name: s.name, email: s.email, returning: false, returningCourse: null,
-      submitted: false, certificates: s.certificates, prefs: [],
+      submitted: false, certificates: [...new Set(s.certificates.map(cert))], prefs: [],
     });
   }
   for (const r of got["returning.xlsx"]) {

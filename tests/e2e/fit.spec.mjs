@@ -3,12 +3,11 @@ import { readFileSync } from "node:fs";
 import { unzipSync, strFromU8 } from "fflate";
 import { FIT, SLOTS } from "../../src/import.js";
 import { readBook } from "../../src/xlsx.js";
-import { buildButton, buildDraft, dropFiles, dropSchool, measure, measureStart, schoolFiles, visibleStrings, watchPage } from "./helpers.mjs";
+import { ORIGIN, buildButton, buildDraft, dropFiles, dropSchool, measure, measureStart, schoolFiles, visibleStrings, watchPage } from "./helpers.mjs";
 import { cleanUp, dropSeven, expectedLines, factsAndQuotes, fitFile, sevenFiles, variantFit } from "./fit-helpers.mjs";
 import { forbiddenIn } from "./words.mjs";
 import { pastFiles } from "../unit/past-fixture.mjs";
 
-const ORIGIN = "http://127.0.0.1:4173";
 const TEACHERS = 96;
 const BAD_KIND = "Row 2: kind must be Language, Certificate, Experience, Skill or Limitation";
 

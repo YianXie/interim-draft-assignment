@@ -6,12 +6,11 @@ import { unzipSync, strFromU8 } from "fflate";
 import { PAST_SLOTS, SLOTS } from "../../src/import.js";
 import { readBook, writeBook } from "../../src/xlsx.js";
 import { pastFiles, readPastSchool } from "../unit/past-fixture.mjs";
-import { buildButton, buildDraft, dropFiles, dropSchool, measure, measureStart, schoolFiles, visibleStrings, watchPage } from "./helpers.mjs";
+import { ORIGIN, buildButton, buildDraft, dropFiles, dropSchool, measure, measureStart, schoolFiles, visibleStrings, watchPage } from "./helpers.mjs";
 import { dropTen, tenFiles } from "./past-helpers.mjs";
 import { forbiddenIn } from "./words.mjs";
 
 const expected = JSON.parse(readFileSync("fixtures/expected-past.json", "utf8"));
-const ORIGIN = "http://127.0.0.1:4173";
 const ALLOCATION = PAST_SLOTS[0];
 const TEACHERS = 96;
 

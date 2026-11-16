@@ -203,6 +203,27 @@ test("any number of returning sponsors on a not-offered course still builds", as
   assert.ok(out.school, JSON.stringify(out.slots));
 });
 
+test("a certificate matches whatever its letter case or spacing, and takes the course list's spelling", async () => {
+  let email, code;
+  const out = await run((rows) => {
+    const cert = rows["courses.xlsx"].slice(1).find((r) => r[5] && r[4] === "Yes");
+    code = cert[0];
+    const certs = new Set(rows["staff.xlsx"].slice(1).filter((r) => String(r[2] ?? "").includes(cert[5])).map((r) => r[0]));
+    const back = new Set(rows["returning.xlsx"].slice(1).map((r) => r[0]));
+    const t = rows["staff.xlsx"].slice(1).find((r) => !certs.has(r[0]) && !back.has(r[0]));
+    email = t[0];
+    t[2] = `  ${cert[5].toUpperCase().replace(" ", "   ")} ; First Aid`;
+    // A returning sponsor written the other way round is still taken as holding it.
+    rows["returning.xlsx"][1][0] = email;
+    rows["returning.xlsx"][1][1] = cert[0];
+  });
+  assert.ok(out.school, JSON.stringify(out.slots));
+  const needs = out.school.courses.find((c) => c.id === code).needs;
+  const t = out.school.teachers.find((x) => x.email === email);
+  assert.deepEqual(t.certificates, [needs, "First Aid"]);
+  assert.equal(t.returningCourse, code);
+});
+
 test("seats not a positive whole number is refused", async () => {
   for (const bad of [0, -1, 2.5, "three", null]) {
     const out = await run((rows) => (rows["courses.xlsx"][5][3] = bad));

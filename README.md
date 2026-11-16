@@ -11,7 +11,7 @@ It has only ever seen invented data: an invented school, invented people, invent
 
 ## Run it
 
-- Double-click `start-demo.command`. It builds the page if needed, starts the server on `http://127.0.0.1:4173`, and opens it. Closing its window stops the server.
+- Double-click `start-demo.command`. It builds the page, starts the server on `http://127.0.0.1:4173`, and opens it. Closing its window stops the server.
 - Or in a terminal: `npm install`, `npm run build`, `npm run serve`, then open `http://127.0.0.1:4173`.
 
 ## Round 2 and Singapore later
@@ -44,6 +44,7 @@ It has only ever seen invented data: an invented school, invented people, invent
 
 - `npm run check` builds, runs the unit tests and the browser tests, and ends with `CHECK OK`.
 - `npm run check:final` does the same with the browser tests repeated five times.
+- Both start their own server on port 4173. With the demo already open there, run them on another port: `INTERIM_PORT=4174 npm run check`.
 - `docs/hand-checks.md` lists the four checks done by hand, and three not done yet.
 
 ## Things to know

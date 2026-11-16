@@ -9,6 +9,9 @@ import { INSPECT, judge } from "./measure-source.mjs";
 
 const watched = new WeakMap();
 
+// The test server's address: 4173, or INTERIM_PORT when it is set (see playwright.config.mjs).
+export const ORIGIN = `http://127.0.0.1:${Number(process.env.INTERIM_PORT) || 4173}`;
+
 export function watchPage(page) {
   const problems = [];
   watched.set(page, problems);
