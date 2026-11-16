@@ -1,0 +1,358 @@
+[
+  {
+    "email": "ada.kettlewick@fernhollow.example",
+    "course": "INT-37"
+  },
+  {
+    "email": "ada.lindqvale@fernhollow.example",
+    "course": "INT-32"
+  },
+  {
+    "email": "ada.nettlefield@fernhollow.example",
+    "course": "INT-40"
+  },
+  {
+    "email": "ada.quillfeather@fernhollow.example",
+    "course": "INT-27"
+  },
+  {
+    "email": "ada.willowmere@fernhollow.example",
+    "course": "INT-25"
+  },
+  {
+    "email": "alder.thornquist@fernhollow.example",
+    "course": "INT-16"
+  },
+  {
+    "email": "bram.brambleton@fernhollow.example",
+    "course": "INT-35"
+  },
+  {
+    "email": "bram.mossgrove@fernhollow.example",
+    "course": "INT-25"
+  },
+  {
+    "email": "briar.copperfold@fernhollow.example",
+    "course": "INT-02"
+  },
+  {
+    "email": "briar.kettlewick@fernhollow.example",
+    "course": "INT-27"
+  },
+  {
+    "email": "briar.tansywell@fernhollow.example",
+    "course": "INT-12"
+  },
+  {
+    "email": "calder.elderhaven@fernhollow.example",
+    "course": "INT-22"
+  },
+  {
+    "email": "calder.inglethorn@fernhollow.example",
+    "course": "INT-29"
+  },
+  {
+    "email": "calder.pinewhistle@fernhollow.example",
+    "course": "INT-23"
+  },
+  {
+    "email": "calder.underhill@fernhollow.example",
+    "course": "INT-02"
+  },
+  {
+    "email": "delphine.ashdowne@fernhollow.example",
+    "course": "INT-06"
+  },
+  {
+    "email": "delphine.tollivant@fernhollow.example",
+    "course": "SG-04"
+  },
+  {
+    "email": "dov.dunmorrow@fernhollow.example",
+    "course": "INT-03"
+  },
+  {
+    "email": "dov.elderhaven@fernhollow.example",
+    "course": "INT-01"
+  },
+  {
+    "email": "dov.quillfeather@fernhollow.example",
+    "course": "INT-38"
+  },
+  {
+    "email": "dov.tollivant@fernhollow.example",
+    "course": "INT-18"
+  },
+  {
+    "email": "dov.willowmere@fernhollow.example",
+    "course": "INT-01"
+  },
+  {
+    "email": "esme.nettlefield@fernhollow.example",
+    "course": "INT-11"
+  },
+  {
+    "email": "fenna.tansywell@fernhollow.example",
+    "course": "INT-13"
+  },
+  {
+    "email": "finn.gorsewick@fernhollow.example",
+    "course": "INT-28"
+  },
+  {
+    "email": "finn.nettlefield@fernhollow.example",
+    "course": "INT-12"
+  },
+  {
+    "email": "finn.pinewhistle@fernhollow.example",
+    "course": "INT-16"
+  },
+  {
+    "email": "finn.sedgemoor@fernhollow.example",
+    "course": "INT-04"
+  },
+  {
+    "email": "finn.vetchley@fernhollow.example",
+    "course": "SG-03"
+  },
+  {
+    "email": "finn.willowmere@fernhollow.example",
+    "course": "INT-39"
+  },
+  {
+    "email": "greer.quillfeather@fernhollow.example",
+    "course": "SG-01"
+  },
+  {
+    "email": "greer.underhill@fernhollow.example",
+    "course": "INT-19"
+  },
+  {
+    "email": "hollis.quarrystone@fernhollow.example",
+    "course": "INT-20"
+  },
+  {
+    "email": "ines.brambleton@fernhollow.example",
+    "course": "INT-19"
+  },
+  {
+    "email": "ines.nettlefield@fernhollow.example",
+    "course": "INT-09"
+  },
+  {
+    "email": "ines.pinewhistle@fernhollow.example",
+    "course": "INT-34"
+  },
+  {
+    "email": "jory.hazelrook@fernhollow.example",
+    "course": "INT-18"
+  },
+  {
+    "email": "jory.mossgrove@fernhollow.example",
+    "course": "INT-05"
+  },
+  {
+    "email": "kestrel.dunmorrow@fernhollow.example",
+    "course": "INT-24"
+  },
+  {
+    "email": "kestrel.foxglenn@fernhollow.example",
+    "course": "INT-22"
+  },
+  {
+    "email": "kestrel.inglethorn@fernhollow.example",
+    "course": "INT-30"
+  },
+  {
+    "email": "kestrel.kettlewick@fernhollow.example",
+    "course": "INT-26"
+  },
+  {
+    "email": "kestrel.marrowby@fernhollow.example",
+    "course": "INT-36"
+  },
+  {
+    "email": "kestrel.mossgrove@fernhollow.example",
+    "course": "INT-24"
+  },
+  {
+    "email": "kestrel.thornquist@fernhollow.example",
+    "course": "INT-17"
+  },
+  {
+    "email": "linus.ambletide@fernhollow.example",
+    "course": "INT-24"
+  },
+  {
+    "email": "linus.dunmorrow@fernhollow.example",
+    "course": "INT-21"
+  },
+  {
+    "email": "linus.lindqvale@fernhollow.example",
+    "course": "SG-03"
+  },
+  {
+    "email": "linus.marrowby@fernhollow.example",
+    "course": "INT-17"
+  },
+  {
+    "email": "mirel.quarrystone@fernhollow.example",
+    "course": "SG-02"
+  },
+  {
+    "email": "mirel.rookhollow@fernhollow.example",
+    "course": "INT-26"
+  },
+  {
+    "email": "mirel.vetchley@fernhollow.example",
+    "course": "INT-10"
+  },
+  {
+    "email": "nico.kettlewick@fernhollow.example",
+    "course": "INT-13"
+  },
+  {
+    "email": "nico.nettlefield@fernhollow.example",
+    "course": "INT-02"
+  },
+  {
+    "email": "nico.thornquist@fernhollow.example",
+    "course": "INT-14"
+  },
+  {
+    "email": "nico.vetchley@fernhollow.example",
+    "course": "INT-20"
+  },
+  {
+    "email": "orla.pinewhistle@fernhollow.example",
+    "course": "INT-21"
+  },
+  {
+    "email": "orla.thornquist@fernhollow.example",
+    "course": "INT-09"
+  },
+  {
+    "email": "orla.vetchley@fernhollow.example",
+    "course": "INT-34"
+  },
+  {
+    "email": "perrin.larkmoor@fernhollow.example",
+    "course": "INT-30"
+  },
+  {
+    "email": "perrin.marrowby@fernhollow.example",
+    "course": "INT-03"
+  },
+  {
+    "email": "perrin.pinewhistle@fernhollow.example",
+    "course": "INT-39"
+  },
+  {
+    "email": "quill.gorsewick@fernhollow.example",
+    "course": "INT-31"
+  },
+  {
+    "email": "quill.juniperlee@fernhollow.example",
+    "course": "INT-33"
+  },
+  {
+    "email": "quill.quillfeather@fernhollow.example",
+    "course": "INT-28"
+  },
+  {
+    "email": "quill.thornquist@fernhollow.example",
+    "course": "SG-01"
+  },
+  {
+    "email": "rosamund.dunmorrow@fernhollow.example",
+    "course": "SG-02"
+  },
+  {
+    "email": "rosamund.foxglenn@fernhollow.example",
+    "course": "INT-15"
+  },
+  {
+    "email": "rosamund.inglethorn@fernhollow.example",
+    "course": "INT-38"
+  },
+  {
+    "email": "rosamund.lindqvale@fernhollow.example",
+    "course": "INT-07"
+  },
+  {
+    "email": "rosamund.marrowby@fernhollow.example",
+    "course": "INT-31"
+  },
+  {
+    "email": "rosamund.tollivant@fernhollow.example",
+    "course": "INT-35"
+  },
+  {
+    "email": "tamsin.thornquist@fernhollow.example",
+    "course": "INT-32"
+  },
+  {
+    "email": "tamsin.underhill@fernhollow.example",
+    "course": "INT-10"
+  },
+  {
+    "email": "vesper.gorsewick@fernhollow.example",
+    "course": "INT-15"
+  },
+  {
+    "email": "vesper.inglethorn@fernhollow.example",
+    "course": "INT-04"
+  },
+  {
+    "email": "vesper.marrowby@fernhollow.example",
+    "course": "INT-36"
+  },
+  {
+    "email": "vesper.nettlefield@fernhollow.example",
+    "course": "INT-14"
+  },
+  {
+    "email": "wren.dunmorrow@fernhollow.example",
+    "course": "INT-05"
+  },
+  {
+    "email": "wren.elderhaven@fernhollow.example",
+    "course": "INT-08"
+  },
+  {
+    "email": "wren.marrowby@fernhollow.example",
+    "course": "INT-33"
+  },
+  {
+    "email": "xanthe.dunmorrow@fernhollow.example",
+    "course": "INT-11"
+  },
+  {
+    "email": "xanthe.hazelrook@fernhollow.example",
+    "course": "INT-08"
+  },
+  {
+    "email": "xanthe.larkmoor@fernhollow.example",
+    "course": "SG-04"
+  },
+  {
+    "email": "xanthe.willowmere@fernhollow.example",
+    "course": "INT-37"
+  },
+  {
+    "email": "yorick.copperfold@fernhollow.example",
+    "course": "INT-07"
+  },
+  {
+    "email": "yorick.mossgrove@fernhollow.example",
+    "course": "INT-38"
+  },
+  {
+    "email": "zinnia.hollowmere@fernhollow.example",
+    "course": "INT-29"
+  },
+  {
+    "email": "zinnia.mossgrove@fernhollow.example",
+    "course": "INT-23"
+  }
+]
