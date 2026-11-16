@@ -102,7 +102,7 @@ test("an upload saved with no snapshots counts as nothing saved", async ({ page 
     };
   }));
   await page.reload();
-  await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(6);
+  await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(4);
   await expect(page.locator("[data-result]")).toHaveCount(0);
   await expect(buildButton(page)).toBeDisabled();
 });
@@ -121,7 +121,7 @@ test("a load that fails never overwrites the saved draft", async ({ page }) => {
 
   await page.evaluate(() => sessionStorage.setItem("failRead", "1"));
   await page.reload();
-  await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(6);
+  await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(4);
   await expect.poll(() => errors.join("\n")).toContain("stubbed read failure");
 
   // A new Build and an edit in this session, then Start over: none of them may touch what is on disk.
@@ -133,7 +133,7 @@ test("a load that fails never overwrites the saved draft", async ({ page }) => {
   await expect(saved(page)).not.toHaveAttribute("data-version");
   await history(page);
   await page.getByRole("button", { name: "Start over" }).click();
-  await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(6);
+  await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(4);
   expect(await stored(page)).toEqual({ upload: 1, snapshots: 2 });
 
   await page.evaluate(() => sessionStorage.removeItem("failRead"));
@@ -316,12 +316,12 @@ test("Start over wipes both stores and returns to Start", async ({ page }) => {
   expect(await stored(page)).toEqual({ upload: 1, snapshots: 2 });
   await history(page);
   await page.getByRole("button", { name: "Start over" }).click();
-  await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(6);
+  await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(4);
   await expect(page.locator("[data-result]")).toHaveCount(0);
   await expect(buildButton(page)).toBeDisabled();
   expect(await stored(page)).toEqual({ upload: 0, snapshots: 0 });
   await page.reload();
-  await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(6);
+  await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(4);
 });
 
 // Opens the first placed teacher who chose their course on a form, on the Move screen.

@@ -63,18 +63,21 @@ async function walkDraft(page, check) {
   await check("Who asked");
 }
 
-test("Build stays locked until all six files are ready", async ({ page }) => {
+test("Build stays locked until the four needed files are ready, and stays open as the later forms arrive", async ({ page }) => {
   await page.goto("/");
   await expect(buildButton(page)).toBeDisabled();
+  // courses, staff, returning, round1 are needed; round2 and singapore are optional.
   const files = schoolFiles();
-  for (let i = 0; i < files.length - 1; i++) {
+  for (let i = 0; i < 3; i++) {
     await page.locator('[data-k="files"]').setInputFiles(files[i]);
     await expect(page.locator("[data-slot]", { hasText: "ready" })).toHaveCount(i + 1);
     await expect(buildButton(page)).toBeDisabled();
   }
-  await page.locator('[data-k="files"]').setInputFiles(files[5]);
-  await expect(page.locator("[data-slot]", { hasText: "ready" })).toHaveCount(6);
-  await expect(buildButton(page)).toBeEnabled();
+  for (let i = 3; i < 6; i++) {
+    await page.locator('[data-k="files"]').setInputFiles(files[i]);
+    await expect(page.locator("[data-slot]", { hasText: "ready" })).toHaveCount(i + 1);
+    await expect(buildButton(page)).toBeEnabled();
+  }
 });
 
 test("files can arrive in two drops, and a re-dropped file replaces the old one", async ({ page }) => {
@@ -120,10 +123,30 @@ test("a stray file keeps its line but does not lock Build", async ({ page }) => 
   await buildDraft(page);
 });
 
+test("Build works without round2.xlsx, which says optional", async ({ page }) => {
+  await page.goto("/");
+  await expect(slot(page, "round2.xlsx")).toContainText("optional, not added");
+  await page.locator('[data-k="files"]').setInputFiles(schoolFiles().filter((p) => basename(p) !== "round2.xlsx"));
+  await expect(page.locator("[data-slot]", { hasText: "ready" })).toHaveCount(5);
+  await expect(slot(page, "round2.xlsx")).toContainText("optional, not added");
+  await expect(buildButton(page)).toBeEnabled();
+  await buildDraft(page);
+});
+
+test("Build works from Round 1 alone, with round2.xlsx and singapore.xlsx left out", async ({ page }) => {
+  await page.goto("/");
+  await expect(slot(page, "singapore.xlsx")).toContainText("optional, not added");
+  await page.locator('[data-k="files"]').setInputFiles(schoolFiles().filter((p) => !["round2.xlsx", "singapore.xlsx"].includes(basename(p))));
+  await expect(page.locator("[data-slot]", { hasText: "ready" })).toHaveCount(4);
+  await expect(page.locator("[data-slot]", { hasText: "optional, not added" })).toHaveCount(2);
+  await expect(buildButton(page)).toBeEnabled();
+  await buildDraft(page);
+});
+
 test("reload before Build returns to an empty Start", async ({ page }) => {
   await dropSchool(page);
   await page.reload();
-  await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(6);
+  await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(4);
   await expect(page.locator("[data-slot]", { hasText: "ready" })).toHaveCount(0);
   await expect(buildButton(page)).toBeDisabled();
   await expect(page.locator("[data-result]")).toHaveCount(0);

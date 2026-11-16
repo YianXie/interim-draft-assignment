@@ -236,7 +236,7 @@ test("the allocation row shows how many were not matched, as a number only", asy
   for (const file of PAST_SLOTS.slice(1)) await expect(rightOf(page, file)).toHaveText("ready");
   // A ready past row looks like a ready row of the six.
   for (const file of PAST_SLOTS) await expect(slot(page, file)).toHaveClass(await slot(page, SLOTS[0]).getAttribute("class"));
-  await expect(page.locator("[data-big]")).toHaveText("Drop the six files here");
+  await expect(page.locator("[data-big]")).toHaveText("Drop this year's files here");
   const dom = await domText(page);
   for (const entry of unmatched) expect(dom).not.toContain(entry);
 });

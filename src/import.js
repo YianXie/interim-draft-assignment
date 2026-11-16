@@ -1,4 +1,4 @@
-// Reads the six workbooks, and last year's four when they are added, into a School.
+// Reads this year's workbooks, and last year's four when they are added, into a School.
 // Runs in the browser and in Node, so it imports no Node modules.
 import { readBook } from "./xlsx.js";
 import { PAST_SLOTS, PAST_FORMS, normName, lastYearResults } from "./past.js";
@@ -30,6 +30,11 @@ export const HEADERS = {
 };
 const ALLOCATION = PAST_SLOTS[0];
 const FORMS = { "round1.xlsx": "Round 1", "round2.xlsx": "Round 2", "singapore.xlsx": "Singapore" };
+// The office allocates International Round 1, then International Round 2, then Singapore, so a draft can be built
+// before the later forms are in. Left out, round2.xlsx or singapore.xlsx reads as a form nobody sent; its line says
+// optional instead of ready, and Build is not held up.
+export const OPTIONAL_SLOTS = ["round2.xlsx", "singapore.xlsx"];
+export const OPTIONAL = "optional";
 
 // random(n) returns a whole number from 0 to n - 1.
 export function secureRandom(n) {
@@ -182,7 +187,10 @@ export async function parseFiles(files, random = secureRandom) {
   const got = {};
   for (const file of wanted) {
     if (!bytesOf[file]) {
-      slots[file] = `${file}: file not added`;
+      if (OPTIONAL_SLOTS.includes(file)) {
+        got[file] = [];
+        slots[file] = OPTIONAL;
+      } else slots[file] = `${file}: file not added`;
       continue;
     }
     const fn = file === "courses.xlsx" ? readCourses
@@ -235,7 +243,7 @@ export async function parseFiles(files, random = secureRandom) {
   }
 
   for (const file of wanted) if (got[file] && !slots[file]) slots[file] = "ready";
-  if (Object.values(slots).some((v) => v !== "ready")) {
+  if (Object.values(slots).some((v) => v !== "ready" && v !== OPTIONAL)) {
     return { school: null, slots };
   }
 

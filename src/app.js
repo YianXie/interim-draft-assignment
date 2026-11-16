@@ -1,5 +1,5 @@
 import { Mock } from "./state.js";
-import { parseFiles, SLOTS, PAST_SLOTS } from "./import.js";
+import { parseFiles, SLOTS, PAST_SLOTS, OPTIONAL } from "./import.js";
 import { RESULT_LABEL } from "./past.js";
 import { loadHighs, solveDraft, toDraft } from "./solver.js";
 import { recheck } from "./recheck.js";
@@ -107,7 +107,7 @@ async function build() {
   render();
 }
 
-// What each file holds, under its name on Start, so "the six files" is never a guess.
+// What each file holds, under its name on Start, so which files are wanted is never a guess.
 const ABOUT = {
   "courses.xlsx": "Every course: code, name, type, seats, offered, certificate, arrival, vendor",
   "staff.xlsx": "Every teacher who can sponsor: email, name, certificates held",
@@ -127,6 +127,7 @@ function slotRow(name) {
   // Entries on last year's allocation that matched nobody on the staff list: a number only, never the entries.
   const lost = name === PAST_SLOTS[0] && parsed && parsed.past ? parsed.past.unmatched.length : 0;
   const head = `<span><b>${esc(name)}</b>${about}</span>`;
+  if (v === OPTIONAL) return `<div class="row r-two r-file" data-row data-slot="${esc(name)}">${head}<span class="q" data-line>optional, not added</span></div>`;
   if (v === "ready") return `<div class="row r-two r-file" data-row data-slot="${esc(name)}">${head}<span class="q" data-line>ready${lost ? `, ${lost} not matched` : ""}</span></div>`;
   if (!v || v.endsWith("file not added")) {
     // A past file before any of the four is added is a placeholder only: it is not a slot until one of them arrives.
@@ -152,14 +153,14 @@ function startView() {
   const now = [...SLOTS, ...others].filter((n) => slots[n]);
   const past = PAST_SLOTS;
   return `<div class="narrow drop" data-drop>
-    <h1 class="big" data-big>${startTab === "now" ? "Drop the six files here" : "Drop last year's four files here"}</h1>
+    <h1 class="big" data-big>${startTab === "now" ? "Drop this year's files here" : "Drop last year's four files here"}</h1>
     <p class="sub"><span>Invented school</span>&ensp;<span>Interim 2028</span></p>
     <div class="links"><label class="link choose">Choose files<input type="file" multiple accept=".xlsx" data-k="files"></label>
     <button class="link sample" data-act="sample">Use sample data</button>
     <a class="link sample-zip" data-k="sample-zip" href="sample/${startTab === "now" ? "sample-this-year.zip" : "sample-last-year.zip"}" download>Download sample data</a></div>
     ${startTabs()}
     <div class="gap" data-rows data-start-panel="now"${startTab === "now" ? "" : " hidden"}>
-      <p class="q intro">Needed every year. Each file name must match exactly.</p>
+      <p class="q intro">Needed every year. Each file name must match exactly. round2.xlsx and singapore.xlsx are optional, since those forms come after Round 1: a form file left out counts as nobody having sent that form.</p>
       ${now.map(slotRow).join("")}</div>
     <div class="gap" data-rows data-start-panel="past"${startTab === "past" ? "" : " hidden"}>
       <p class="q intro">Optional: add all four or none. With them, each teacher's result last year is on their card and in the download, and anyone who got none of their choices last year is put on a top-4 choice first where the rules allow.</p>
@@ -176,7 +177,7 @@ function aboutPanel() {
     <summary data-k="about">How it works</summary>
     <div class="about-body">
     <h3>What it does</h3>
-    <p>It reads the six spreadsheets, builds a draft that puts sponsors on courses, explains each placement in one line, and lets the office move anyone before downloading the result to Excel. The draft is a starting point: the office makes the decisions. This demo has only ever run on invented data.</p>
+    <p>It reads this year's spreadsheets (round2.xlsx and singapore.xlsx are optional), builds a draft that puts sponsors on courses, explains each placement in one line, and lets the office move anyone before downloading the result to Excel. The draft is a starting point: the office makes the decisions. This demo has only ever run on invented data.</p>
 
     <h3>Rules every draft follows</h3>
     <ul>${li([
