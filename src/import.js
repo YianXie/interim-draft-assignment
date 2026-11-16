@@ -181,6 +181,18 @@ function readFit(file, rows) {
   });
 }
 
+// A form's emails must be on the staff list and its choices on the course list. Either list may be missing (that file
+// did not read), and then that part is skipped.
+function checkForm(file, rows, onStaff, byName) {
+  for (const r of rows) {
+    if (onStaff && !onStaff.has(r.email)) refuse(file, r.n, "email is not on the staff list");
+    if (!byName) continue;
+    r.cells.forEach((c, i) => {
+      if (!blank(c) && !byName.has(text(c))) refuse(file, r.n, `Choice ${i + 1} is not on the course list`);
+    });
+  }
+}
+
 const SECTION = (file, fn) => async (bytes) => {
   try {
     return { ok: true, data: fn(file, await table(file, bytes)) };
@@ -247,17 +259,12 @@ export async function parseFiles(files, random = secureRandom) {
     const rows = got[file];
     if (!rows) continue;
     try {
-      for (const r of rows) {
-        if (onStaff && !onStaff.has(r.email)) refuse(file, r.n, "email is not on the staff list");
-        if (!courses) continue;
-        if (file === "returning.xlsx") {
-          if (!byId.has(text(r.cells[0]))) refuse(file, r.n, "course code is not on the course list");
-        } else {
-          r.cells.forEach((c, i) => {
-            if (!blank(c) && !byName.has(text(c))) refuse(file, r.n, `Choice ${i + 1} is not on the course list`);
-          });
+      if (file === "returning.xlsx") {
+        for (const r of rows) {
+          if (onStaff && !onStaff.has(r.email)) refuse(file, r.n, "email is not on the staff list");
+          if (courses && !byId.has(text(r.cells[0]))) refuse(file, r.n, "course code is not on the course list");
         }
-      }
+      } else checkForm(file, rows, onStaff, byName);
     } catch (e) {
       if (!(e instanceof Refusal)) throw e;
       slots[file] = e.message;
@@ -350,4 +357,55 @@ export async function parseFiles(files, random = secureRandom) {
     school.past = { unmatched };
   }
   return { school, slots };
+}
+
+// The files a draft that is already built can still take, in the order their rounds are read.
+export const LATER = ["round2.xlsx", "singapore.xlsx"];
+
+// Adds round2.xlsx and/or singapore.xlsx to a School already built. Each file added replaces that round's choices on
+// every teacher; a teacher who sent a form stays submitted. The School given is not changed. On any refusal, school is null.
+export async function readForms(school, files) {
+  const slots = {};
+  const got = {};
+  for (const f of files) {
+    if (!LATER.includes(f.name)) {
+      slots[f.name] = `${f.name}: only ${LATER.join(" and ")} can be added to a draft`;
+      continue;
+    }
+    const res = await SECTION(f.name, readEmailRows)(f.bytes);
+    if (res.ok) got[f.name] = res.data;
+    else slots[f.name] = res.problem;
+  }
+  const onStaff = new Set(school.teachers.map((t) => t.email));
+  const byName = new Map(school.courses.map((c) => [c.name, c]));
+  for (const file of Object.keys(got)) {
+    try {
+      checkForm(file, got[file], onStaff, byName);
+      slots[file] = "ready";
+    } catch (e) {
+      if (!(e instanceof Refusal)) throw e;
+      slots[file] = e.message;
+    }
+  }
+  if (!Object.keys(slots).length || Object.values(slots).some((v) => v !== "ready")) return { school: null, slots, rounds: [], senders: [] };
+
+  const next = structuredClone(school);
+  const teachers = new Map(next.teachers.map((t) => [t.email, t]));
+  const rounds = [];
+  const senders = new Set();
+  for (const file of LATER) {
+    if (!got[file]) continue;
+    const round = FORMS[file];
+    rounds.push(round);
+    for (const t of next.teachers) t.prefs = t.prefs.filter((p) => p.round !== round);
+    for (const r of got[file]) {
+      const t = teachers.get(r.email);
+      t.submitted = true;
+      senders.add(t.id);
+      r.cells.forEach((c, i) => {
+        if (!blank(c)) t.prefs.push({ course: byName.get(text(c)).id, rank: i + 1, round });
+      });
+    }
+  }
+  return { school: next, slots, rounds, senders: [...senders].sort() };
 }
