@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { parseFiles, readForms, LATER, SLOTS } from "../../src/import.js";
 import { loadHighs, solveDraft, toInstance } from "../../src/solver.js";
-import { recheck } from "../../src/recheck.js";
+import { newProblems } from "../../src/recheck.js";
 import { readSchool } from "./school-fixture.mjs";
 
 const dir = new URL("../../fixtures/school/", import.meta.url);
@@ -20,11 +20,6 @@ const seeded = (seed) => {
 const byEmail = (sch, pairs) => {
   const email = new Map(sch.teachers.map((t) => [t.id, t.email]));
   return Object.fromEntries(pairs.map(([t, c]) => [email.get(t), c]).sort());
-};
-// Problems in all pairs that the kept pairs alone did not already have.
-const added = (school, keep, all) => {
-  const had = new Set(recheck(school, keep).map((p) => p.code + "|" + p.id));
-  return recheck(school, all).filter((p) => !had.has(p.code + "|" + p.id));
 };
 const qualifies = (t, c) => (!c.needs || t.certificates.includes(c.needs)) && (!t.prefs.length || t.prefs.some((p) => p.course === c.id));
 
@@ -63,7 +58,7 @@ test("kept sponsors stay and new pairs follow every rule", () => {
   assert.ok(r.pairs.length > 0);
   const kept = new Set(keep.map(([t]) => t));
   for (const [t] of r.pairs) assert.ok(!kept.has(t), t);
-  assert.deepEqual(added(later, keep, [...keep, ...r.pairs]), []);
+  assert.deepEqual(newProblems(later, keep, [...keep, ...r.pairs]), []);
 });
 
 test("courses with a kept sponsor are filled first", () => {
@@ -99,7 +94,7 @@ test("kept pairs that break rules are left alone", () => {
   assert.equal(r.status, "Optimal");
   assert.ok(!r.pairs.some(([, c]) => c === full.id));
   for (const t of [extra, noScuba, sponsor]) assert.ok(!r.pairs.some(([x]) => x === t.id), t.id);
-  assert.deepEqual(added(later, changed, [...changed, ...r.pairs]), []);
+  assert.deepEqual(newProblems(later, changed, [...changed, ...r.pairs]), []);
 });
 
 test("an unplaced returning sponsor is treated like anyone", () => {

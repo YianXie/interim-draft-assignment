@@ -28,3 +28,9 @@ export function recheck(school, pairs) {
   }
   return out;
 }
+
+// Problems in allPairs that keptPairs alone did not already have, matched by code and id.
+export function newProblems(school, keptPairs, allPairs) {
+  const had = new Set(recheck(school, keptPairs).map((p) => p.code + "|" + p.id));
+  return recheck(school, allPairs).filter((p) => !had.has(p.code + "|" + p.id));
+}

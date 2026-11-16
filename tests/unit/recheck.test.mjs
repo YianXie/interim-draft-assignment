@@ -2,7 +2,7 @@ import { test, before } from "node:test";
 import assert from "node:assert/strict";
 import { readSchool } from "./school-fixture.mjs";
 import { loadHighs, solveDraft } from "../../src/solver.js";
-import { recheck } from "../../src/recheck.js";
+import { recheck, newProblems } from "../../src/recheck.js";
 
 const ALL_CODES = ["ONE_COURSE", "RETURNING_MOVED", "NOT_RANKED", "CERTIFICATE", "OVER_SEATS", "UNDER_SEATS", "NOT_OFFERED"];
 let school, pairs, courseOf, teacher, course;
@@ -81,4 +81,52 @@ test("a returning sponsor left unplaced is flagged", () => {
   const t = school.teachers.find((x) => x.returning && x.returningCourse && courseOf.get(x.id) === x.returningCourse);
   assert.ok(has(recheck(school, without(t.id)), "RETURNING_MOVED"));
   assert.deepEqual(recheck(school, without(t.id)).filter((f) => f.code === "RETURNING_MOVED"), [{ code: "RETURNING_MOVED", id: t.id }]);
+});
+
+// newProblems: a small invented school, so each case names exactly what it adds.
+const mini = {
+  teachers: [
+    { id: "T1", prefs: [{ course: "A" }, { course: "B" }], certificates: [], returning: false, returningCourse: null },
+    { id: "T2", prefs: [{ course: "A" }], certificates: [], returning: false, returningCourse: null },
+    { id: "T3", prefs: [{ course: "A" }, { course: "B" }], certificates: [], returning: false, returningCourse: null },
+    { id: "T4", prefs: [{ course: "C" }], certificates: [], returning: false, returningCourse: null },
+  ],
+  courses: [
+    { id: "A", seats: 1, running: true, needs: null },
+    { id: "B", seats: 2, running: true, needs: "LAB" },
+    { id: "C", seats: 2, running: true, needs: null },
+  ],
+};
+const withTeacher = (id, patch) => ({ ...mini, teachers: mini.teachers.map((t) => (t.id === id ? { ...t, ...patch } : t)) });
+
+test("a broken kept draft with nothing added has no new problems", () => {
+  const kept = [["T1", "A"], ["T2", "A"]];
+  assert.ok(has(recheck(mini, kept), "OVER_SEATS"));
+  assert.deepEqual(newProblems(mini, kept, kept), []);
+});
+
+test("a new pair on a course without the certificate is a new problem", () => {
+  const kept = [["T4", "C"], ["T2", "A"]];
+  const all = [...kept, ["T3", "B"], ["T1", "B"]];
+  assert.deepEqual(newProblems(mini, kept, all), [{ code: "CERTIFICATE", id: "T3" }, { code: "CERTIFICATE", id: "T1" }]);
+  const one = withTeacher("T1", { certificates: ["LAB"] });
+  assert.deepEqual(newProblems(one, kept, [...kept, ["T1", "B"], ["T3", "B"]]), [{ code: "CERTIFICATE", id: "T3" }]);
+});
+
+test("a kept teacher who is now NOT_RANKED is not a new problem", () => {
+  const kept = [["T2", "C"]];
+  assert.ok(has(recheck(mini, kept), "NOT_RANKED"));
+  assert.deepEqual(newProblems(mini, kept, [...kept, ["T4", "C"]]), []);
+});
+
+test("a new course left short is a new problem", () => {
+  const kept = [["T2", "A"]];
+  assert.deepEqual(newProblems(mini, kept, [...kept, ["T4", "C"]]), [{ code: "UNDER_SEATS", id: "C" }]);
+});
+
+test("filling a short kept course removes a problem and adds none", () => {
+  const kept = [["T4", "C"]];
+  assert.deepEqual(recheck(mini, kept), [{ code: "UNDER_SEATS", id: "C" }]);
+  const two = { ...mini, teachers: [...mini.teachers, { id: "T5", prefs: [{ course: "C" }], certificates: [], returning: false, returningCourse: null }] };
+  assert.deepEqual(newProblems(two, kept, [...kept, ["T5", "C"]]), []);
 });
