@@ -6,6 +6,7 @@ export async function readBook(bytes) {
   return book.sheets.map((s) => ({ name: s.name, rows: s.rows }));
 }
 
-export async function writeBook(sheets) {
-  return writeXlsx({ sheets: sheets.map((s) => ({ name: s.name, rows: s.rows })) });
+// properties is optional; a fixed { modified } date makes the bytes repeatable, as the fixture tools need.
+export async function writeBook(sheets, properties) {
+  return writeXlsx({ sheets: sheets.map((s) => ({ name: s.name, rows: s.rows })), ...(properties && { properties }) });
 }

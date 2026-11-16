@@ -40,6 +40,12 @@ function statusOf(mock, t, cid) {
   return sentence(mock.status(cid));
 }
 
+// What the From their form column says: every row, in file order. Names off: the Kind and course code alone, never a Fact or Quote.
+function fitOf(mock, t) {
+  const at = (r) => `(${r.course ?? "general"})`;
+  return (t.fit || []).map((r) => (mock.state.namesOn ? `${r.fact} ${at(r)}${r.quote ? `: ${r.quote}` : ""}` : `${r.kind} ${at(r)}`)).join("; ");
+}
+
 function teachersSheet(mock) {
   const names = mock.state.namesOn;
   // With names off the order is T number alone, as on the Teachers tab, so it gives nothing away.
@@ -47,13 +53,15 @@ function teachersSheet(mock) {
   const order = names ? (a, b) => group(a) - group(b) || byText(mock.label(a.id), mock.label(b.id)) || byText(a.id, b.id) : (a, b) => byText(a.id, b.id);
   // The Last year column is there only when the past files were added.
   const past = mock.past();
+  // So is From their form, only when fit.xlsx was added.
+  const fit = mock.fit();
   const rows = [...mock.teachers()].sort(order).map((t) => {
     const cid = mock.placedOn(t.id);
     const was = mock.lastYear(t.id);
     return [mock.label(t.id), ...(names ? [mock.contact(t.id)] : []), cid || "", cid ? mock.course(cid).name : "", choiceOf(mock, t, cid),
-      ...(past ? [was ? RESULT_LABEL[was.result] : ""] : []), mock.reason(t.id), statusOf(mock, t, cid)];
+      ...(past ? [was ? RESULT_LABEL[was.result] : ""] : []), ...(fit ? [fitOf(mock, t)] : []), mock.reason(t.id), statusOf(mock, t, cid)];
   });
-  return { name: "Teachers", rows: [["Teacher", ...(names ? ["Email"] : []), "Course Code", "Course", "Choice", ...(past ? ["Last year"] : []), "Why", "Status"], ...rows] };
+  return { name: "Teachers", rows: [["Teacher", ...(names ? ["Email"] : []), "Course Code", "Course", "Choice", ...(past ? ["Last year"] : []), ...(fit ? ["From their form"] : []), "Why", "Status"], ...rows] };
 }
 
 // One row per edit, oldest first. The first snapshot is the build, which is not an edit.

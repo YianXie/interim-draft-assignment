@@ -129,6 +129,7 @@ button.row:hover { background: var(--hover); }
 .r-file b { font-weight: 600; }
 .r-file .about { display: block; }
 .r-file { line-height: 24px; }
+.tight .r-file { padding: 5px 0; }
 .r-file .about, .intro { line-height: 22px; }
 .start-tabs { line-height: 24px; }
 

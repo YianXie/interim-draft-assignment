@@ -6,6 +6,9 @@ import { PAST_SLOTS, PAST_FORMS, normName, lastYearResults } from "./past.js";
 export { PAST_SLOTS };
 
 export const SLOTS = ["courses.xlsx", "staff.xlsx", "returning.xlsx", "round1.xlsx", "round2.xlsx", "singapore.xlsx"];
+// Optional: what the reader found in the written answers, checked by the office. One row per fact.
+export const FIT = "fit.xlsx";
+export const KINDS = ["Language", "Certificate", "Experience", "Skill", "Limitation"];
 const SHEET = "Fernhollow";
 const DOMAIN = "@fernhollow.example";
 const choices = (n) => Array.from({ length: n }, (_, i) => `Choice ${i + 1}`);
@@ -27,6 +30,7 @@ export const HEADERS = {
   "past-round1.xlsx": form("round1", 7),
   "past-round2.xlsx": form("round2", 3),
   "past-singapore.xlsx": form("singapore", 5),
+  [FIT]: ["Email", "Course Code", "Kind", "Fact", "Quote"],
 };
 const ALLOCATION = PAST_SLOTS[0];
 const FORMS = { "round1.xlsx": "Round 1", "round2.xlsx": "Round 2", "singapore.xlsx": "Singapore" };
@@ -77,7 +81,7 @@ async function table(file, bytes) {
     refuse(file, 1, `headers must be exactly: ${list}`);
   }
   const rows = rest.map((cells, i) => ({ n: i + 2, cells })).filter((r) => r.cells.some((c) => !blank(c)));
-  if (PAST_SLOTS.includes(file) || file in FORMS) {
+  if (PAST_SLOTS.includes(file) || file in FORMS || file === FIT) {
     for (const r of rows) if (r.cells.slice(want.length).some((c) => !blank(c))) refuse(file, r.n, "value outside the headed columns");
   }
   return rows;
@@ -165,6 +169,18 @@ function oncePerPerson(file, allocation, staff) {
   }
 }
 
+// fit.xlsx: [{ n, email, course, kind, fact, quote }]. One email may have many rows; course is null for a general fact.
+function readFit(file, rows) {
+  return rows.map((r) => {
+    const e = email(file, r, new Set());
+    const kind = text(r.cells[2]);
+    if (!KINDS.includes(kind)) refuse(file, r.n, "kind must be Language, Certificate, Experience, Skill or Limitation");
+    const fact = text(r.cells[3]);
+    if (!fact) refuse(file, r.n, "fact is empty");
+    return { n: r.n, email: e, course: text(r.cells[1]) || null, kind, fact, quote: text(r.cells[4]) };
+  });
+}
+
 const SECTION = (file, fn) => async (bytes) => {
   try {
     return { ok: true, data: fn(file, await table(file, bytes)) };
@@ -174,16 +190,32 @@ const SECTION = (file, fn) => async (bytes) => {
   }
 };
 
+// For the reader, not the page: the "Enhancing Learning or Safety" answers on round1.xlsx or singapore.xlsx, as
+// [{ email, answer }] in sheet order, blank answers left out. Throws with the page's line if the file does not fit.
+export async function formAnswers(file, bytes) {
+  const at = HEADERS[file].indexOf("Enhancing Learning or Safety");
+  try {
+    const rows = await table(file, bytes);
+    const emails = readEmailRows(file, rows).map((r) => r.email);
+    return rows.map((r, i) => ({ email: emails[i], answer: text(r.cells[at]) })).filter((a) => a.answer);
+  } catch (e) {
+    if (e instanceof Refusal) throw new Error(e.message);
+    throw e;
+  }
+}
+
 export async function parseFiles(files, random = secureRandom) {
   const slots = {};
   const bytesOf = {};
   for (const f of files) {
-    if (SLOTS.includes(f.name) || PAST_SLOTS.includes(f.name)) bytesOf[f.name] = f.bytes;
+    if (SLOTS.includes(f.name) || PAST_SLOTS.includes(f.name) || f.name === FIT) bytesOf[f.name] = f.bytes;
     else slots[f.name] = `${f.name}: not one of the six file names`;
   }
   // Last year's files are optional: all four or none. They come after the six, so staff.xlsx is read first.
   const past = PAST_SLOTS.some((file) => file in bytesOf);
-  const wanted = past ? [...SLOTS, ...PAST_SLOTS] : SLOTS;
+  // fit.xlsx is optional too, and read last; it is never "file not added".
+  const fit = FIT in bytesOf;
+  const wanted = [...SLOTS, ...(past ? PAST_SLOTS : []), ...(fit ? [FIT] : [])];
   const got = {};
   for (const file of wanted) {
     if (!bytesOf[file]) {
@@ -196,6 +228,7 @@ export async function parseFiles(files, random = secureRandom) {
     const fn = file === "courses.xlsx" ? readCourses
       : file === "staff.xlsx" ? readStaff
       : file === ALLOCATION ? readPastAllocation
+      : file === FIT ? readFit
       : readEmailRows;
     const res = await SECTION(file, fn)(bytesOf[file]);
     if (res.ok) got[file] = res.data;
@@ -229,6 +262,19 @@ export async function parseFiles(files, random = secureRandom) {
       if (!(e instanceof Refusal)) throw e;
       slots[file] = e.message;
       delete got[file];
+    }
+  }
+
+  if (got[FIT]) {
+    try {
+      for (const r of got[FIT]) {
+        if (onStaff && !onStaff.has(r.email)) refuse(FIT, r.n, "email is not on the staff list");
+        if (byId && r.course !== null && !byId.has(r.course)) refuse(FIT, r.n, "course code is not on the course list");
+      }
+    } catch (e) {
+      if (!(e instanceof Refusal)) throw e;
+      slots[FIT] = e.message;
+      delete got[FIT];
     }
   }
 
@@ -281,6 +327,11 @@ export async function parseFiles(files, random = secureRandom) {
     }
   }
   const school = { school: "Fernhollow Academy", year: "Interim 2028", courses, teachers: [...teachers.values()] };
+  if (fit) {
+    for (const t of school.teachers) t.fit = [];
+    for (const { email: e, course, kind, fact, quote } of got[FIT]) teachers.get(e).fit.push({ course, kind, fact, quote });
+    school.fit = true;
+  }
   if (past) {
     // A past choice is the allocation's course whatever its letter case or spacing. Nothing is shown from these names.
     const allocation = got[ALLOCATION].map((a) => ({ course: normName(a.course), sponsors: a.sponsors }));

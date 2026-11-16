@@ -12,4 +12,12 @@ Run it on the machine where Ollama is running, from this folder:
 python3 run.py . qwen3.5:27b prompt_v3.txt
 ```
 
+A reply that is not valid JSON is sent back once to be fixed; if the second reply is broken too, its tags are read one by one, as the reader does.
+
+To try Ollama's forced JSON as well (some models refuse it), put `FORMAT=json` in front. Not recommended with `qwen3.5:27b`: on 15 Nov 2026 it gave fewer broken replies but quietly stopped partway through some, missing 7 of 36 expected facts against none without it.
+
+```bash
+FORMAT=json python3 run.py . qwen3.5:27b prompt_v3.txt
+```
+
 The arguments are the folder, the model, the prompt file, the cases module and `twice` or `once` (twice checks the reply is the same on a rerun). The result goes in `results/`.

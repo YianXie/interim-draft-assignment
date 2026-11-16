@@ -34,6 +34,9 @@ export function toInstance(school) {
     prefs: teachers.flatMap((t) => t.prefs.map((p) => ({ t: t.id, c: p.course, rank: p.rank, round: p.round }))),
     unticked: courses.filter((c) => !c.running).map((c) => c.id),
     owed: school.past ? teachers.filter((t) => t.lastYear && t.lastYear.result === "none").map((t) => t.id) : null,
+    // "tid|cid" for each teacher and course with a row in fit.xlsx that is not a Limitation; by email, then course code.
+    fits: school.fit ? [...new Set(teachers.flatMap((t) =>
+      [...new Set(t.fit.filter((r) => r.kind !== "Limitation" && r.course !== null).map((r) => r.course))].sort().map((c) => t.id + "|" + c)))] : null,
     weights: WEIGHTS,
     bonus: BONUS,
   };
@@ -115,18 +118,28 @@ function lpText(m, sense, terms, pins) {
 
 // values: [short seats (min), score (max), no-form placed (min)], or with last year's files
 // [short seats (min), owed on a top-4 choice (max), score (max), no-form placed (min)]. pairs: one [tid, cid] per placed column.
+// With fit.xlsx, two more values follow: teachers on a course they fit (max), then teachers on the same course as in
+// the plain draft, the one built without fit.xlsx (max).
 export function solveDraft(highs, school) {
   const inst = toInstance(school), m = build(inst), pins = [], values = [];
   let res;
-  for (const [sense, terms] of m.stages) {
-    if (!terms.length) { values.push(0); continue; }
+  const placed = () => m.vars.filter((v) => res.Columns[v.name] && res.Columns[v.name].Primal > 0.5);
+  const run = (sense, terms) => {
+    if (!terms.length) { values.push(0); return true; }
     res = highs.solve(lpText(m, sense, terms, pins), OPTIONS);
-    if (res.Status !== "Optimal") return { status: res.Status, values, pairs: [] };
+    if (res.Status !== "Optimal") return false;
     const v = Math.round(res.ObjectiveValue);
     values.push(v); pins.push([terms, v]);
+    return true;
+  };
+  const failed = () => ({ status: res.Status, values, pairs: [] });
+  for (const [sense, terms] of m.stages) if (!run(sense, terms)) return failed();
+  if (inst.fits !== null) {
+    const fits = new Set(inst.fits), plain = new Set(placed().map((v) => v.name));
+    if (!run("max", m.vars.filter((v) => fits.has(v.t + "|" + v.c)).map((v) => [1, v.name]))) return failed();
+    if (!run("max", m.vars.filter((v) => plain.has(v.name)).map((v) => [1, v.name]))) return failed();
   }
-  const pairs = m.vars.filter((v) => res.Columns[v.name] && res.Columns[v.name].Primal > 0.5).map((v) => [v.t, v.c]);
-  return { status: "Optimal", values, pairs };
+  return { status: "Optimal", values, pairs: placed().map((v) => [v.t, v.c]) };
 }
 
 export function toDraft(school, pairs) {
