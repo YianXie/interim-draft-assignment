@@ -54,8 +54,8 @@ function startOver() {
 
 const KNOWN = [...SLOTS, ...PAST_SLOTS, FIT];
 const readBytes = (f) => f.arrayBuffer().then((b) => new Uint8Array(b), () => new Uint8Array());
-// Drops are handled strictly in order, so a later file always replaces an earlier one of the same name.
-function addFiles(list) {
+// Drops and removals are handled strictly in order, so a later file always replaces an earlier one of the same name.
+function addFiles(list, remove = null) {
   if (phase !== "start") return;
   const files = [...list];
   reading += 1;
@@ -63,6 +63,7 @@ function addFiles(list) {
   render();
   queue = queue.then(async () => {
     try {
+      if (remove !== null) held.delete(remove);
       for (const f of files) held.set(f.name, { name: f.name, bytes: await readBytes(f) });
       // Last year's files are read together with the six, so the School carries last year.
       const named = (yes) => [...held.values()].filter((f) => KNOWN.includes(f.name) === yes);
@@ -123,7 +124,15 @@ const ABOUT = {
 };
 let startTab = "now"; // now or past: which files Start lists. Either tab takes any file dropped.
 
+// An icon only, so the row keeps its words. Removing a file lets the same name be dropped again.
+const X_ICON = `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+const removeBtn = (name) => (held.has(name) ? `<button class="x" data-act="remove" data-file="${esc(name)}" aria-label="Remove ${esc(name)}">${X_ICON}</button>` : "");
 function slotRow(name) {
+  const row = slotRowBody(name);
+  if (!held.has(name)) return row;
+  return row.replace('class="row ', 'class="row r-x ').replace(/<\/div>$/, `${removeBtn(name)}</div>`);
+}
+function slotRowBody(name) {
   const v = slots[name], about = ABOUT[name] ? `<small class="q about">${esc(ABOUT[name])}</small>` : "";
   // Entries on last year's allocation that matched nobody on the staff list: a number only, never the entries.
   const lost = name === PAST_SLOTS[0] && parsed && parsed.past ? parsed.past.unmatched.length : 0;
@@ -495,6 +504,7 @@ document.addEventListener("click", (e) => {
   switch (d.act) {
     case "build": build(); break;
     case "sample": addFiles(sampleFiles()); break;
+    case "remove": addFiles([], d.file); break;
     case "open": push({ k: d.to, id: d.id }); break;
     case "back": pop(); break;
     case "next": view.idx += 1; render(); break;
@@ -515,7 +525,7 @@ document.addEventListener("toggle", (e) => {
   if (e.target.matches && e.target.matches("[data-about]")) aboutOpen = e.target.open;
 }, true);
 document.addEventListener("change", (e) => {
-  if (e.target.matches('[data-k="files"]')) addFiles(e.target.files);
+  if (e.target.matches('[data-k="files"]')) { addFiles(e.target.files); e.target.value = ""; }
 });
 // A file dropped anywhere on the page counts, and never makes the browser navigate to it.
 window.addEventListener("dragover", (e) => e.preventDefault());

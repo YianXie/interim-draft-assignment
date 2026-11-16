@@ -123,6 +123,33 @@ test("a stray file keeps its line but does not lock Build", async ({ page }) => 
   await buildDraft(page);
 });
 
+test("a file can be removed and the same file added again", async ({ page }) => {
+  await dropSchool(page);
+  await expect(buildButton(page)).toBeEnabled();
+  await page.getByRole("button", { name: "Remove courses.xlsx" }).click();
+  await expect(slot(page, "courses.xlsx")).toContainText("file not added");
+  await expect(page.getByRole("button", { name: "Remove courses.xlsx" })).toHaveCount(0);
+  await expect(buildButton(page)).toBeDisabled();
+  await page.getByRole("button", { name: "Remove round2.xlsx" }).click();
+  await expect(slot(page, "round2.xlsx")).toContainText("optional, not added");
+
+  // A stray or refused file has a remove button too, and leaves no line behind.
+  await page.locator('[data-k="files"]').setInputFiles({ name: "notes.xlsx", mimeType: "application/octet-stream", buffer: Buffer.from("x") });
+  await page.getByRole("button", { name: "Remove notes.xlsx" }).click();
+  await expect(slot(page, "notes.xlsx")).toHaveCount(0);
+
+  // The same file chosen again through the same input is read again.
+  const courses = schoolFiles().find((p) => basename(p) === "courses.xlsx");
+  await page.locator('[data-k="files"]').setInputFiles(courses);
+  await expect(slot(page, "courses.xlsx")).toContainText("ready");
+  await expect(buildButton(page)).toBeEnabled();
+  await page.getByRole("button", { name: "Remove courses.xlsx" }).click();
+  await expect(slot(page, "courses.xlsx")).toContainText("file not added");
+  await page.locator('[data-k="files"]').setInputFiles(courses);
+  await expect(slot(page, "courses.xlsx")).toContainText("ready");
+  await buildDraft(page);
+});
+
 test("Build works without round2.xlsx, which says optional", async ({ page }) => {
   await page.goto("/");
   await expect(slot(page, "round2.xlsx")).toContainText("optional, not added");
