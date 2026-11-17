@@ -1,8 +1,8 @@
 # Interim Draft Assistant
 
-> My SAS Catalyst project
+> By Ian Xie, for SAS Catalyst project
 
-A laptop-only demo. Six spreadsheets become an editable, explained allocation draft that you can move people around in and download to Excel. Only four are needed to build: `round2.xlsx` and `singapore.xlsx` can come later.
+A teacher interim allocation drafting assistance. Six spreadsheets become an editable, explained allocation draft that you can move people around in and download to Excel. Only four are needed to build: `round2.xlsx` and `singapore.xlsx` can come later.
 
 It has only ever seen invented data: an invented school, invented people, invented preferences. It has never run on real data, so its drafts have not been compared with anything a real office placed. The placed count is a property of the invented data, not a result.
 
@@ -18,7 +18,7 @@ It has only ever seen invented data: an invented school, invented people, invent
 
 ## Round 2 and Singapore later
 
-- The office allocates International Round 1, then Round 2, then Singapore. So Build needs only `courses.xlsx`, `staff.xlsx`, `returning.xlsx` and `round1.xlsx`. On Start, `round2.xlsx` and `singapore.xlsx` say "optional, not added" until they are added. A form file left out counts as nobody having sent that form.
+- The office allocates International Round 1, then Round 2 if needed, then Singapore. So Build needs only `courses.xlsx`, `staff.xlsx`, `returning.xlsx` and `round1.xlsx`. On Start, `round2.xlsx` and `singapore.xlsx` say "optional, not added" until they are added. A form file left out counts as nobody having sent that form.
 - On a built draft, **Add forms** (next to History) takes `round2.xlsx`, `singapore.xlsx` or both. They are checked the same way as on Start, then **Add and place** places people from them.
 - Everyone on a course stays exactly where they are, even where that breaks a rule. Those broken rules keep showing as warnings. Only unplaced teachers and open seats are worked out. A course that already has sponsors but has empty seats is filled first.
 - Anyone the office moved to Not placed by hand stays off. "Leave unplaced" does not hold anyone off.
