@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Interim Draft Assistant">
+  <path d="M12 6h28l14 14v34a4 4 0 0 1-4 4H12a4 4 0 0 1-4-4V10a4 4 0 0 1 4-4z" fill="#fff" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M40 6v10a4 4 0 0 0 4 4h10" fill="none" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+  <g stroke="#8a8a8a" stroke-width="4" stroke-linecap="round">
+    <path d="M17 28h14"/><path d="M17 38h10"/><path d="M17 48h14"/>
+  </g>
+  <path d="M34 41l6 6 12-14" fill="none" stroke="#0b5cad" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
