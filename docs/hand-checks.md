@@ -24,7 +24,7 @@ Seven checks that a browser test cannot do. Use invented data only.
 ## 4. Fresh profile
 
 1. Start Chrome with a new profile (or a guest window).
-2. Double-click `start-demo.command`.
+2. Double-click `start-server.command`.
 3. Tell the demo story: drop, Build, open a teacher, Move to, Undo, move again, names on and off, reload, Download, find the change in the workbook.
 
 ## 5. Real Excel with last year's files

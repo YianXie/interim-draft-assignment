@@ -17,7 +17,7 @@ A laptop-only demo (Interim Draft Assistant): six invented `.xlsx` files become 
 
 ## Commands
 
-Node 24+ is required (`start-demo.command` prepends `/opt/homebrew/bin` to PATH for this reason).
+Node 24+ is required. `start-server.command` (double-click launcher) picks the first Node 24+ from `/opt/homebrew/bin`, `/usr/local/bin`, then PATH, runs `npm ci` if `node_modules` is missing, and otherwise prints (and offers to run) a nodejs.org `.pkg` install command.
 
 ```bash
 npm install

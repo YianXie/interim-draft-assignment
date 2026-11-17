@@ -7,11 +7,11 @@ It has only ever seen invented data: an invented school, invented people, invent
 ## What it needs
 
 - A Mac with Chrome.
-- Node 24 or newer. A default PATH may find an older Node; `start-demo.command` puts `/opt/homebrew/bin` first for that reason.
+- Node 24 or newer. `start-server.command` looks for it in `/opt/homebrew/bin`, `/usr/local/bin`, then PATH; if none is new enough it prints the command that installs Node 24 from nodejs.org and offers to run it.
 
 ## Run it
 
-- Double-click `start-demo.command`. It builds the page, starts the server on `http://127.0.0.1:4173`, and opens it. Closing its window stops the server.
+- Double-click `start-server.command`. It installs the packages on first run, builds the page, starts the server on `http://127.0.0.1:4173`, and opens it. Closing its window stops the server.
 - Or in a terminal: `npm install`, `npm run build`, `npm run serve`, then open `http://127.0.0.1:4173`.
 
 ## Round 2 and Singapore later
