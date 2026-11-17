@@ -13,7 +13,8 @@ const many = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const byId = (a, b) => a.id.localeCompare(b.id);
 const timeOf = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-const view = { tab: "todo", stack: [], idx: 0, q: { courses: "", teachers: "" } };
+// sort is per list, { key, dir } once a header is clicked, null before; it lives here so it outlasts a tab switch.
+const view = { tab: "todo", stack: [], idx: 0, q: { courses: "", teachers: "" }, sort: { courses: null, teachers: null } };
 const top_ = () => view.stack[view.stack.length - 1];
 
 /* Start: files stay in memory, keyed by name, until Build. Nothing is stored. */
@@ -523,11 +524,47 @@ function todoHome() {
     <p class="sub">best draft found&ensp;${s.placed} of ${s.teachers} teachers placed</p>${body}</div>${list.length > 1 ? todoNav(list) : ""}</div>`;
 }
 const tools = (which) => `<div class="tools"><input class="search" type="search" placeholder="Search" aria-label="Search" data-search="${which}" data-k="${which}-q" value="${esc(view.q[which])}"></div>`;
+// Header cells that sort the list. A blank value always goes last; ties keep the list's own order (sort is stable).
+const ABC = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+// Before any click, the header that matches the list's own order is shown as the sort. Teachers with names on are in
+// placement order, which no column matches.
+const sortOf = (which) => view.sort[which] ?? (which === "courses" ? { key: "status", dir: 1 } : Mock.state.namesOn ? null : { key: "name", dir: 1 });
+function sorted(which, list, cols) {
+  const s = sortOf(which), col = s && cols.find((c) => c.key === s.key);
+  if (!col) return list;
+  const vals = new Map(list.map((x) => [x, col.val(x)]));
+  const blank = (v) => v === "" || v == null;
+  return [...list].sort((a, b) => {
+    const x = vals.get(a), y = vals.get(b);
+    if (blank(x) || blank(y)) return blank(x) - blank(y);
+    return s.dir * (typeof x === "number" ? x - y : ABC.compare(x, y));
+  });
+}
+function headCells(which, cols) {
+  const s = sortOf(which);
+  return cols.map((c) => {
+    const on = s && s.key === c.key, arrow = on ? (s.dir > 0 ? "↑" : "↓") : "↕";
+    return `<span><button class="sort${on ? " on" : ""}" data-sort="${which}" data-key="${c.key}" data-k="sort-${which}-${c.key}"${on ? ` aria-pressed="true"` : ""}>${c.label}<span class="arrow" aria-hidden="true">${arrow}</span></button></span>`;
+  }).join("");
+}
+const weight = (c) => { const f = worst(c.id); return !f ? 2 : f.level === "needs" ? 0 : 1; };
+const COURSE_COLS = [
+  { key: "code", label: "Code", val: (c) => c.id },
+  { key: "name", label: "Course", val: (c) => c.name },
+  { key: "sponsors", label: "Sponsors", val: (c) => Mock.sponsors(c.id).map((t) => Mock.label(t)).join(" ") },
+  // Needs first, then other notes, then nothing to say; by name within each, as the list opens.
+  { key: "status", label: "Status", val: weight },
+];
+const TEACHER_COLS = [
+  { key: "name", label: "Teacher", val: (t) => Mock.label(t.id) },
+  { key: "code", label: "Code", val: (t) => Mock.placedOn(t.id) || "" },
+  { key: "course", label: "Course", val: (t) => { const c = Mock.placedOn(t.id); return c ? Mock.course(c).name : ""; } },
+  { key: "tags", label: "Tags", val: (t) => Mock.fitTags(t.id).join(" ") },
+];
 function coursesHome() {
-  const weight = (c) => { const f = worst(c.id); return !f ? 2 : f.level === "needs" ? 0 : 1; };
-  const list = [...Mock.courses()].sort((a, b) => weight(a) - weight(b) || a.name.localeCompare(b.name));
+  const list = sorted("courses", [...Mock.courses()].sort((a, b) => weight(a) - weight(b) || a.name.localeCompare(b.name)), COURSE_COLS);
   return `${bigLine()}${tools("courses")}
-    <div data-rows><div class="row r-course head" data-head><span>Code</span><span>Course</span><span>Sponsors</span><span>Status</span></div>${list.map((c) => {
+    <div data-rows><div class="row r-course head" data-head>${headCells("courses", COURSE_COLS)}</div>${list.map((c) => {
       const f = worst(c.id), sp = Mock.sponsors(c.id);
       return `<button class="row r-course" data-row data-course="${esc(c.id)}" data-q="${esc(c.id + " " + c.name + " " + sp.map(who).join(" "))}" data-k="c-${esc(c.id)}">
         <span class="code" data-cell="code">${esc(c.id)}</span><span data-cell="name">${esc(c.name)}</span><span class="pair">${sp.map((t) => `<span>${L(t)}</span>`).join("")}</span>
@@ -536,9 +573,10 @@ function coursesHome() {
 }
 function teachersHome() {
   const order = Mock.state.namesOn ? (a, b) => teacherOrder(b.id) - teacherOrder(a.id) || byId(a, b) : byId;
-  const list = [...Mock.teachers()].sort(order), tags = Mock.fit();
+  const tags = Mock.fit(), cols = tags ? TEACHER_COLS : TEACHER_COLS.slice(0, 3);
+  const list = sorted("teachers", [...Mock.teachers()].sort(order), cols);
   return `${bigLine()}${tools("teachers")}
-    <div data-rows><div class="row r-teacher${tags ? " r-tags" : ""} head" data-head><span>Teacher</span><span>Code</span><span>Course</span>${tags ? "<span>Tags</span>" : ""}</div>${list.map((t) => {
+    <div data-rows><div class="row r-teacher${tags ? " r-tags" : ""} head" data-head>${headCells("teachers", cols)}</div>${list.map((t) => {
       const c = Mock.placedOn(t.id), cn = c ? Mock.course(c).name : "Not placed";
       // Search also finds last year's result, in the card's words and in the download's, and with names on what their form showed.
       const was = Mock.past() && Mock.lastYear(t.id);
@@ -617,9 +655,14 @@ async function download() {
 }
 
 document.addEventListener("click", (e) => {
-  const el = e.target.closest("[data-start-tab],[data-tab],[data-names],[data-download],[data-act],[data-course],[data-teacher]");
+  const el = e.target.closest("[data-sort],[data-start-tab],[data-tab],[data-names],[data-download],[data-act],[data-course],[data-teacher]");
   if (!el) return;
   const d = el.dataset;
+  if ("sort" in d) {
+    const s = sortOf(d.sort);
+    view.sort[d.sort] = { key: d.key, dir: s && s.key === d.key ? -s.dir : 1 };
+    render(); return;
+  }
   if ("startTab" in d) { startTab = d.startTab; render(); return; }
   if ("download" in d) { download(); return; }
   if ("tab" in d) { view.tab = d.tab; view.stack = []; render(); window.scrollTo(0, 0); return; }
