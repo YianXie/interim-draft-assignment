@@ -36,8 +36,6 @@ A double-click opens a Terminal window; the first time, it is the window you typ
 
 ## 3. Try it
 
-Each step below is something the office would really do. Note anything that surprises you.
-
 1. **Build a draft.** Click **Use sample data**, scroll down, then click **Build**.
 2. **To do.** The list on the right is what still needs a person. Click through it, or use **Next**.
 3. **Open a teacher.** Click **Teachers** at the top, then click a teacher. Read the **Why** line, then click **All options**.
