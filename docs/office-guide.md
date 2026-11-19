@@ -54,10 +54,10 @@ A double-click opens a Terminal window; the first time, it is the window you typ
 
 ## Good to know
 
-- **Use one tab.** Two tabs of the page can lose changes. If the page says **Not saved** at the bottom left, close the other tab and reload this one.
+- **One tab is simplest.** A second tab of the page follows the first, so changes in either are kept. If the bottom left ever says **Not saved**, reload the page; the last change may need doing again.
 - **Show names is off at first**, and **Download** follows it: with names off, the workbook has T numbers only.
 - **Moves happen in one click**, with no "are you sure". **Undo** at the bottom right takes the last one back.
-- **A move that breaks a rule is allowed.** The options list warns before you click, for example "Full" or "No scuba certificate". Afterwards the warning shows only in the **Courses** list, under Status.
+- **A move that breaks a rule is allowed.** The options list warns before you click, for example "Full" or "No scuba certificate". Afterwards the **Courses** list shows it under Status, and the course's card marks the person in red.
 - **Start over** is at the bottom of **History**.
 - **File names must match exactly**, in lowercase: `courses.xlsx`, not `Courses.xlsx` or `courses (1).xlsx`. Unzip the sample zip first; the zip itself is not read.
 - **One problem per file is shown at a time.** Fix it, add the file again, and the next one (if any) shows.
@@ -77,7 +77,7 @@ Close the Chrome tab of the page, then close the Terminal window. If it asks, cl
 | Terminal says "Could not get the parts" or "Could not reach nodejs.org" | Check the internet connection and double-click again. A school network may block it; try another network. |
 | Terminal says something else is using the address | Quit the other program, or restart the Mac, then double-click again. |
 | The page opens on an old draft | That is the draft saved from last time. **History**, then **Start over**, gives a fresh start. |
-| Bottom left says **Not saved** | Another tab of the page is open. Close it and reload this one. |
+| Bottom left says **Not saved** | Reload the page. Check the last change is there; if not, make it again. |
 | A file row is red | Read the row: it names the file, the row and the problem. Fix it in Excel, save, and add it again. |
 
 ## Tell me

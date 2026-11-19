@@ -269,9 +269,11 @@ async function addOne(page, file) {
   await expect(page.getByRole("heading", { name: "Add forms" })).toHaveCount(0, { timeout: 60_000 });
 }
 
-test("Add forms in a second tab never replaces the forms the first tab added", async ({ page, context }) => {
+test("Add forms in a tab that cannot hear the first tab never replaces the forms the first tab added", async ({ page, context }) => {
   await buildRoundOne(page);
   const other = await context.newPage();
+  // Never told about the first tab's save, as in a browser without BroadcastChannel: the store alone must refuse its write.
+  await other.addInitScript(() => { delete window.BroadcastChannel; });
   await other.goto("/");
   await expect(other.locator("[data-result]")).toBeVisible();
 
@@ -285,4 +287,56 @@ test("Add forms in a second tab never replaces the forms the first tab added", a
   await page.reload();
   await expect(page.locator("[data-result]")).toBeVisible();
   expect(await placements(page)).toEqual(ours);
+});
+
+test("a save in another tab while this one is Placing stops the placing, and this tab then catches up and saves", async ({ page, context }) => {
+  await buildRoundOne(page);
+  const other = await context.newPage();
+  let release;
+  const held = new Promise((r) => { release = r; });
+  await other.route("**/highs.wasm", async (route) => { await held; await route.continue(); });
+  await other.goto("/");
+  await expect(other.locator("[data-result]")).toBeVisible();
+  await openCard(other);
+  await other.locator('[data-k="later-files"]').setInputFiles(later().filter((p) => p.endsWith("round2.xlsx")));
+  await expect(slot(other, "round2.xlsx")).toContainText("ready");
+  await addButton(other).click();
+  await expect(addButton(other)).toHaveText("Placing");
+
+  // The first tab saves a change while the other is still Placing.
+  await tab(page, "Teachers").click();
+  const before = await placements(page);
+  const mover = Object.keys(before).find((id) => before[id] !== "Not placed");
+  await page.locator(`#main [data-teacher="${mover}"]`).click();
+  await page.getByRole("button", { name: "All options" }).click();
+  await page.locator('#main [data-act="moveTo"]:not([data-c=""])').first().click();
+  await expect(page.locator("[data-saved]")).toHaveText("Saved in this browser");
+  await expect(page.locator("[data-saved]")).toHaveAttribute("data-version", "2");
+  release();
+
+  await expect(other.locator("[data-failed]")).toHaveText("Couldn't place anyone. Nothing changed.", { timeout: 60_000 });
+  await expect(other.locator("[data-saved]")).toHaveAttribute("data-version", "2");
+  await expect(other.locator("[data-saved]")).toHaveText("Saved in this browser");
+  // Pressed again, it places on the newest draft and saves.
+  await addButton(other).click();
+  await expect(other.getByRole("heading", { name: "Add forms" })).toHaveCount(0, { timeout: 60_000 });
+  await expect(other.locator("[data-saved]")).toHaveText("Saved in this browser");
+  await expect(other.locator("[data-saved]")).toHaveAttribute("data-version", "3");
+  expect(await storedRounds(page)).toEqual(["Round 1", "Round 2"]);
+});
+
+test("Add forms in one tab reaches another open tab, which can then add the next round", async ({ page, context }) => {
+  await buildRoundOne(page);
+  const other = await context.newPage();
+  await other.goto("/");
+  await expect(other.locator("[data-result]")).toBeVisible();
+
+  await addOne(page, "round2.xlsx");
+  await expect(page.locator("[data-saved]")).toHaveText("Saved in this browser");
+  await expect.poll(() => historyTop(other)).toMatch(/^Added Round 2 forms, placed \d+$/);
+  await addOne(other, "singapore.xlsx");
+  await expect(other.locator("[data-saved]")).toHaveText("Saved in this browser");
+  expect(await storedRounds(page)).toEqual(["Round 1", "Round 2", "Singapore"]);
+  await expect.poll(() => historyTop(page)).toMatch(/^Added Singapore forms, placed \d+$/);
+  expect(await placements(page)).toEqual(await placements(other));
 });

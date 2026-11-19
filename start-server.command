@@ -18,7 +18,7 @@ if page=$(curl -fs --max-time 2 "$url/"); then
   case "$page" in
     *"<title>Interim Draft Assistant</title>"*)
       say "The demo is already running, in another Terminal window." \
-        "Use the Chrome tab that is already open. Two tabs of the page can lose changes."
+        "Use the Chrome tab that is already open."
       read -r -p "To open a tab anyway, type y and press Return. Otherwise just press Return: " answer
       [ "$answer" = y ] && open_page
       exit 0 ;;

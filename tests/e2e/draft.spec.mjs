@@ -191,12 +191,72 @@ test("Build gives the expected result", async ({ page }) => {
   expect(watch.problems).toEqual([]);
 });
 
-test("a Build that cannot finish shows the one fixed line", async ({ page }) => {
+test("a Build that cannot finish says so and keeps the files, so Build can be pressed again", async ({ page }) => {
   await page.route("**/highs.wasm", (route) => route.abort());
   await dropSchool(page);
   await buildButton(page).click();
-  await expect(page.locator("[data-big]")).toHaveText("Couldn't build a draft. Reload and try again.", { timeout: 60_000 });
+  await expect(page.locator("[data-big]")).toHaveText("Couldn't build a draft from these files", { timeout: 60_000 });
+  await expect(page.locator("[data-big]")).toBeInViewport();
   await expect(page.locator("[data-result]")).toHaveCount(0);
+  await expect(page.locator("[data-slot]", { hasText: "ready" })).toHaveCount(6);
+  await expect(buildButton(page)).toBeEnabled();
+  // While the second try runs, the line about the first failure is gone.
+  let release;
+  const held = new Promise((r) => { release = r; });
+  await page.unroute("**/highs.wasm");
+  await page.route("**/highs.wasm", async (route) => { await held; await route.continue(); });
+  await buildButton(page).click();
+  await expect(buildButton(page)).toHaveText("Building");
+  await expect(page.locator("[data-big]")).toHaveText("Drop this year's files here");
+  release();
+  await expect(page.locator("[data-result]")).toBeVisible({ timeout: 60_000 });
+});
+
+test("a changed file clears the failed-Build line", async ({ page }) => {
+  await page.route("**/highs.wasm", (route) => route.abort());
+  await dropSchool(page);
+  await buildButton(page).click();
+  await expect(page.locator("[data-big]")).toHaveText("Couldn't build a draft from these files", { timeout: 60_000 });
+  await page.locator('[data-k="files"]').setInputFiles(schoolFiles().slice(0, 1));
+  await expect(page.locator("[data-big]")).toHaveText("Drop this year's files here");
+});
+
+test("the course card marks a sponsor without the certificate, and an over-full count", async ({ page }) => {
+  await goBuild(page);
+  // Someone placed, moved by hand onto a course they lack the certificate for.
+  await tab(page, "Teachers").click();
+  const id = await page.locator("#main [data-row][data-teacher]").filter({ hasNot: page.locator(".need") }).first().getAttribute("data-teacher");
+  await page.locator(`#main [data-teacher="${id}"]`).click();
+  await page.getByRole("button", { name: "All options" }).click();
+  const row = page.locator('#main [data-act="moveTo"]').filter({ has: page.locator("small b", { hasText: /no scuba certificate/i }) }).first();
+  const course = (await row.evaluate((e) => e.firstChild.textContent)).trim();
+  await row.click();
+  await tab(page, "Courses").click();
+  await page.locator("#main [data-row][data-course]", { hasText: course }).click();
+  const flagged = page.locator(`#main [data-teacher="${id}"] [data-no-cert]`);
+  await expect(flagged).toHaveText("No scuba certificate on file");
+  await expect(flagged).toHaveClass(/need/);
+
+  // Someone else onto a full course: its count goes red. T numbers are random, so try placed teachers until one lists a full course.
+  const full = page.locator('#main [data-act="moveTo"]').filter({ has: page.locator("small b", { hasText: /^Full(, they did not rank this)?$/ }) }).first();
+  let fullName = null;
+  await tab(page, "Teachers").click();
+  const others = (await page.locator("#main [data-row][data-teacher]").filter({ hasNot: page.locator(".need") }).evaluateAll((els) => els.map((e) => e.dataset.teacher))).filter((t) => t !== id);
+  for (const next of others) {
+    await tab(page, "Teachers").click();
+    await page.locator(`#main [data-teacher="${next}"]`).click();
+    await page.getByRole("button", { name: "All options" }).click();
+    if (await full.count()) { fullName = (await full.evaluate((e) => e.firstChild.textContent)).trim(); break; }
+  }
+  expect(fullName).not.toBeNull();
+  await full.click();
+  await tab(page, "Courses").click();
+  await page.locator("#main [data-row][data-course]", { hasText: fullName }).click();
+  const under = page.locator("#main .under");
+  await expect(under).toHaveText(/^(\d+) of \d+ sponsors$/);
+  const [, n, of] = (await under.innerText()).match(/^(\d+) of (\d+)/);
+  expect(Number(n)).toBeGreaterThan(Number(of));
+  await expect(under).toHaveClass(/need/);
 });
 
 test("big line equals the number of To do items", async ({ page }) => {

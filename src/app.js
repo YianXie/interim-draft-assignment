@@ -18,7 +18,8 @@ const top_ = () => view.stack[view.stack.length - 1];
 
 /* Start: files stay in memory, keyed by name, until Build. Nothing is stored. */
 const held = new Map();
-let phase = "loading"; // loading, start, building, failed or draft
+let phase = "loading"; // loading, start, building or draft
+let buildFailed = false; // the last Build gave no draft: Start says so, with the same files still listed, until they change
 let slots = {};
 let parsed = null;
 let reading = 0;
@@ -51,13 +52,53 @@ function remember(snap) {
     await addSnapshot(snap, saveId);
     savedVersion = snap.version;
     showSaved();
+    tell({ saveId, version: snap.version });
   });
 }
 function startOver() {
   if (!window.confirm("Delete the draft, every version and what was read from the files? This cannot be undone.")) return;
   const toStart = () => location.reload();
-  saving.catch(() => {}).then(() => loadFailed || wipe(saveId)).then(toStart, toStart);
+  saving.catch(() => {}).then(() => loadFailed || wipe(saveId)).then(() => tell({ saveId: null })).then(toStart, toStart);
 }
+
+/* Other tabs of the page, in this browser only: after every save each one is told, and loads what was saved, so a
+   second tab works on the newest draft instead of an older one whose next change would be refused and lost. */
+const channel = typeof BroadcastChannel === "function" ? new BroadcastChannel("interim-demo") : null;
+function tell(msg) {
+  try { channel?.postMessage(msg); } catch { /* a tab that cannot be told reloads by hand, as before */ }
+}
+let catchingUp = Promise.resolve();
+let missed = false; // another tab saved while this one was Placing: that placing is stopped, then this tab catches up
+channel?.addEventListener("message", (e) => {
+  catchingUp = catchingUp.then(() => catchUp(e.data)).catch((err) => console.warn(err));
+});
+async function catchUp(msg) {
+  if (loadFailed || !msg || typeof msg !== "object") return;
+  // Files dropped here and not built yet are the office's own: never thrown away for another tab's draft.
+  if (phase === "start") { if (!held.size && !reading) location.reload(); return; }
+  if (phase !== "draft") return;
+  // Another tab started over or built a new draft: this one's draft is gone from the browser, so show what is there now.
+  if (msg.saveId !== saveId) { location.reload(); return; }
+  // Wait for this tab's own writes, then load the newest saved version unless this tab already shows it.
+  await saving.catch(() => {});
+  if (placing) { missed = true; return; }
+  if (saveFailed) return;
+  const saved = await loadAll();
+  if (!saved || saved.saveId !== saveId) { location.reload(); return; }
+  const newest = saved.snapshots.at(-1).version;
+  if (newest === Mock.state.version) return;
+  const names = Mock.state.namesOn;
+  const list = Mock.todo(), openItem = view.tab === "todo" && list.length ? todoKey(list[view.idx % list.length]) : null;
+  savedVersion = newest;
+  Mock.init(saved.school, saved.snapshots);
+  if (names) Mock.setNames(true);
+  // The open To do item stays the same item, wherever it now sits in the list.
+  if (openItem !== null) { const at = Mock.todo().findIndex((i) => todoKey(i) === openItem); if (at >= 0) view.idx = at; }
+  render();
+  // Forms picked on the Add forms card are read again against the draft as it now is; a placing just stopped still says so.
+  if (laterHeld.size) { const failed = laterFailed; addLaterFiles([]); laterFailed = failed; render(); }
+}
+const todoKey = (i) => `${i.kind}:${i.cid ?? i.tid ?? ""}`;
 
 const KNOWN = [...SLOTS, ...PAST_SLOTS, FIT];
 const readBytes = (f) => f.arrayBuffer().then((b) => new Uint8Array(b), () => new Uint8Array());
@@ -67,6 +108,7 @@ function addFiles(list, remove = null) {
   const files = [...list];
   reading += 1;
   parsed = null;
+  buildFailed = false;
   render();
   queue = queue.then(async () => {
     try {
@@ -99,11 +141,12 @@ async function build() {
   if (!canBuild()) return;
   // T numbers are random, so T-number order says nothing about names or the order of the staff file. The solver sorts its own input.
   const school = { ...parsed, teachers: [...parsed.teachers].sort(byId) };
+  buildFailed = false;
   phase = "building";
   render();
   try {
     const { status, pairs } = solveDraft(await loadHighs({ locateFile: (f) => "/" + f }), school);
-    if (status !== "Optimal" || recheck(school, pairs).length) { phase = "failed"; render(); return; }
+    if (status !== "Optimal" || recheck(school, pairs).length) { failBuild(); return; }
     const id = crypto.randomUUID();
     saveId = id;
     inOrder(() => saveUpload(school, id));
@@ -112,9 +155,17 @@ async function build() {
     held.clear();
     phase = "draft";
   } catch {
-    phase = "failed";
+    failBuild();
+    return;
   }
   render();
+}
+// Back to Start with the files still held, so the office can swap one and press Build again without dropping all of them.
+function failBuild() {
+  phase = "start";
+  buildFailed = true;
+  render();
+  window.scrollTo(0, 0); // after render, which puts focus back on Build further down
 }
 
 // What each file holds, under its name on Start, so which files are wanted is never a guess.
@@ -172,7 +223,6 @@ function startTabs() {
   return `<div class="tabs start-tabs" role="tablist">${tab("now", "This year")}${tab("past", `Last year ${note}`)}</div>`;
 }
 function startView() {
-  if (phase === "failed") return `<h1 class="big" data-big>Couldn't build a draft. Reload and try again.</h1>`;
   const others = Object.keys(slots).filter((n) => !KNOWN.includes(n));
   // fit.xlsx is optional and never holds up Build: a placeholder after the six until it is added. Its row makes the panel
   // one row longer, so the panel's rows sit closer, and a short window that scrolls to Build still shows the heading.
@@ -181,7 +231,7 @@ function startView() {
   const now = [...six, ...(fitRow ? [FIT] : []), ...others.filter((n) => slots[n])];
   const past = PAST_SLOTS;
   return `<div class="narrow drop" data-drop>
-    <h1 class="big" data-big>${startTab === "now" ? "Drop this year's files here" : "Drop last year's four files here"}</h1>
+    <h1 class="big" data-big>${buildFailed ? "Couldn't build a draft from these files" : startTab === "now" ? "Drop this year's files here" : "Drop last year's four files here"}</h1>
     <p class="sub"><span>Invented school</span>&ensp;<span>Interim 2028</span></p>
     <div class="links"><label class="link choose">Choose files<input type="file" multiple accept=".xlsx" data-k="files"></label>
     <button class="link sample" data-act="sample">Use sample data</button>
@@ -364,12 +414,18 @@ function fillRows(cid) {
   return `<div class="gap" data-rows><div class="row r-fill head"><span>Could sponsor</span><span></span><span></span></div>${list.map((x) =>
     `<button class="row r-fill" data-row data-act="moveTo" data-id="${x.tid}" data-c="${esc(cid)}" data-k="f-${x.tid}"><span>${L(x.tid)}</span><span class="q">${esc(x.now)}</span><span class="go">Move here</span></button>`).join("")}</div>`;
 }
+// A sponsor here without the course's certificate: their row says so in place of their choice, in the words the options list used.
+const noCert = (t, c) => (c.needs && !Mock.teacher(t).certificates.includes(c.needs) ? `No ${c.needs.toLowerCase()} on file` : "");
 function courseBody(cid) {
-  const c = Mock.course(cid), list = Mock.sponsors(cid), short = list.length < c.seats;
+  const c = Mock.course(cid), list = Mock.sponsors(cid), short = list.length < c.seats, over = list.length > c.seats;
   const asked = Mock.whoAsked(cid).filter((x) => !x.placedHere);
+  const sponsorRow = (t) => {
+    const missing = noCert(t, c);
+    return `<button class="row r-two" data-row data-teacher="${t}" data-k="s-${t}"><span>${L(t)}</span><span class="${missing ? "need" : "q"}"${missing ? " data-no-cert" : ""}>${esc(missing || longChoice(t, cid))}</span></button>`;
+  };
   return `${title(esc(c.name))}
-    <p class="under ${short ? "need" : "q"}">${list.length} of ${many(c.seats, "sponsor")}${short && c.needs ? `. Needs ${esc(c.needs.toLowerCase())}` : ""}</p>
-    ${list.length ? `<div class="gap" data-rows>${list.map((t) => `<button class="row r-two" data-row data-teacher="${t}" data-k="s-${t}"><span>${L(t)}</span><span class="q">${esc(longChoice(t, cid))}</span></button>`).join("")}</div>` : ""}
+    <p class="under ${short || over ? "need" : "q"}">${list.length} of ${many(c.seats, "sponsor")}${short && c.needs ? `. Needs ${esc(c.needs.toLowerCase())}` : ""}</p>
+    ${list.length ? `<div class="gap" data-rows>${list.map(sponsorRow).join("")}</div>` : ""}
     ${short ? fillRows(cid) : ""}
     ${asked.length ? `<div class="links"><button class="link" data-act="open" data-to="asked" data-id="${esc(cid)}" data-k="wa">Who asked ${asked.length}</button></div>` : ""}`;
 }
@@ -455,6 +511,8 @@ async function addLater() {
   try {
     const highs = await loadHighs({ locateFile: (f) => "/" + f });
     if (phase !== "draft") return;
+    // Another tab saved meanwhile: these placements would be worked out on an older draft and refused, so none are made.
+    if (missed) { laterFailed = true; return; }
     // Read after the await: from here to addForms nothing yields, so a move made while Placing is in keep and stands.
     const keep = Mock.teachers().filter((t) => Mock.placedOn(t.id)).map((t) => [t.id, Mock.placedOn(t.id)]);
     const { status, pairs } = solveDraft(highs, read.school, keep, Mock.handOff());
@@ -471,6 +529,7 @@ async function addLater() {
   } finally {
     placing = false;
     render();
+    if (missed) { missed = false; catchingUp = catchingUp.then(() => catchUp({ saveId })).catch((err) => console.warn(err)); }
   }
 }
 function formsCard() {
@@ -559,6 +618,7 @@ function filter(which) {
 
 function render() {
   const k = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.k : null;
+  const sel = document.activeElement?.matches?.("input[data-search]") ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
   const head = document.getElementById("top"), main = document.getElementById("main"), done = document.getElementById("done");
   const onDraft = phase === "draft";
   head.hidden = done.hidden = !onDraft;
@@ -572,7 +632,11 @@ function render() {
   } else {
     main.innerHTML = startView();
   }
-  if (k) { const el = document.querySelector(`[data-k="${CSS.escape(k)}"]`); if (el) el.focus(); }
+  if (k) {
+    const el = document.querySelector(`[data-k="${CSS.escape(k)}"]`);
+    // Never scrolls, and a search box keeps its caret, so a render the office did not cause (another tab's save) moves nothing.
+    if (el) { el.focus({ preventScroll: true }); if (sel && el.setSelectionRange) el.setSelectionRange(sel[0], sel[1]); }
+  }
   // Last year's rows make Start longer, so Build can end up below a short window just as it unlocks. Only then: a later
   // render, such as a Start tab, leaves the page where the office put it.
   const ready = canBuild();

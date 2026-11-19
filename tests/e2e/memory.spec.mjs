@@ -20,6 +20,9 @@ const undo = (page) => page.getByRole("button", { name: "Undo" });
 const history = (page) => page.getByRole("button", { name: "History" }).click();
 const saved = (page) => page.locator("[data-saved]");
 const savedAt = (page, v) => expect(saved(page)).toHaveAttribute("data-version", String(v));
+// A tab that is never told about other tabs' saves, as in a browser without BroadcastChannel: the store alone must keep it from
+// overwriting anything, so the checks below hold for it exactly as they did before tabs were kept in step.
+const deaf = (page) => page.addInitScript(() => { delete window.BroadcastChannel; });
 const reloaded = async (page) => { await page.reload(); await expect(page.locator("[data-result]")).toBeVisible(); };
 
 // Every teacher's row on the Teachers tab, as { T number: course name or Not placed }.
@@ -181,7 +184,8 @@ test("a write that fails says Not saved, and nothing after it claims to be saved
   await savedAt(page, BUILD);
 });
 
-test("a second tab's versions are never overwritten: the first tab says Not saved", async ({ page, context }) => {
+test("a second tab's versions are never overwritten: a tab that cannot hear it says Not saved", async ({ page, context }) => {
+  await deaf(page);
   await goBuild(page);
   const other = await context.newPage();
   await other.goto("/");
@@ -198,7 +202,8 @@ test("a second tab's versions are never overwritten: the first tab says Not save
   expect(await placements(page)).toEqual(theirs);
 });
 
-test("after a second tab starts over and builds again, the first tab writes nothing into the new draft", async ({ page, context }) => {
+test("after a second tab starts over and builds again, a tab that cannot hear it writes nothing into the new draft", async ({ page, context }) => {
+  await deaf(page);
   await goBuild(page);
   const other = await context.newPage();
   await other.goto("/");
@@ -219,7 +224,8 @@ test("after a second tab starts over and builds again, the first tab writes noth
   expect(await placements(page)).toEqual(theirs);
 });
 
-test("Start over in a tab whose draft another tab replaced leaves the newer draft alone", async ({ page, context }) => {
+test("Start over in a tab that cannot hear that another tab replaced its draft leaves the newer draft alone", async ({ page, context }) => {
+  await deaf(page);
   await goBuild(page);
   const other = await context.newPage();
   await other.goto("/");
@@ -233,10 +239,114 @@ test("Start over in a tab whose draft another tab replaced leaves the newer draf
 
   await history(page);
   page.once("dialog", (d) => d.accept());
-  await page.getByRole("button", { name: "Start over" }).click();
+  // Wait for Start over's own reload, so the store is never read while the page is navigating.
+  await Promise.all([page.waitForEvent("load"), page.getByRole("button", { name: "Start over" }).click()]);
   await expect(page.locator("[data-result]")).toBeVisible();
   expect(await stored(page)).toEqual({ upload: 1, snapshots: 1 });
   expect(await placements(page)).toEqual(theirs);
+});
+
+test("two tabs stay in step: a change in either shows in the other, and both are kept", async ({ page, context }) => {
+  await goBuild(page);
+  const other = await context.newPage();
+  await other.goto("/");
+  await expect(other.locator("[data-result]")).toBeVisible();
+  await moveOne(other, placedIds(await placements(other), 1)[0]);
+  await savedAt(other, 2);
+  await savedAt(page, 2);
+  expect(await placements(page)).toEqual(await placements(other));
+
+  await moveOne(page, placedIds(await placements(page), 2)[1]);
+  await savedAt(page, 3);
+  await expect(saved(page)).toHaveText("Saved in this browser");
+  await savedAt(other, 3);
+  await expect(saved(other)).toHaveText("Saved in this browser");
+  const both = await placements(page);
+  expect(await placements(other)).toEqual(both);
+  await reloaded(page);
+  expect(await placements(page)).toEqual(both);
+  expect(await stored(page)).toEqual({ upload: 1, snapshots: 3 });
+});
+
+test("a tab keeps its own Show names when another tab saves", async ({ page, context }) => {
+  await goBuild(page);
+  await names(page).click();
+  await expect(names(page)).toHaveAttribute("aria-checked", "true");
+  const other = await context.newPage();
+  await other.goto("/");
+  await expect(other.locator("[data-result]")).toBeVisible();
+  await moveOne(other, placedIds(await placements(other), 1)[0]);
+  await savedAt(page, 2);
+  await expect(names(page)).toHaveAttribute("aria-checked", "true");
+  await expect(names(other)).toHaveAttribute("aria-checked", "false");
+});
+
+test("a tab follows another tab's Start over and its new draft", async ({ page, context }) => {
+  await goBuild(page);
+  const other = await context.newPage();
+  await other.goto("/");
+  await expect(other.locator("[data-result]")).toBeVisible();
+  await history(other);
+  other.once("dialog", (d) => d.accept());
+  await other.getByRole("button", { name: "Start over" }).click();
+  await expect(other.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(4);
+  await expect(page.locator("[data-slot]", { hasText: "file not added" })).toHaveCount(4);
+  await expect(page.locator("[data-result]")).toHaveCount(0);
+
+  await goBuild(other);
+  await expect(page.locator("[data-result]")).toBeVisible();
+  await savedAt(page, BUILD);
+  expect(await placements(page)).toEqual(await placements(other));
+});
+
+test("another tab's save keeps this tab's search caret, list scroll and open To do item", async ({ page, context }) => {
+  await page.setViewportSize({ width: 1200, height: 600 });
+  await goBuild(page);
+  const other = await context.newPage();
+  await other.goto("/");
+  await expect(other.locator("[data-result]")).toBeVisible();
+  const ids = placedIds(await placements(other), 3);
+
+  // Typing in Search: the next letter lands where the caret was.
+  await tab(page, "Teachers").click();
+  const box = page.getByRole("searchbox", { name: "Search" });
+  await box.fill("T1");
+  await moveOne(other, ids[0]);
+  await savedAt(page, 2);
+  await page.keyboard.type("0");
+  await expect(box).toHaveValue("T10");
+
+  // A scrolled list stays where it was.
+  await box.fill("");
+  await tab(page, "Teachers").click();
+  await page.mouse.wheel(0, 1500);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
+  const y = await page.evaluate(() => window.scrollY);
+  await moveOne(other, ids[1]);
+  await savedAt(page, 3);
+  expect(await page.evaluate(() => window.scrollY)).toBe(y);
+
+  // The open To do item is the same one after an earlier item is dealt with in the other tab.
+  await tab(page, "To do").click();
+  const items = page.locator("nav.todo-nav button");
+  const last = (await items.count()) - 1;
+  await items.nth(last).click();
+  const open = await page.locator("#main h2").innerText();
+  await tab(other, "To do").click();
+  await other.locator("nav.todo-nav button", { hasText: "Not placed" }).first().click();
+  await other.getByRole("button", { name: "Leave unplaced" }).click();
+  await savedAt(page, 4);
+  await expect(page.locator("#main h2")).toHaveText(open);
+});
+
+test("files dropped on Start are never thrown away for another tab's draft", async ({ page, context }) => {
+  await page.goto("/");
+  await page.locator('[data-k="files"]').setInputFiles(schoolFiles().slice(0, 2));
+  await expect(page.locator("[data-slot]", { hasText: "ready" })).toHaveCount(2);
+  const other = await context.newPage();
+  await goBuild(other);
+  await expect(page.locator("[data-slot]", { hasText: "ready" })).toHaveCount(2);
+  await expect(page.locator("[data-result]")).toHaveCount(0);
 });
 
 /* The kill test drives a real Chromium on a real profile, because a Playwright context keeps nothing on disk. */
