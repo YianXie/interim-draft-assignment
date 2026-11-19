@@ -52,6 +52,11 @@ button.row:hover { background: var(--hover); }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tag { font-size: 15px; line-height: 22px; padding: 0 8px; border: 1px solid var(--rule); border-radius: 11px; background: #f4f4f4; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .row.head[data-head] { min-height: 0; padding: 0 0 8px; font-size: 16px; font-weight: 600; color: var(--quiet); border-bottom: 1px solid var(--line); }
+.sort { display: inline-flex; align-items: baseline; gap: 6px; font-weight: inherit; color: inherit; }
+.sort:hover { color: var(--ink); }
+.sort .arrow { opacity: 0.45; }
+.sort.on { color: var(--ink); }
+.sort.on .arrow { opacity: 1; }
 .r-two { grid-template-columns: minmax(0, 1fr) auto; }
 .r-three { grid-template-columns: 130px minmax(0, 1fr) minmax(0, 1fr); }
 .r-opt { grid-template-columns: minmax(0, 1fr) 90px minmax(0, 210px); }

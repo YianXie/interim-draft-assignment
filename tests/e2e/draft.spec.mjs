@@ -467,3 +467,46 @@ test("every open reason fits detail", async ({ page }) => {
     await page.getByRole("button", { name: "Back" }).click();
   }
 });
+
+test("header arrows sort Teachers and Courses, a second click reverses, and a tab switch keeps it", async ({ page }) => {
+  await goBuild(page);
+  const cells = (cell) => page.locator(`#main [data-row] [data-cell="${cell}"]`).allInnerTexts();
+  const abc = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+  const up = (xs) => [...xs].sort(abc.compare);
+  await tab(page, "Courses").click();
+  const head = (name) => page.locator("#main [data-head]").getByRole("button", { name, exact: true });
+  const lit = page.locator("#main [data-head] button[aria-pressed]");
+  // Before any click, the header for the list's own order is shown: Status on Courses, Teacher with names off.
+  await expect(lit).toHaveText(["Status↑"]);
+  await tab(page, "Teachers").click();
+  await expect(lit).toHaveText(["Teacher↑"]);
+  const ids = await cells("name");
+  expect(ids).toEqual(up(ids));
+  await page.locator("[data-names]").click();
+  await expect(lit).toHaveCount(0);
+  await page.locator("[data-names]").click();
+  await head("Teacher").click();
+  await expect(lit).toHaveText(["Teacher↓"]);
+  expect(await cells("name")).toEqual(up(ids).reverse());
+  await tab(page, "Courses").click();
+  await head("Course").click();
+  await expect(head("Course")).toContainText("↑");
+  const names = await cells("name");
+  expect(names).toEqual(up(names));
+  await head("Course").click();
+  await expect(head("Course")).toContainText("↓");
+  expect(await cells("name")).toEqual(up(names).reverse());
+  await tab(page, "Teachers").click();
+  await head("Code").click();
+  const codes = (await cells("code")).filter(Boolean);
+  expect(codes).toEqual(up(codes));
+  await tab(page, "To do").click();
+  await tab(page, "Courses").click();
+  await expect(head("Course")).toContainText("↓");
+  expect(await cells("name")).toEqual(up(names).reverse());
+  await tab(page, "Teachers").click();
+  await expect(head("Code")).toContainText("↑");
+  // Teachers with no course have no code and go last.
+  const all = await cells("code");
+  expect(all.slice(0, codes.length)).toEqual(codes);
+});
