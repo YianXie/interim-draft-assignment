@@ -21,4 +21,10 @@ createServer(async (req, res) => {
   } catch {
     res.writeHead(404).end("Not found");
   }
-}).listen(port, "127.0.0.1", () => console.log(`http://127.0.0.1:${port}`));
+})
+  // One plain line instead of a stack trace, for the office reading the Terminal window.
+  .on("error", (err) => {
+    console.error(err.code === "EADDRINUSE" ? `Port ${port} is already in use.` : `The server could not start: ${err.message}`);
+    process.exit(1);
+  })
+  .listen(port, "127.0.0.1", () => console.log(`http://127.0.0.1:${port}`));

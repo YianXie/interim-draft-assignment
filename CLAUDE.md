@@ -17,7 +17,7 @@ A laptop-only demo (Interim Draft Assistant): six invented `.xlsx` files become 
 
 ## Commands
 
-Node 24+ is required. `start-server.command` (double-click launcher) picks the first Node 24+ from `/opt/homebrew/bin`, `/usr/local/bin`, then PATH, runs `npm ci` if `node_modules` is missing, and otherwise prints (and offers to run) a nodejs.org `.pkg` install command.
+Node 24+ is required. `start-server.command` (double-click launcher, written for the office: plain messages only) picks the first Node 24+ from `./.node/bin`, `/opt/homebrew/bin`, `/usr/local/bin`, then PATH; if none, it offers to fetch the checksum-verified nodejs.org tarball into `.node` (gitignored, no sudo). It clears quarantine on its own folder, refuses to start a second server (asks before opening a second tab, since two tabs can lose saves), runs a quiet `npm ci` when `node_modules/.package-lock.json` is missing, and re-fetches once if the build fails. Office-facing steps are in `docs/office-guide.md`.
 
 ```bash
 npm install

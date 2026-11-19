@@ -2,6 +2,8 @@
 
 > By Ian Xie, for SAS Catalyst project
 
+**Trying it from the office? Start with the [office guide](docs/office-guide.md).** The rest of this page is for whoever maintains it.
+
 A teacher interim allocation drafting assistance. Six spreadsheets become an editable, explained allocation draft that you can move people around in and download to Excel. Only four are needed to build: `round2.xlsx` and `singapore.xlsx` can come later.
 
 It has only ever seen invented data: an invented school, invented people, invented preferences. It has never run on real data, so its drafts have not been compared with anything a real office placed. The placed count is a property of the invented data, not a result.
@@ -9,11 +11,12 @@ It has only ever seen invented data: an invented school, invented people, invent
 ## What it needs
 
 - A Mac with Chrome.
-- Node 24 or newer. `start-server.command` looks for it in `/opt/homebrew/bin`, `/usr/local/bin`, then PATH; if none is new enough it prints the command that installs Node 24 from nodejs.org and offers to run it.
+- Node 24 or newer. `start-server.command` looks for it in the folder's own `.node`, `/opt/homebrew/bin`, `/usr/local/bin`, then PATH. If none is new enough, it offers to fetch the official Node 24 tarball from nodejs.org into `.node`, checks it against nodejs.org's SHASUMS256.txt, and uses it from there. No password, nothing installed system-wide.
 
 ## Run it
 
-- Double-click `start-server.command`. It installs the packages on first run, builds the page, starts the server on `http://127.0.0.1:4173`, and opens it. Closing its window stops the server.
+- Double-click `start-server.command`. It installs the packages on first run, builds the page, starts the server on `http://127.0.0.1:4173`, and opens it in Chrome. Closing its window stops the server.
+- It also clears the downloaded-from-the-internet mark on its own folder, so only the first double-click of a downloaded ZIP needs macOS's Open Anyway. If the page is already running, it says so and asks before opening a second tab. If something else holds port 4173, it says so and stops.
 - Or in a terminal: `npm install`, `npm run build`, `npm run serve`, then open `http://127.0.0.1:4173`.
 
 ## Round 2 and Singapore later
