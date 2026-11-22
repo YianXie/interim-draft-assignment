@@ -50,6 +50,7 @@ It has only ever seen invented data: an invented school, invented people, invent
 - `tools/convert.mjs` turns the office's own exports into the six, run by hand: `node tools/convert.mjs --in <raw folder> --out <new folder>`. Keep both folders outside the repo.
 - The raw folder holds `courses.xlsx`, `returning.xlsx`, `round1.xlsx`, `allocation.xlsx` (the final allocation) and, if there are any, `round2.xlsx` and `singapore.xlsx`. Columns are found by their headers, in any order.
 - Emails are kept as written, in lower case. Course codes and seats come from the allocation, and names in `staff.xlsx` from its sponsors. A choice like "Country — Course" is written as the course name.
+- Names match whatever their case, spacing or punctuation ("—" or ":", "&" or "and"). A "(FEMALE)" or "(MALE)" marker is taken off and the course listed for a check, since the page does not read it. A small slip or a shortened choice is matched only when one course is clearly closest, and listed. A course on the allocation but not in `courses.xlsx` is added as a Singapore course.
 - It never guesses and never overwrites. Whatever it could not settle is listed in `convert-report.txt`, which ends with the line Start would show for the new files.
 
 ## Check it

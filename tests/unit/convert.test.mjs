@@ -21,10 +21,46 @@ test("courses take code and seats from the allocation, type from the country", (
   assert.ok(has(report, "Glacier Camp", "Course Code", "blank"));
 });
 
-test("an allocation course that is not on the course list is reported", () => {
+test("an allocation course that is not on the course list is added as a Singapore course and reported", () => {
   const raw = rawSchool()["allocation.xlsx"];
-  const { report } = run({ "allocation.xlsx": [...raw, ["ZZZZ-1", "ZZZZ-1 Moon Base", "Eve Ng", "", ""]] });
-  assert.ok(has(report, "allocation.xlsx", "row 5", "Moon Base"));
+  const { files, report } = run({ "allocation.xlsx": [...raw, ["SING-7", "SING-7 Moon Base", "Eve Ng", "Ana De Souza", ""]] });
+  assert.deepEqual(files["courses.xlsx"].at(-1), ["SING-7", "Moon Base", "Singapore", 2, "Yes", "", "Singapore", "", ""]);
+  assert.ok(has(report, "allocation.xlsx", "Moon Base", "Singapore"));
+});
+
+test("Singapore courses missing from the course list come from the allocation, and Singapore choices match them", () => {
+  const courses = rawSchool()["courses.xlsx"].filter((r) => r[0] !== "Garden Trails");
+  const { files, report } = run({ "courses.xlsx": courses });
+  assert.ok(files["courses.xlsx"].some((r) => r[0] === "SING-1" && r[1] === "Garden Trails" && r[2] === "Singapore"));
+  assert.equal(files["singapore.xlsx"][1][2], "Garden Trails");
+  assert.ok(!has(report, "Garden Trails", "matches no course"));
+});
+
+test("a (FEMALE) or (MALE) choice is matched without the marker, and the marked course is reported once", () => {
+  const r1 = rawSchool()["round1.xlsx"];
+  const { files, report } = run({ "round1.xlsx": [r1[0],
+    [NEW, "woxley@oldschool.example", "Australia — Great Ocean Road (FEMALE)", "", "", "", ...blanks(6)],
+    [NEW, "clim@oldschool.example", "Australia — Great Ocean Road (FEMALE)", "", "", "", ...blanks(6)]] });
+  assert.equal(files["round1.xlsx"][1][2], "Great Ocean Road");
+  assert.equal(files["round1.xlsx"][2][2], "Great Ocean Road");
+  assert.equal(report.filter((l) => l.includes("(FEMALE)")).length, 1);
+  assert.ok(has(report, "Great Ocean Road", "(FEMALE)", "check"));
+  assert.ok(files["round1.xlsx"].flat().every((c) => !String(c).includes("FEMALE")));
+});
+
+test("a course named with other punctuation on the allocation still gets its code, with no report line", () => {
+  const courses = [...rawSchool()["courses.xlsx"], ["Hill — Lake Loop", "v5", "Tash", "Tasland"]];
+  const allocation = [...rawSchool()["allocation.xlsx"], ["HILL-1", "HILL-1 Hill: Lake Loop", "Eve Ng", "", ""]];
+  const { files, report } = run({ "courses.xlsx": courses, "allocation.xlsx": allocation });
+  assert.ok(files["courses.xlsx"].some((r) => r[0] === "HILL-1" && r[1] === "Hill — Lake Loop"));
+  assert.ok(!has(report, "Lake Loop"));
+});
+
+test("a choice with a small slip is matched to the closest course and reported for a check", () => {
+  const r1 = rawSchool()["round1.xlsx"];
+  const { files, report } = run({ "round1.xlsx": [r1[0], [NEW, "woxley@oldschool.example", "Australia — Great Ocen Road", "", "", "", ...blanks(6)]] });
+  assert.equal(files["round1.xlsx"][1][2], "Great Ocean Road");
+  assert.ok(has(report, "round1.xlsx", "row 2", "Great Ocen Road", "Great Ocean Road", "check"));
 });
 
 test("round 1 is put in the page's column order with choices written as the course name", () => {
@@ -152,4 +188,11 @@ test("text timestamps are read only when they cannot be misread, and the report 
     ["02/03/2031 10:00:00", "bode@oldschool.example", "Great Ocean Road", "", "", "", ...blanks(6)]] });
   assert.equal(dm.files["round1.xlsx"][1][2], "Great Ocean Road");
   assert.ok(has(dm.report, "row 2", "timestamp", "could not be read", "row 3 kept"));
+});
+
+test("an allocation course is never matched to a course list name only by sharing its words", () => {
+  const allocation = [...rawSchool()["allocation.xlsx"], ["SING-3", "SING-3 Ocean", "Eve Ng", "", ""]];
+  const { files } = run({ "allocation.xlsx": allocation });
+  assert.ok(files["courses.xlsx"].some((r) => r[0] === "SING-3" && r[1] === "Ocean" && r[2] === "Singapore"));
+  assert.ok(files["courses.xlsx"].some((r) => r[0] === "AUST-1" && r[1] === "Great Ocean Road"));
 });

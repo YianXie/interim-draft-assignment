@@ -2,7 +2,7 @@
 // with one report line for everything it could not settle. It never guesses: an unmatched course or name is left
 // blank or as written and reported. Columns are found by key words, so the forms' own wording is not written here.
 import { HEADERS } from "../../src/import.js";
-import { norm, cleanEmail, courseIndex, nameKeys, findColumn } from "./match.mjs";
+import { norm, cleanEmail, courseIndex, nameKeys, findColumn, marker, stripMarker } from "./match.mjs";
 
 export const REQUIRED = ["courses.xlsx", "returning.xlsx", "round1.xlsx", "allocation.xlsx"];
 export const OPTIONAL = ["round2.xlsx", "singapore.xlsx"];
@@ -44,7 +44,9 @@ export function convert(raw) {
     return e;
   };
 
-  // Courses, with code and seats from the allocation.
+  // Courses, with code and seats from the allocation. A course marked (FEMALE) or (MALE) is listed once for a check.
+  const marked = new Map();
+  const mark = (name, raw) => marker(raw) && !marked.has(name) && marked.set(name, marker(raw));
   const ch = raw["courses.xlsx"][0] ?? [];
   const at = {
     name: column("courses.xlsx", ch, ["course", "name"], "Course Name"),
@@ -52,12 +54,12 @@ export function convert(raw) {
     city: column("courses.xlsx", ch, ["city"], "Arrival City"),
     country: column("courses.xlsx", ch, ["country"], "Country"),
   };
-  const courses = body(raw["courses.xlsx"]).map(({ cells }) => ({
-    name: text(cells[at.name]), vendor: text(cells[at.vendor]), city: text(cells[at.city]), country: text(cells[at.country]),
-    code: "", seats: null,
-  }));
-  const index = courseIndex(courses);
-  for (const name of index.duplicates) report.push(`courses.xlsx: two courses have the same name "${name}"; the page needs each name once`);
+  const courses = body(raw["courses.xlsx"]).map(({ cells }) => {
+    const name = stripMarker(cells[at.name]);
+    mark(name, cells[at.name]);
+    return { name, vendor: text(cells[at.vendor]), city: text(cells[at.city]), country: text(cells[at.country]), code: "", seats: null };
+  });
+  let index = courseIndex(courses);
 
   const ah = raw["allocation.xlsx"][0] ?? [];
   const aCode = column("allocation.xlsx", ah, ["code"], "Trip Code");
@@ -65,17 +67,23 @@ export function convert(raw) {
   const aSponsors = ah.map((h, i) => (norm(h).includes("sponsor") ? i : -1)).filter((i) => i >= 0);
   if (!aSponsors.length) throw new Error(`allocation.xlsx: no column for Sponsor 1 (looked for a header with "sponsor")`);
   const sponsors = [];
+  const added = [];
   for (const { n, cells } of body(raw["allocation.xlsx"])) {
     const code = text(cells[aCode]);
     let name = text(cells[aName]);
     if (code && norm(name).startsWith(norm(code))) name = name.slice(code.length).replace(/^[\s—–:-]+/, "");
     const names = aSponsors.map((i) => text(cells[i])).filter(Boolean);
     sponsors.push(...names.map((full) => ({ n, full })));
-    const c = index.find(name);
+    let c = index.find(name);
+    if (!c && (c = index.near(name, { words: false }))) report.push(`allocation.xlsx, row ${n}: "${name}" taken as "${c.name}", the closest name in courses.xlsx; check it`);
     if (!c) {
-      report.push(`allocation.xlsx, row ${n}: course "${text(cells[aName])}" is not in courses.xlsx`);
-      continue;
+      // Singapore courses are on the allocation only.
+      c = { name: stripMarker(name), vendor: "", city: "", country: "Singapore", code: "", seats: null };
+      courses.push(c);
+      added.push(c.name);
+      index = courseIndex(courses);
     }
+    mark(c.name, name);
     if (c.code) {
       report.push(`allocation.xlsx, row ${n}: "${c.name}" is on the allocation twice; the first row is used`);
       continue;
@@ -83,6 +91,8 @@ export function convert(raw) {
     c.code = code;
     c.seats = names.length || null;
   }
+  if (added.length) report.push(`allocation.xlsx: ${added.length} course${added.length > 1 ? "s are" : " is"} not in courses.xlsx, so added as Singapore: ${added.join(", ")}; check each is a Singapore course`);
+  for (const name of index.duplicates) report.push(`courses.xlsx: two courses have the same name "${name}"; the page needs each name once`);
   for (const c of courses) if (!c.code) report.push(`courses.xlsx: "${c.name}" is not on the allocation, so its Course Code is blank; fill it in`);
   const codes = new Set(courses.map((c) => c.code).filter(Boolean));
 
@@ -109,10 +119,14 @@ export function convert(raw) {
       const choices = choiceAt.map((i, k) => {
         const v = text(cells[i]);
         if (!v) return "";
-        const c = index.find(v);
-        if (c) return c.name;
+        let c = index.find(v);
+        if (!c && (c = index.near(v))) report.push(`${file}, row ${n}: Choice ${k + 1} "${v}" taken as "${c.name}", the closest course; check it`);
+        if (c) {
+          mark(c.name, v);
+          return c.name;
+        }
         report.push(`${file}, row ${n}: Choice ${k + 1} "${v}" matches no course; left as written`);
-        return v;
+        return stripMarker(v);
       });
       const entry = { n, t: time(cells[ts]), row: [cells[ts] ?? "", e, ...choices, ...answerAt.map((i) => text(cells[i]))] };
       const had = kept.get(e);
@@ -129,6 +143,8 @@ export function convert(raw) {
     }
     files[file] = [want, ...[...kept.values()].sort((a, b) => a.n - b.n).map((x) => x.row)];
   }
+
+  for (const [name, m] of marked) report.push(`"${name}" is marked (${m}) in the raw files; the page does not read this, so check who is placed on it`);
 
   // Returning: Prior Course copied as the code, checked by hand when it is not one of this year's codes.
   const rh = raw["returning.xlsx"][0] ?? [];
