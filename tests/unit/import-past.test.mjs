@@ -7,8 +7,9 @@ import { parseFiles, SLOTS, PAST_SLOTS } from "../../src/import.js";
 const dir = new URL("../../fixtures/school/", import.meta.url);
 const SHEET = "Fernhollow";
 const [ALLOCATION, ROUND1, ROUND2, SINGAPORE] = PAST_SLOTS;
-const ALLOCATION_HEADERS =
-  "past-allocation.xlsx, row 1: headers must be exactly: Course Code, Course Name, Sponsor 1, Sponsor 2, and so on";
+// The first column that differs and what it should hold, then the whole header row.
+const ALLOCATION_HEADERS = (col, should) =>
+  `past-allocation.xlsx, row 1: column ${col} should be ${should}; headers must be exactly: Course Code, Course Name, Sponsor 1, Sponsor 2, and so on`;
 const choices = (n) => Array.from({ length: n }, (_, i) => `Choice ${i + 1}`);
 // Past forms are laid out like this year's: Timestamp, Email, the choices, then the written answers.
 const ANSWERS = {
@@ -17,7 +18,7 @@ const ANSWERS = {
   [SINGAPORE]: ["Enhancing Learning or Safety", "Additional Comments or Questions"],
 };
 const formHead = (file, n) => ["Timestamp", "Email", ...choices(n), ...ANSWERS[file]];
-const HEAD_LINE = (file, n) => `${file}, row 1: headers must be exactly: ${formHead(file, n).join(", ")}`;
+const HEAD_LINE = (file, n, col, should) => `${file}, row 1: column ${col} should be ${should}; headers must be exactly: ${formHead(file, n).join(", ")}`;
 // A form row: the time it was sent, then email and choices. The answers are left blank.
 const sent = (...cells) => ["08/09/2026 9:15:00", ...cells];
 
@@ -141,20 +142,20 @@ test("past-allocation headers: Sponsor columns may be any number, but not zero a
   const five = await run({ edit: head("Sponsor 1", "Sponsor 2", "Sponsor 3", "Sponsor 4", "Sponsor 5") });
   assert.ok(five.school, JSON.stringify(five.slots));
   const wrong = [
-    head(),
-    head("Sponsor 2", "Sponsor 1"),
-    head("Sponsor 2"),
-    head("Sponsor 1", "Sponsor 3"),
-    head("Sponsor 1", null, "Sponsor 2"),
-    head("Sponsor 1", "Sponsor 2", "Notes"),
-    head("Sponsor"),
-    (past) => (past[ALLOCATION][0] = ["Course Name", "Course Code", "Sponsor 1", "Sponsor 2"]),
-    (past) => (past[ALLOCATION][0] = ["Code", "Course Name", "Sponsor 1", "Sponsor 2"]),
+    [head(), "C", '"Sponsor 1"'],
+    [head("Sponsor 2", "Sponsor 1"), "C", '"Sponsor 1"'],
+    [head("Sponsor 2"), "C", '"Sponsor 1"'],
+    [head("Sponsor 1", "Sponsor 3"), "D", '"Sponsor 2" or empty'],
+    [head("Sponsor 1", null, "Sponsor 2"), "D", '"Sponsor 2" or empty'],
+    [head("Sponsor 1", "Sponsor 2", "Notes"), "E", '"Sponsor 3" or empty'],
+    [head("Sponsor"), "C", '"Sponsor 1"'],
+    [(past) => (past[ALLOCATION][0] = ["Course Name", "Course Code", "Sponsor 1", "Sponsor 2"]), "A", '"Course Code"'],
+    [(past) => (past[ALLOCATION][0] = ["Code", "Course Name", "Sponsor 1", "Sponsor 2"]), "A", '"Course Code"'],
   ];
-  for (const [i, edit] of wrong.entries()) {
+  for (const [i, [edit, col, should]] of wrong.entries()) {
     const out = await run({ edit });
     assert.equal(out.school, null, `wrong header ${i}`);
-    assert.equal(out.slots[ALLOCATION], ALLOCATION_HEADERS, `wrong header ${i}`);
+    assert.equal(out.slots[ALLOCATION], ALLOCATION_HEADERS(col, should), `wrong header ${i}`);
   }
 });
 
@@ -167,7 +168,7 @@ const refused = async (file, edit, line) => {
 };
 
 test("each allocation refusal gives file and row", async () => {
-  await refused(ALLOCATION, (past) => (past[ALLOCATION][0] = ["Course Code", "Course Name"]), ALLOCATION_HEADERS);
+  await refused(ALLOCATION, (past) => (past[ALLOCATION][0] = ["Course Code", "Course Name"]), ALLOCATION_HEADERS("C", '"Sponsor 1"'));
   await refused(ALLOCATION, (past) => (past[ALLOCATION][2][0] = " "), "past-allocation.xlsx, row 3: course code is empty");
   await refused(ALLOCATION, (past) => (past[ALLOCATION][4][0] = courses[1][0]),
     "past-allocation.xlsx, row 5: course code appears twice");
@@ -232,12 +233,12 @@ test("past form files give the existing lines for headers and emails", async () 
     assert.equal(out.school, null);
     return out.slots[file];
   };
-  assert.equal(await line(ROUND1, (past) => (past[ROUND1][0] = formHead(ROUND1, 3))), HEAD_LINE(ROUND1, 7));
-  assert.equal(await line(ROUND2, (past) => (past[ROUND2][0] = formHead(ROUND2, 7))), HEAD_LINE(ROUND2, 3));
-  assert.equal(await line(SINGAPORE, (past) => (past[SINGAPORE][0][1] = "E-mail")), HEAD_LINE(SINGAPORE, 5));
+  assert.equal(await line(ROUND1, (past) => (past[ROUND1][0] = formHead(ROUND1, 3))), HEAD_LINE(ROUND1, 7, "F", '"Choice 4"'));
+  assert.equal(await line(ROUND2, (past) => (past[ROUND2][0] = formHead(ROUND2, 7))), HEAD_LINE(ROUND2, 3, "F", "empty"));
+  assert.equal(await line(SINGAPORE, (past) => (past[SINGAPORE][0][1] = "E-mail")), HEAD_LINE(SINGAPORE, 5, "B", '"Email"'));
   // The layout of years before, without Timestamp or the answers, is refused too.
-  assert.equal(await line(ROUND1, (past) => (past[ROUND1][0] = ["Email", ...choices(7)])), HEAD_LINE(ROUND1, 7));
-  assert.equal(await line(SINGAPORE, (past) => past[SINGAPORE][0].pop()), HEAD_LINE(SINGAPORE, 5));
+  assert.equal(await line(ROUND1, (past) => (past[ROUND1][0] = ["Email", ...choices(7)])), HEAD_LINE(ROUND1, 7, "A", '"Timestamp"'));
+  assert.equal(await line(SINGAPORE, (past) => past[SINGAPORE][0].pop()), HEAD_LINE(SINGAPORE, 5, "I", '"Additional Comments or Questions"'));
   assert.equal(await line(ROUND2, (past) => (past[ROUND2][1][1] = "")), "past-round2.xlsx, row 2: email is empty");
   assert.equal(await line(ROUND1, (past) => past[ROUND1].push(sent(` ${who(1).toUpperCase()}`, course(3)))),
     "past-round1.xlsx, row 6: email appears twice in this file");

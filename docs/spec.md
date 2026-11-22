@@ -38,7 +38,7 @@ Each is `.xlsx`, read from its first sheet whatever its name, headers in row 1, 
 | File             | Columns                                                                                                                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `courses.xlsx`   | Course Code, Course Name, Type (International or Singapore), Seats, Offered (Yes or No), Certificate (blank means none), Arrival Country, Arrival City, Vendor Link |
-| `staff.xlsx`     | Email, Name, Certificates (separated by `;`)                                                                                                                  |
+| `staff.xlsx`     | Email, Name, Certificates (separated by `;`, a line break or a comma; a certificate name on the course list that holds a comma stays whole) |
 | `returning.xlsx` | Email, Course Code                                                                                                                                            |
 | `round1.xlsx`    | Timestamp, Email, Choice 1 to Choice 7 (course names), Enhancing Learning or Safety, Notable Priorities, Final Questions or Comments                          |
 | `round2.xlsx`    | Timestamp, Email, Choice 1 to Choice 3 (course names)                                                                                                         |

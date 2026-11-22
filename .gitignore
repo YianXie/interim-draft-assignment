@@ -6,3 +6,17 @@ playwright-report/
 __pycache__/
 .node/
 .node.new/
+# Hand-run tool output at the repo root: these can hold real names and answers, so never commit them.
+/fit.xlsx
+/convert-report.txt
+/compare.xlsx
+/courses.xlsx
+/staff.xlsx
+/returning.xlsx
+/round1.xlsx
+/round2.xlsx
+/singapore.xlsx
+/past-allocation.xlsx
+/past-round1.xlsx
+/past-round2.xlsx
+/past-singapore.xlsx

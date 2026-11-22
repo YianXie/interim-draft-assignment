@@ -177,6 +177,13 @@ const run = (args) => new Promise((resolve) => {
 });
 const scratch = () => mkdtempSync(join(tmpdir(), "interim-reader-"));
 
+test("the command needs --out, so fit.xlsx is never written into the repo by default", async () => {
+  const r = await run(["--dir", SCHOOL, "--host", "http://127.0.0.1:9"]);
+  assert.equal(r.code, 1);
+  assert.match(r.stderr, /^usage: node tools\/reader\.mjs --dir <folder with the six> --out <fit\.xlsx outside this repo>/);
+  assert.equal(existsSync(join(ROOT, FIT)), false);
+});
+
 test("the command exits 1 with one plain line when the model cannot be reached, and writes nothing", async () => {
   const dir = scratch();
   try {

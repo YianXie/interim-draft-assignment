@@ -82,7 +82,7 @@ test("refusals give one plain line", async () => {
     [
       [[who(0), code(0), "Skill", "Knots", ""]],
       ["Email", "Course", "Kind", "Fact", "Quote"],
-      "fit.xlsx, row 1: headers must be exactly: Email, Course Code, Kind, Fact, Quote",
+      'fit.xlsx, row 1: column B should be "Course Code"; headers must be exactly: Email, Course Code, Kind, Fact, Quote',
     ],
     [[["nobody.here@fernhollow.example", code(0), "Skill", "Knots", ""]], HEAD, "fit.xlsx, row 2: email is not on the staff list"],
     [[[who(0), "NOPE-99", "Skill", "Knots", ""]], HEAD, "fit.xlsx, row 2: course code is not on the course list"],

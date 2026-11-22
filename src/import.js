@@ -76,9 +76,17 @@ async function table(file, bytes) {
   if (!book.length) refuse(file, 0, "no sheet in this file");
   const [head = [], ...rest] = book[0].rows;
   const want = headerRow(file, head);
-  if (want.some((h, i) => head[i] !== h) || head.slice(want.length).some((h) => !blank(h))) {
+  const off = want.findIndex((h, i) => head[i] !== h);
+  const extra = head.findIndex((h, i) => i >= want.length && !blank(h));
+  if (off >= 0 || extra >= 0) {
     const list = file === ALLOCATION ? "Course Code, Course Name, Sponsor 1, Sponsor 2, and so on" : want.join(", ");
-    refuse(file, 1, `headers must be exactly: ${list}`);
+    // The first column that differs, with what it should hold, and "the first sheet" when there is more than one, since
+    // only the first is read: a cover sheet or a Numbers export summary shows here. Nothing typed in the file is echoed,
+    // neither a cell nor the sheet's name, so a data row read as headers or a tab named after someone puts no name on screen.
+    // Last year's allocation needs Sponsor 1 and may stop after any Sponsor column, so one after it may also be empty.
+    const at = off >= 0 ? off : extra;
+    const should = off < 0 ? "empty" : file === ALLOCATION && at >= 3 ? `"${want[at]}" or empty` : `"${want[at]}"`;
+    refuse(file, book.length > 1 ? "1 of the first sheet" : 1, `column ${columnLetter(at)} should be ${should}; headers must be exactly: ${list}`);
   }
   const rows = rest.map((cells, i) => ({ n: i + 2, cells })).filter((r) => r.cells.some((c) => !blank(c)));
   if (PAST_SLOTS.includes(file) || file in FORMS || file === FIT) {
@@ -86,6 +94,9 @@ async function table(file, bytes) {
   }
   return rows;
 }
+
+// 0 -> A, 25 -> Z, 26 -> AA, as Excel names columns.
+const columnLetter = (i) => (i >= 26 ? columnLetter(Math.floor(i / 26) - 1) : "") + String.fromCharCode(65 + (i % 26));
 
 function email(file, r, seen, at = 0) {
   const e = normEmail(r.cells[at]);
@@ -122,7 +133,8 @@ function readStaff(file, rows) {
   return rows.map((r) => {
     const e = email(file, r, seen);
     if (!text(r.cells[1])) refuse(file, r.n, "name is empty");
-    const certificates = text(r.cells[2]).split(";").map((c) => c.trim()).filter(Boolean);
+    // One per line or separated by ";". Commas are split later, once the course list says which names hold a comma.
+    const certificates = text(r.cells[2]).split(/[;\r\n]+/).map((c) => c.trim()).filter(Boolean);
     return { n: r.n, email: e, name: text(r.cells[1]), certificates };
   });
 }
@@ -256,6 +268,21 @@ export async function parseFiles(files, random = secureRandom) {
   // Their one check against another file, one person written twice on the allocation, comes after this loop.
   const courses = got["courses.xlsx"];
   const staff = got["staff.xlsx"];
+  // Certificates may also be separated by commas. A run of comma-separated parts that spells a certificate the course
+  // list asks for stays whole (the longest such run first), so a name with a comma in it is never cut up.
+  const known = new Set((courses ?? []).map((c) => c.needs && normCert(c.needs)).filter(Boolean));
+  const held = (list) => list.flatMap((piece) => {
+    const parts = piece.split(","), out = [];
+    for (let i = 0; i < parts.length;) {
+      let j = parts.length;
+      while (j > i + 1 && !known.has(normCert(parts.slice(i, j).join(",")))) j--;
+      const one = parts.slice(i, j).join(",").trim();
+      if (one) out.push(one);
+      i = j;
+    }
+    return out;
+  });
+  if (staff) for (const s of staff) s.certificates = held(s.certificates);
   const byId = courses && new Map(courses.map((c) => [c.id, c]));
   const byName = courses && new Map(courses.map((c) => [c.name, c]));
   const onStaff = staff && new Set(staff.map((s) => s.email));

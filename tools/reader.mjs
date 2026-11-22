@@ -1,6 +1,6 @@
 // Writes fit.xlsx from the written answers in round1.xlsx and singapore.xlsx, with a model running locally in Ollama.
 // Run by hand, never by the page. The office checks every row in Excel before fit.xlsx goes on Start.
-// Usage: node tools/reader.mjs --dir <folder with the six> [--out fit.xlsx] [--host http://127.0.0.1:11434]
+// Usage: node tools/reader.mjs --dir <folder with the six> --out <fit.xlsx outside this repo> [--host http://127.0.0.1:11434]
 //        [--model qwen3.5:9b] [--prompt tools/reader-test/prompt_v3.txt] [--format json]
 import { readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -15,15 +15,16 @@ import { fitBook } from "./reader/book.mjs";
 const { values: opt } = parseArgs({
   options: {
     dir: { type: "string" },
-    out: { type: "string", default: FIT },
+    out: { type: "string" },
     host: { type: "string", default: "http://127.0.0.1:11434" },
     model: { type: "string", default: "qwen3.5:9b" },
     format: { type: "string" },
     prompt: { type: "string", default: fileURLToPath(new URL("reader-test/prompt_v3.txt", import.meta.url)) },
   },
 });
-if (!opt.dir) {
-  console.error("usage: node tools/reader.mjs --dir <folder with the six> [--out fit.xlsx] [--host URL] [--model NAME] [--prompt FILE] [--format json]");
+// --out has no default: the file holds every teacher's written answers, so where it goes is always chosen, never the repo by accident.
+if (!opt.dir || !opt.out) {
+  console.error("usage: node tools/reader.mjs --dir <folder with the six> --out <fit.xlsx outside this repo> [--host URL] [--model NAME] [--prompt FILE] [--format json]");
   process.exit(1);
 }
 

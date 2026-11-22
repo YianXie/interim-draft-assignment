@@ -68,7 +68,7 @@ test("checks match Start", async () => {
   const wrongHead = { name: ROUND2, bytes: await writeBook([{ name: "Sheet1", rows: [["Mail", ...sheet.rows[0].slice(1)], ...sheet.rows.slice(1)] }]) };
   let out = await readForms(base, [wrongHead]);
   assert.equal(out.school, null);
-  assert.match(out.slots[ROUND2], /^round2\.xlsx, row 1: headers must be exactly/);
+  assert.match(out.slots[ROUND2], /^round2\.xlsx, row 1: column A should be "Timestamp"; headers must be exactly: Timestamp, Email, Choice 1, Choice 2, Choice 3$/);
   const course = base.courses[0].name;
   out = await readForms(base, [await form(ROUND2, [row(ROUND2, "nobody@fernhollow.example", course)])]);
   assert.equal(out.school, null);

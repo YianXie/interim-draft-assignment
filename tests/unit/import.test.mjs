@@ -87,7 +87,7 @@ test("the first sheet is read whatever its name", async () => {
 test("wrong header is refused with the file name", async () => {
   const out = await run((rows) => (rows["returning.xlsx"][0][1] = "Course"));
   assert.equal(out.school, null);
-  assert.match(out.slots["returning.xlsx"], /^returning\.xlsx, row 1: headers must be exactly/);
+  assert.equal(out.slots["returning.xlsx"], 'returning.xlsx, row 1: column B should be "Course Code"; headers must be exactly: Email, Course Code');
 });
 
 test("a form or course list without one of the office's columns is refused", async () => {
@@ -101,10 +101,12 @@ test("a form or course list without one of the office's columns is refused", asy
   };
   for (const [file, line] of Object.entries(lines)) {
     // The first column taken away, and the last one.
-    for (const edit of [(head) => head.shift(), (head) => head.pop()]) {
+    const heads = line.split(", ");
+    const at = [["A", heads[0]], [String.fromCharCode(64 + heads.length), heads.at(-1)]];
+    for (const [k, edit] of [(head) => head.shift(), (head) => head.pop()].entries()) {
       const out = await run((rows) => edit(rows[file][0]));
       assert.equal(out.school, null, file);
-      assert.equal(out.slots[file], `${file}, row 1: headers must be exactly: ${line}`);
+      assert.equal(out.slots[file], `${file}, row 1: column ${at[k][0]} should be "${at[k][1]}"; headers must be exactly: ${line}`);
     }
   }
 });
@@ -295,4 +297,53 @@ test("no name or email reaches a problem line beyond the bad value's file and ro
     }
     for (const bad of ["elsewhere", "nobody.here", "ZZ-99", "Underwater"]) assert.ok(!line.includes(bad), line);
   }
+});
+
+test("a header problem names the column and what it should be, and the sheet when only the first of several is read", async () => {
+  // A trailing space looks right in Excel; the line names the column to retype.
+  let out = await run((rows) => (rows["staff.xlsx"][0][1] = "Name "));
+  assert.equal(out.slots["staff.xlsx"], 'staff.xlsx, row 1: column B should be "Name"; headers must be exactly: Email, Name, Certificates');
+  // A cover sheet in front of the data, as a Numbers export summary is: the line says the first sheet was read, and
+  // never the sheet's own name, which is typed text and could be a person's name or a forbidden word.
+  const rows = await load();
+  const [, name] = rows["staff.xlsx"][1];
+  for (const cover of ["Instructions", name, "Kept"]) {
+    const files = await Promise.all(SLOTS.map(async (file) => ({ name: file, bytes: await writeBook(file === "staff.xlsx"
+      ? [{ name: cover, rows: [["Fill in one row per teacher."]] }, { name: SHEET, rows: rows[file] }]
+      : [{ name: SHEET, rows: rows[file] }]) })));
+    out = await parseFiles(files);
+    assert.equal(out.school, null);
+    assert.equal(out.slots["staff.xlsx"], 'staff.xlsx, row 1 of the first sheet: column A should be "Email"; headers must be exactly: Email, Name, Certificates', cover);
+  }
+});
+
+test("a header problem never shows what the cell holds, so a data row read as headers puts no name on screen", async () => {
+  const out = await run((rows) => rows["staff.xlsx"].shift());
+  const [email, name] = (await load())["staff.xlsx"][1];
+  assert.equal(out.slots["staff.xlsx"], 'staff.xlsx, row 1: column A should be "Email"; headers must be exactly: Email, Name, Certificates');
+  assert.ok(!out.slots["staff.xlsx"].includes(email) && !out.slots["staff.xlsx"].includes(name));
+});
+
+test("certificates may be separated by ;, a line break or a comma", async () => {
+  for (const cell of ["Scuba certificate;First aid", "Scuba certificate, First aid", "First aid\nScuba certificate", "first aid ,  SCUBA certificate\r\n"]) {
+    const out = await run((rows) => (rows["staff.xlsx"][1][2] = cell));
+    const email = (await load())["staff.xlsx"][1][0].toLowerCase();
+    const t = out.school.teachers.find((x) => x.email === email);
+    // A certificate no course asks for keeps the spelling it was typed in; the course list's one takes the course's spelling.
+    assert.deepEqual(t.certificates.map((c) => c.toLowerCase()).sort(), ["first aid", "scuba certificate"], JSON.stringify(cell));
+    assert.ok(t.certificates.includes("Scuba certificate"), JSON.stringify(cell));
+  }
+});
+
+test("a certificate the course list names with a comma in it stays whole", async () => {
+  const out = await run((rows) => {
+    for (const r of rows["courses.xlsx"].slice(1)) if (r[5]) r[5] = "Scuba, open water";
+    for (const r of rows["staff.xlsx"].slice(1)) if (r[2]) r[2] = String(r[2]).replace("Scuba certificate", "Scuba, open water");
+    rows["staff.xlsx"][1][2] = "Scuba, open water, First aid";
+  });
+  assert.ok(out.school, JSON.stringify(out.slots));
+  const email = (await load())["staff.xlsx"][1][0].toLowerCase();
+  assert.deepEqual([...out.school.teachers.find((x) => x.email === email).certificates].sort(), ["First aid", "Scuba, open water"]);
+  // Anyone who held the course's certificate still holds it under the course list's spelling.
+  assert.ok(out.school.teachers.some((t) => t.email !== email && t.certificates.includes("Scuba, open water")));
 });

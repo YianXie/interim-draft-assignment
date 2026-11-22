@@ -46,7 +46,7 @@ npm run fixtures:fit    # fixtures/fit/fit.xlsx + expected-fit.json, expected-pa
 npm run fixtures:later  # fixtures/later/kept.json + expected-later.json
 ```
 
-The fit reader is run by hand against a local Ollama, never by the page or tests: `node tools/reader.mjs --dir <folder with the six>` (see README for flags). Prompt experiments live in `tools/reader-test/`.
+The fit reader is run by hand against a local Ollama, never by the page or tests: `node tools/reader.mjs --dir <folder with the six> --out <fit.xlsx outside the repo>` (`--out` is required; see README for flags). Prompt experiments live in `tools/reader-test/`.
 
 ## Architecture
 
