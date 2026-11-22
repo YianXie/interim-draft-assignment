@@ -1,8 +1,8 @@
 // Compares a downloaded draft with the office's final allocation, measured the same way against the same files.
 // Run by hand, never by the page; nothing leaves this machine. Keep every file it reads or writes outside the repo.
-// Usage: node tools/compare.mjs --six <folder> --draft <download.xlsx> --office <allocation.xlsx> [--out <compare.xlsx>]
+// Usage: node tools/compare.mjs --six <folder> --draft <path to the download .xlsx> --office <allocation.xlsx> [--out <compare.xlsx>]
 //   --six     the files loaded on Start: the six, plus past-*.xlsx and fit.xlsx if they were loaded too
-//   --draft   the page's download, with names on
+//   --draft   path to the page's download, with names on (any folder, e.g. ~/Downloads/…)
 //   --office  the office's final allocation (Trip Code, Course Name, Sponsor 1..n), as given to tools/convert.mjs
 //   --out     optional: also writes the tables, teacher by teacher, to this new workbook (it never overwrites)
 import { readFile, readdir, writeFile } from "node:fs/promises";
@@ -18,7 +18,7 @@ const stop = (line) => {
   process.exit(1);
 };
 const { values: opt } = parseArgs({ options: { six: { type: "string" }, draft: { type: "string" }, office: { type: "string" }, out: { type: "string" } } });
-if (!opt.six || !opt.draft || !opt.office) stop("usage: node tools/compare.mjs --six <folder> --draft <download.xlsx> --office <allocation.xlsx> [--out <compare.xlsx>]");
+if (!opt.six || !opt.draft || !opt.office) stop("usage: node tools/compare.mjs --six <folder> --draft <path to the download .xlsx> --office <allocation.xlsx> [--out <compare.xlsx>]");
 if (opt.out && existsSync(opt.out)) stop(`${opt.out} already exists; pass another --out, nothing was written`);
 
 const book = async (path, what) => {
