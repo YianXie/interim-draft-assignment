@@ -2,7 +2,7 @@
 // with one report line for everything it could not settle. It never guesses: an unmatched course or name is left
 // blank or as written and reported. Columns are found by key words, so the forms' own wording is not written here.
 import { HEADERS } from "../../src/import.js";
-import { norm, cleanEmail, courseIndex, nameKeys, findColumn, marker, stripMarker } from "./match.mjs";
+import { norm, cleanEmail, courseIndex, nameKeys, findColumn, marker, stripMarker, role } from "./match.mjs";
 
 export const REQUIRED = ["courses.xlsx", "returning.xlsx", "round1.xlsx", "allocation.xlsx"];
 export const OPTIONAL = ["round2.xlsx", "singapore.xlsx"];
@@ -116,8 +116,14 @@ export function convert(raw) {
     for (const { n, cells } of body(raw[file])) {
       const e = email(file, n, cells[em]);
       if (!e) continue;
-      const choices = choiceAt.map((i, k) => {
+      // A role is not a course: it is listed and taken out, and the later choices move up.
+      const picked = choiceAt.map((i, k) => {
         const v = text(cells[i]);
+        const r = v && role(v);
+        if (r) report.push(`${file}, row ${n}: ${e} chose the ${r} role as Choice ${k + 1}; it is left out of the choices`);
+        return r ? null : { v, k };
+      }).filter(Boolean);
+      const choices = picked.map(({ v, k }) => {
         if (!v) return "";
         let c = index.find(v);
         if (!c && (c = index.near(v))) report.push(`${file}, row ${n}: Choice ${k + 1} "${v}" taken as "${c.name}", the closest course; check it`);
@@ -128,6 +134,7 @@ export function convert(raw) {
         report.push(`${file}, row ${n}: Choice ${k + 1} "${v}" matches no course; left as written`);
         return stripMarker(v);
       });
+      while (choices.length < nChoices) choices.push("");
       const entry = { n, t: time(cells[ts]), row: [cells[ts] ?? "", e, ...choices, ...answerAt.map((i) => text(cells[i]))] };
       const had = kept.get(e);
       if (!had) {

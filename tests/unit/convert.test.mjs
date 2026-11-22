@@ -196,3 +196,13 @@ test("an allocation course is never matched to a course list name only by sharin
   assert.ok(files["courses.xlsx"].some((r) => r[0] === "SING-3" && r[1] === "Ocean" && r[2] === "Singapore"));
   assert.ok(files["courses.xlsx"].some((r) => r[0] === "AUST-1" && r[1] === "Great Ocean Road"));
 });
+
+test("an On-Deck or Flex role is taken out of the choices, later choices move up, and each pick is listed", () => {
+  const sg = rawSchool()["singapore.xlsx"];
+  const { files, report } = run({ "singapore.xlsx": [sg[0],
+    [NEW, "drao@oldschool.example", '"On-Deck" Role - Stand by for any group.', "Garden Trails", '"Flex" Role - Go where needed.', "", "", "a", "b"]] });
+  assert.deepEqual(files["singapore.xlsx"][1], [NEW, "drao@oldschool.example", "Garden Trails", "", "", "", "", "a", "b"]);
+  assert.ok(has(report, "singapore.xlsx", "row 2", "drao@oldschool.example", "On-Deck", "Choice 1"));
+  assert.ok(has(report, "singapore.xlsx", "row 2", "drao@oldschool.example", "Flex", "Choice 3"));
+  assert.ok(!has(report, "singapore.xlsx", "matches no course"));
+});

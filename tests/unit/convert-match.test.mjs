@@ -1,7 +1,7 @@
 // Matching helpers for tools/convert.mjs. Invented data only.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { norm, cleanEmail, courseIndex, nameKeys, findColumn, marker, stripMarker } from "../../tools/convert/match.mjs";
+import { norm, cleanEmail, courseIndex, nameKeys, findColumn, marker, stripMarker, role } from "../../tools/convert/match.mjs";
 
 test("norm makes every dash, space and letter case the same", () => {
   assert.equal(norm("Australia —  Great  Ocean Road "), norm("australia - great ocean road"));
@@ -85,4 +85,12 @@ test("near finds the one clearly closest course for a slip or a shortened name, 
   assert.equal(idx.near("River"), null);
   assert.equal(idx.near("Atlantis — Sunken City"), null);
   assert.equal(idx.near(""), null);
+});
+
+test("role reads the On-Deck and Flex roles however they are punctuated, and nothing else", () => {
+  assert.equal(role('"On-Deck" Role - Stand by for any group.'), "On-Deck");
+  assert.equal(role("on deck role"), "On-Deck");
+  assert.equal(role('"Flex" Role - Go where needed.'), "Flex");
+  assert.equal(role("Flexible Roles Camp"), null);
+  assert.equal(role("Garden Trails"), null);
 });

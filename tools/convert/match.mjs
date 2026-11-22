@@ -24,6 +24,12 @@ export const stripMarker = (s) => String(s ?? "").replace(MARK, "").replace(/\s+
 const loose = (s) => stripMarker(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
   .replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim();
 
+// The Singapore form's two roles, which are not courses: "On-Deck" or "Flex", else null.
+export function role(text) {
+  const m = loose(text).match(/^(on deck|flex) role\b/);
+  return m ? (m[1] === "flex" ? "Flex" : "On-Deck") : null;
+}
+
 function distance(a, b) {
   let row = Array.from({ length: b.length + 1 }, (_, j) => j);
   for (let i = 1; i <= a.length; i++) {
