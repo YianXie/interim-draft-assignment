@@ -100,7 +100,7 @@ test("makeAsk posts the chat request, refuses redirects and reads message.conten
     model: "m:1",
     stream: false,
     think: false,
-    options: { temperature: 0, seed: 1 },
+    options: { temperature: 0, seed: 1, num_ctx: 8192 },
     messages: [{ role: "system", content: "SYSTEM" }, { role: "user", content: "USER" }],
   });
   const empty = makeAsk({ host: "http://127.0.0.1:11434", model: "m", fetch: async () => new Response("{}", { status: 200 }) });
@@ -153,9 +153,17 @@ test("reach gives one plain line when nothing is listening", async () => {
   await assert.rejects(reach({ host }), (e) => e.message === `cannot reach the model at ${host}: ECONNREFUSED`);
 });
 
-test("fitBook writes the Fernhollow and Answers sheets", async () => {
+test("readAll reports progress after each answer, read or not", async () => {
+  const seen = [];
+  let n = 0;
+  const ask = async () => (++n === 1 ? reply([pitching]) : "not json");
+  await readAll({ school, answers, ask, prompt: "P", progress: (done, total) => seen.push([done, total]) });
+  assert.deepEqual(seen, [[1, 2], [2, 2]]);
+});
+
+test("fitBook writes the Fit and Answers sheets", async () => {
   const book = await readBook(await fitBook({ rows: [[EMAIL, "C01", "Skill", "Tent pitching", "tent pitching"]], answersSheet: [[EMAIL, "Round 1", "I do tent pitching."]] }));
-  assert.deepEqual(book.map((s) => s.name), ["Fernhollow", "Answers"]);
+  assert.deepEqual(book.map((s) => s.name), ["Fit", "Answers"]);
   assert.deepEqual(book[0].rows.slice(1), [[EMAIL, "C01", "Skill", "Tent pitching", "tent pitching"]]);
   assert.deepEqual(book[1].rows, [["Email", "Form", "Answer"], [EMAIL, "Round 1", "I do tent pitching."]]);
 });

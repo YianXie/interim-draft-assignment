@@ -12,6 +12,10 @@ export async function reach({ host, fetch = globalThis.fetch }) {
   if (!res.ok) throw new Error(`cannot reach the model at ${host}: it answered ${res.status}`);
 }
 
+// Ollama's own default window (2048 or 4096 tokens) can be shorter than the prompt, a long answer and the reply; Ollama
+// then drops the start, which is the prompt, without a word. 8192 holds a long answer with room for its reply.
+export const NUM_CTX = 8192;
+
 // ask(system, user, prior): the model's reply text; prior is any later turns, sent after the user's message.
 // format ("json", or a JSON schema) asks Ollama to force valid JSON; it is sent only when given, since some models refuse it.
 // Throws on a failed call or an answer that is not 200.
@@ -25,7 +29,7 @@ export function makeAsk({ host, model, format, fetch = globalThis.fetch }) {
         model,
         stream: false,
         think: false,
-        options: { temperature: 0, seed: 1 },
+        options: { temperature: 0, seed: 1, num_ctx: NUM_CTX },
         ...(format === undefined ? {} : { format }),
         messages: [{ role: "system", content: system }, { role: "user", content: user }, ...prior],
       }),

@@ -11,7 +11,8 @@ export const FIX_JSON = "That reply is not valid JSON, so it could not be read. 
 // FIX_JSON after it; a failed call is retried once as it was. If the second reply cannot be read either, the tags are
 // taken out of it one by one (salvageTags), or out of the first reply when the second has none; salvaged counts those
 // teachers. With no tags in either, the teacher is not read.
-export async function readAll({ school, answers, ask, prompt }) {
+// progress(done, total), when given, is called after each answer.
+export async function readAll({ school, answers, ask, prompt, progress }) {
   const course = new Map(school.courses.map((c) => [c.id, c]));
   const teacher = new Map(school.teachers.map((t) => [t.email, t]));
   const rows = [];
@@ -19,7 +20,7 @@ export async function readAll({ school, answers, ask, prompt }) {
   const errors = [];
   let dropped = 0;
   let salvaged = 0;
-  for (const { email, form, answer } of answers) {
+  for (const [i, { email, form, answer }] of answers.entries()) {
     const ranked = (teacher.get(email)?.prefs ?? [])
       .filter((p) => p.round === form)
       .sort((a, b) => a.rank - b.rank)
@@ -43,11 +44,12 @@ export async function readAll({ school, answers, ask, prompt }) {
     }
     if (!tags) {
       if (!notRead.includes(email)) notRead.push(email);
-      continue;
+    } else {
+      const out = checkTags(tags, { email, answer, ranked });
+      rows.push(...out.rows);
+      dropped += out.dropped;
     }
-    const out = checkTags(tags, { email, answer, ranked });
-    rows.push(...out.rows);
-    dropped += out.dropped;
+    progress?.(i + 1, answers.length);
   }
   return { rows, answersSheet: answers.map((a) => [a.email, a.form, a.answer]), dropped, notRead, errors, salvaged };
 }

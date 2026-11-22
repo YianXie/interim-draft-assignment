@@ -59,7 +59,10 @@ try {
   console.error(e.message);
   process.exit(1);
 }
-const { rows, answersSheet, dropped, notRead, errors, salvaged } = await readAll({ school, answers, ask: makeAsk({ host: opt.host, model: opt.model, format: opt.format }), prompt });
+// A run on a large model takes a while, so a terminal sees how far it is; a log or a test sees only the lines below.
+const progress = process.stderr.isTTY ? (done, total) => process.stderr.write(`\ranswers read ${done} of ${total}${done === total ? "\n" : ""}`) : undefined;
+if (progress) console.error(`${answers.length} answers to read with ${opt.model}`);
+const { rows, answersSheet, dropped, notRead, errors, salvaged } = await readAll({ school, answers, ask: makeAsk({ host: opt.host, model: opt.model, format: opt.format }), prompt, progress });
 for (const e of errors) console.error(`a model call failed: ${e}`);
 const read = new Set(answers.map((a) => a.email).filter((e) => !notRead.includes(e)));
 if (!read.size) {
