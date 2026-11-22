@@ -4,7 +4,7 @@ Status: draft for the owner's review, 2026-11-09. This replaces the larger offic
 
 ## Goal
 
-A 5-minute live demo for the Catalyst final presentation (assumed week of 7 December 2026). It runs on the owner's laptop, on an invented school. It is an MVP, not a production site, and it has only ever seen invented data.
+A 5-minute live demo for the Catalyst final presentation (assumed week of 7 December 2026). It runs on the owner's laptop, on an invented school. It is an MVP, not a production site.
 
 Demo story: drop six invented spreadsheets, press Build, see what needs a person, open any teacher's one-line reason, move a teacher the audience picks, Undo, flip names on and off, reload to show it was remembered, download Excel and find the change there.
 
@@ -116,4 +116,4 @@ The pack states what is modelled on the real programme: rounds, Singapore course
 
 Present and record from the separate Mac user, with a one-click local server on a fixed port. Don't sign Excel into a school account there. Run the zero-requests check with the network on and show that result. Wi-Fi off only stops notifications.
 
-Say: "This page is blocked from sending anything. Once you download the Excel file, that no longer covers it." Say: "This switch changes what you see. The names are still in this browser, unencrypted." Closing slide, not built: real form layouts, protected storage of names, any run on real data. Also: this build has never run on real data, so its drafts have not been compared with what the office placed; the office hasn't used it; T numbers are pseudonymous, not anonymous; the placed count is a property of invented data, not a result.
+Say: "This page is blocked from sending anything. Once you download the Excel file, that no longer covers it." Say: "This switch changes what you see. The names are still in this browser, unencrypted." Closing slide, not built: real form layouts, protected storage of names. Also: T numbers are pseudonymous, not anonymous; the placed count is a property of invented data, not a result.

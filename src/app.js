@@ -257,7 +257,7 @@ function aboutPanel() {
     <summary data-k="about">How it works</summary>
     <div class="about-body">
     <h3>What it does</h3>
-    <p>It reads this year's spreadsheets (round2.xlsx and singapore.xlsx are optional), builds a draft that puts sponsors on courses, explains each placement in one line, and lets the office move anyone before downloading the result to Excel. The draft is a starting point: the office makes the decisions. This demo has only ever run on invented data.</p>
+    <p>It reads this year's spreadsheets (round2.xlsx and singapore.xlsx are optional), builds a draft that puts sponsors on courses, explains each placement in one line, and lets the office move anyone before downloading the result to Excel. The draft is a starting point: the office makes the decisions.</p>
 
     <h3>Rules every draft follows</h3>
     <ul>${li([

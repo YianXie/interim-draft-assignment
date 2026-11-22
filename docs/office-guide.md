@@ -1,6 +1,6 @@
 # Office guide: trying the Interim Draft Assistant
 
-This is a demo. It has only ever seen an invented school with invented teachers, so nothing in it is real. Please try anything, break anything, and tell me what was unclear.
+This is a demo. Its sample data is an invented school with invented teachers. Please try anything, break anything, and tell me what was unclear.
 
 You need a Mac with macOS 13.5 or newer, Google Chrome, an internet connection the first time, and about 20 minutes.
 

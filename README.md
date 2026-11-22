@@ -6,7 +6,7 @@
 
 A teacher interim allocation drafting assistance. Six spreadsheets become an editable, explained allocation draft that you can move people around in and download to Excel. Only four are needed to build: `round2.xlsx` and `singapore.xlsx` can come later.
 
-It has only ever seen invented data: an invented school, invented people, invented preferences. It has never run on real data, so its drafts have not been compared with anything a real office placed. The placed count is a property of the invented data, not a result.
+Its sample data and tests are invented: an invented school, invented people, invented preferences. The placed count on the sample is a property of the invented data, not a result.
 
 ## What it needs
 
