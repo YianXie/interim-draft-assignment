@@ -45,6 +45,13 @@ It has only ever seen invented data: an invented school, invented people, invent
 - With it, the draft uses fit only as the last tie-break. Each teacher's panel and the download show what was found.
 - Use sample data and Download sample data stay the six. An invented `fit.xlsx` is in `fixtures/fit`; add it on Start by hand, as the office would.
 
+## The office's raw files
+
+- `tools/convert.mjs` turns the office's own exports into the six, run by hand: `node tools/convert.mjs --in <raw folder> --out <new folder>`. Keep both folders outside the repo.
+- The raw folder holds `courses.xlsx`, `returning.xlsx`, `round1.xlsx`, `allocation.xlsx` (the final allocation) and, if there are any, `round2.xlsx` and `singapore.xlsx`. Columns are found by their headers, in any order.
+- Emails move to `fernhollow.example` and keep the part before the `@`. Course codes and seats come from the allocation, and names in `staff.xlsx` from its sponsors. A choice like "Country — Course" is written as the course name.
+- It never guesses and never overwrites. Whatever it could not settle is listed in `convert-report.txt`, which ends with the line Start would show for the new files.
+
 ## Check it
 
 - `npm run check` builds, runs the unit tests and the browser tests, and ends with `CHECK OK`.
