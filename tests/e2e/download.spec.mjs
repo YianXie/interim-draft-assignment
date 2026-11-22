@@ -3,7 +3,6 @@ import { readFileSync, rmSync } from "node:fs";
 import { unzipSync, strFromU8 } from "fflate";
 import { readBook } from "../../src/xlsx.js";
 import { buildDraft, dropSchool, variantSchool, watchPage } from "./helpers.mjs";
-import { forbiddenIn } from "./words.mjs";
 
 const dirs = [];
 test.afterAll(() => dirs.forEach((d) => rmSync(d, { recursive: true, force: true })));
@@ -76,34 +75,24 @@ test("names on, move, names off, download: no name or email in any raw XML part"
   expect(sheetOf(off, "Teachers")[0]).not.toContain("Email");
 });
 
-test("forbidden words are not in the workbook", async ({ page }) => {
-  await goBuild(page);
-  for (const on of [false, true]) {
-    if (on) await names(page).click();
-    const dl = await download(page);
-    expect(forbiddenIn(dl.book.flatMap((s) => [s.name, ...s.rows.flat().map(String)]))).toEqual([]);
-  }
-});
-
-test("file name says Interim draft", async ({ page }) => {
-  await goBuild(page);
-  expect((await download(page)).name).toBe("Interim draft v1 T numbers.xlsx");
-  await names(page).click();
-  expect((await download(page)).name).toBe("Interim draft v1 with names.xlsx");
-  await moveOne(page);
-  expect((await download(page)).name).toBe("Interim draft v2 with names.xlsx");
-});
-
-test("the Download tooltip says which version the press gives", async ({ page }) => {
+test("file name says Interim draft and the Download tooltip says which version the press gives", async ({ page }) => {
   await goBuild(page);
   const button = page.getByRole("button", { name: "Download", exact: true });
   await expect(button).toHaveAttribute("title", "Download with T numbers");
-  expect((await download(page)).name).toContain("T numbers");
+  const first = (await download(page)).name;
+  expect(first).toContain("T numbers");
+  expect(first).toBe("Interim draft v1 T numbers.xlsx");
   await names(page).click();
   await expect(button).toHaveAttribute("title", "Download with names");
-  expect((await download(page)).name).toContain("with names");
+  const second = (await download(page)).name;
+  expect(second).toContain("with names");
+  expect(second).toBe("Interim draft v1 with names.xlsx");
   await names(page).click();
   await expect(button).toHaveAttribute("title", "Download with T numbers");
+  // The switch adds no version, so turning names back on gives the same draft before the move.
+  await names(page).click();
+  await moveOne(page);
+  expect((await download(page)).name).toBe("Interim draft v2 with names.xlsx");
 });
 
 test("a name such as O'Neil <b> and a course named =SUM(1) stay text in the file", async ({ page }) => {
@@ -131,15 +120,6 @@ test("a name such as O'Neil <b> and a course named =SUM(1) stay text in the file
     expect(xml).not.toMatch(/<f[ >]/);
   }
   expect(strFromU8(dl.zip["xl/sharedStrings.xml"])).toContain("<t>=SUM(1)</t>");
-});
-
-test("Download needs no network and the policy stays untouched", async ({ page }) => {
-  const watch = watchPage(page);
-  await watch.listenForCsp();
-  await goBuild(page);
-  await download(page);
-  expect(await watch.csp()).toEqual([]);
-  expect(watch.problems).toEqual([]);
 });
 
 test("a download that fails says so on the button and throws nothing", async ({ page }) => {

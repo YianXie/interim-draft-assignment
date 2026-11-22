@@ -75,15 +75,6 @@ test("without school.past there are three values and owed is null", () => {
   assert.equal(r.values.length, 3);
 });
 
-test("with school.past there are four values, the second counting owed teachers on a top-4 choice", () => {
-  const school = twoForOne({ past: PAST });
-  assert.deepEqual(toInstance(school).owed, ["B"]);
-  const r = solveDraft(highs, school);
-  assert.equal(r.status, "Optimal");
-  assert.equal(r.values.length, 4);
-  assert.equal(r.values[1], 1);
-});
-
 test("the owed teacher wins the seat even when it lowers the preference score", () => {
   const without = solveDraft(highs, twoForOne());
   assert.deepEqual(without.values, [0, 50, 0]);

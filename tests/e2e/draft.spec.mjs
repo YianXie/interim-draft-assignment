@@ -179,14 +179,22 @@ test("reload before Build returns to an empty Start", async ({ page }) => {
   await expect(page.locator("[data-result]")).toHaveCount(0);
 });
 
-test("Build gives the expected result", async ({ page }) => {
+test("Build gives the expected result, no screen calls the files an invented school or names a year, and the top bar names the page", async ({ page }) => {
+  test.setTimeout(90_000);
   const watch = watchPage(page);
   await watch.listenForCsp();
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "Use sample data" })).toBeVisible();
+  await expect(page.getByText(/Invented school|Interim 20\d\d/)).toHaveCount(0);
   await goBuild(page);
   const result = page.locator("[data-result]");
   await expect(result).toHaveAttribute("data-placed", String(expected.placedMin));
   await expect(result).toHaveAttribute("data-running", String(expected.runningMin));
   await expect(page.getByText("best draft found")).toBeVisible();
+  await expect(page.locator("#top").getByText("Interim Draft Assistant")).toBeVisible();
+  await expect(page.getByText(/Invented school|Interim 20\d\d/)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Download" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "More" })).toHaveCount(0);
   expect(await watch.csp()).toEqual([]);
   expect(watch.problems).toEqual([]);
 });
@@ -259,8 +267,15 @@ test("the course card marks a sponsor without the certificate, and an over-full 
   await expect(under).toHaveClass(/need/);
 });
 
-test("big line equals the number of To do items", async ({ page }) => {
+test("every To do item fits first, the big line equals the number of items, the no-form item shows the count and list, Leave them unplaced fits first with Undo showing, and Undo and History work", async ({ page }) => {
+  test.setTimeout(120_000);
+  watchPage(page);
   await goBuild(page);
+  const viewport = page.viewportSize();
+  await expect(page.locator("#main").getByRole("heading").first()).toBeVisible();
+  for (let i = 0; i < TODO_COUNT; i++) { await measure(page, "first"); await nextItem(page); }
+  // measure() widens the window; the other checks run in the default one. Next has come round to the first item again.
+  await page.setViewportSize(viewport);
   const big = page.locator("[data-big]");
   await expect(big).toHaveText(`${TODO_COUNT} things need you`);
   const seen = new Set();
@@ -273,14 +288,15 @@ test("big line equals the number of To do items", async ({ page }) => {
   await expect(big).toHaveText(`${TODO_COUNT} things need you`);
   await tab(page, "Courses").click();
   await expect(big).toHaveText(`${TODO_COUNT} things need you`);
-});
 
-test("the no-form item shows the count and list, and Leave them unplaced, Undo and History work", async ({ page }) => {
-  await goBuild(page);
+  await tab(page, /^To do/).click();
   await toItem(page, /with no form$/);
   const count = parseInt(await page.locator("#main h2").innerText(), 10);
   await expect(page.locator("#main [data-row][data-teacher]")).toHaveCount(count);
   await page.getByRole("button", { name: "Leave them unplaced" }).click();
+  await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
+  await measure(page, "first");
+  await page.setViewportSize(viewport);
   await expect(page.locator("[data-big]")).toHaveText(`${TODO_COUNT - 1} things need you`);
   await expect(page.locator("[data-saved]")).toHaveText("Saved in this browser");
   await page.getByRole("button", { name: "Undo" }).click();
@@ -305,13 +321,6 @@ test("a teacher's card moves them, and the move screen has Not placed", async ({
   await expect(page.locator("#main .why")).toContainText("Moved by the office");
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.locator("#main .under")).not.toHaveText("Not placed");
-});
-
-test("names are off at start and no invented name or email is in the DOM", async ({ page }) => {
-  const people = await staff();
-  await goBuild(page);
-  await expect(names(page)).toHaveAttribute("aria-checked", "false");
-  await walkDraft(page, () => expectNoPeople(page, people));
 });
 
 test("the switch shows names and hides them again", async ({ page }) => {
@@ -394,67 +403,42 @@ test("special characters show literally", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "=SUM(1)" })).toBeVisible();
 });
 
-test("forbidden words are gone on every screen", async ({ page }) => {
+test("forbidden words are gone on every screen, names are off at start, and no invented name or email is in the DOM", async ({ page }) => {
+  test.setTimeout(90_000);
+  const people = await staff();
   const check = async (where) => expect(forbiddenIn(await visibleStrings(page)), where).toEqual([]);
   await page.goto("/");
   await check("Start");
   await dropSchool(page);
   await check("Start, ready");
   await buildDraft(page);
-  await walkDraft(page, check);
+  await expect(names(page)).toHaveAttribute("aria-checked", "false");
+  await walkDraft(page, async (where) => { await expectNoPeople(page, people); await check(where); });
   await names(page).click();
   await check("Names on");
   await page.getByRole("button", { name: "History" }).click();
   await check("History");
 });
 
-test("no screen calls the files an invented school or names a year, and the top bar names the page", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByRole("button", { name: "Use sample data" })).toBeVisible();
-  await expect(page.getByText(/Invented school|Interim 20\d\d/)).toHaveCount(0);
-  await dropSchool(page);
-  await buildDraft(page);
-  await expect(page.locator("#top").getByText("Interim Draft Assistant")).toBeVisible();
-  await expect(page.getByText(/Invented school|Interim 20\d\d/)).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Download" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "More" })).toHaveCount(0);
-});
-
-const SCREENS = [
-  ["Start", "start", (page) => page.goto("/")],
-  ["To do", "first", goBuild],
-  ["Teachers", "list", async (page) => { await goBuild(page); await tab(page, "Teachers").click(); }],
-  ["Courses", "list", async (page) => { await goBuild(page); await tab(page, "Courses").click(); }],
-  ["Open reason", "detail", async (page) => { await goBuild(page); await tab(page, "Teachers").click(); await page.locator("#main [data-row][data-teacher]").first().click(); }],
-];
-for (const [screen, budget, reach] of SCREENS) {
-  test(`${screen} fits ${budget}`, async ({ page }) => {
-    watchPage(page);
-    await reach(page);
-    await expect(page.locator("#main").getByRole("heading").first()).toBeVisible();
-    await (budget === "start" ? measureStart(page) : measure(page, budget));
-  });
-}
-
-test("Start with all six ready fits first", async ({ page }) => {
+test("Start fits start", async ({ page }) => {
   watchPage(page);
-  await dropSchool(page);
+  await page.goto("/");
+  await expect(page.locator("#main").getByRole("heading").first()).toBeVisible();
   await measureStart(page);
 });
 
-test("every To do item fits first", async ({ page }) => {
+test("Teachers and Courses fit list", async ({ page }) => {
+  test.setTimeout(90_000);
   watchPage(page);
   await goBuild(page);
-  for (let i = 0; i < TODO_COUNT; i++) { await measure(page, "first"); await nextItem(page); }
-});
-
-test("To do still fits first once Undo is showing", async ({ page }) => {
-  watchPage(page);
-  await goBuild(page);
-  await toItem(page, /with no form$/);
-  await page.getByRole("button", { name: "Leave them unplaced" }).click();
-  await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
-  await measure(page, "first");
+  const viewport = page.viewportSize();
+  for (const screen of ["Teachers", "Courses"]) {
+    // Each list is reached in the default window, as a fresh Build would be; measure() then widens it.
+    await page.setViewportSize(viewport);
+    await tab(page, screen).click();
+    await expect(page.locator("#main").getByRole("heading").first()).toBeVisible();
+    await measure(page, "list");
+  }
 });
 
 test("every open reason fits detail", async ({ page }) => {

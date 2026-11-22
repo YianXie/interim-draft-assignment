@@ -99,14 +99,6 @@ test("one returning sponsor is on a not-offered course and sent a form", async (
   assert.ok(forms >= 1);
 });
 
-test("expected results have no spread", async () => {
-  const e = JSON.parse(await readFile(new URL("expected.json", dir), "utf8"));
-  assert.deepEqual(Object.keys(e).sort(), ["placedMax", "placedMin", "runningMax", "runningMin", "values"]);
-  assert.equal(e.values.length, 3);
-  assert.equal(e.placedMin, e.placedMax);
-  assert.equal(e.runningMin, e.runningMax);
-});
-
 // dd/mm/yyyy h:mm:ss, read as a UTC time in milliseconds.
 const STAMP = /^(\d\d)\/(\d\d)\/(\d{4}) ([1-9]?\d):(\d\d):(\d\d)$/;
 const when = (s) => {

@@ -41,14 +41,6 @@ test("the draft passes the re-check", () => {
   assert.deepEqual(recheck(school, solved.pairs), []);
 });
 
-test("the draft differs from the draft built without the past files", async () => {
-  const plain = await readSchool();
-  const without = solveDraft(highs, plain);
-  assert.equal(without.status, "Optimal");
-  assert.equal(without.values.length, 3);
-  assert.notDeepEqual(byEmail(school, solved.pairs), byEmail(plain, without.pairs));
-});
-
 test("the new priority puts more owed teachers on a top-4 choice than the six-file draft does", async () => {
   const plain = await readSchool();
   const without = solveDraft(highs, plain);

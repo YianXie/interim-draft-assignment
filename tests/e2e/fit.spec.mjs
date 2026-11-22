@@ -82,13 +82,22 @@ test("Start shows fit.xlsx as optional and Build does not wait for it", async ({
   await expect(buildButton(page)).toBeEnabled();
 });
 
-test("fit.xlsx ready, build, a teacher with a fit shows the line", async ({ page }) => {
-  test.setTimeout(180_000);
+// One Build for three checks: To do first, as it is the screen the Build lands on, then the cards, then search.
+test("fit.xlsx ready, build: no To do item shows the fit line, a teacher with a fit does, search finds a Fact with names on only", async ({ page }) => {
+  test.setTimeout(300_000);
   await dropSeven(page);
   await expect(placeholder(page)).toHaveCount(0);
   expect(await slotNames(page)).toEqual([...SLOTS, FIT]);
   await expect(rightOf(page, FIT)).toHaveText("ready");
   await buildDraft(page);
+  // A To do item never shows the fit line.
+  const n = Number((await tab(page, /^To do/).innerText()).replace(/\D/g, ""));
+  expect(n).toBeGreaterThan(1);
+  for (let i = 0; i < n; i++) {
+    await expect(fitLine(page)).toHaveCount(0);
+    await page.getByRole("button", { name: "Next", exact: true }).click();
+  }
+  // A teacher with a fit shows the line.
   const want = await linesOn(page);
   const ids = Object.keys(want.on);
   const withLine = ids.filter((id) => want.on[id]);
@@ -105,21 +114,11 @@ test("fit.xlsx ready, build, a teacher with a fit shows the line", async ({ page
   await openCard(page, withLine[0]);
   await expect(page.locator("#main .why + [data-fit]")).toBeVisible();
   await expect(page.locator("#main .why")).not.toContainText("From their form");
-});
-
-test("a To do item never shows the fit line", async ({ page }) => {
-  await goSeven(page);
-  const n = Number((await tab(page, /^To do/).innerText()).replace(/\D/g, ""));
-  expect(n).toBeGreaterThan(1);
-  for (let i = 0; i < n; i++) {
-    await expect(fitLine(page)).toHaveCount(0);
-    await page.getByRole("button", { name: "Next", exact: true }).click();
-  }
-});
-
-test("search finds a teacher by Fact with names on only", async ({ page }) => {
-  await goSeven(page);
-  const want = await linesOn(page);
+  // Search finds a teacher by Fact with names on only: back on the list, names on again, as linesOn left it.
+  await back(page);
+  await expect(teacherRows(page)).toHaveCount(TEACHERS);
+  await names(page).click();
+  await expect(names(page)).toHaveAttribute("aria-checked", "true");
   const rows = page.locator("#main [data-row][data-teacher]:visible");
   // "First aid" is a Fact with no course in the fixture, and no course is called that.
   await search(page).fill("first aid");
@@ -269,8 +268,8 @@ test("the download with names off holds no Fact or Quote", async ({ page }) => {
   expect(off.book.find((s) => s.name === "Teachers").rows[0]).toContain("From their form");
 });
 
-test("budgets: Start with the fit row, and an opened teacher with a fit", async ({ page }) => {
-  test.setTimeout(240_000);
+// Start only; the opened teacher with a fit is measured on the Build of "no forbidden words and no outside requests".
+test("budgets: Start with the fit row: not added, refused, then ready", async ({ page }) => {
   watchPage(page);
   await dropSchool(page);
   await expect(placeholder(page)).toBeVisible();
@@ -281,20 +280,6 @@ test("budgets: Start with the fit row, and an opened teacher with a fit", async 
   await dropFiles(page, [fitFile]);
   await expect(rightOf(page, FIT)).toHaveText("ready");
   await measureStart(page);
-  await buildDraft(page);
-  const want = await linesOn(page);
-  const withLine = Object.keys(want.on).filter((id) => want.on[id]);
-  expect(withLine.length).toBeGreaterThan(0);
-  for (const on of [true, false]) {
-    if (!on) await names(page).click();
-    await expect(names(page)).toHaveAttribute("aria-checked", String(on));
-    for (const id of withLine) {
-      await openCard(page, id);
-      await expect(fitLine(page)).toHaveCount(1);
-      await measure(page, "detail");
-      await back(page);
-    }
-  }
 });
 
 // Dropped in the default window, then measured, as past.spec.mjs does: the scroll to Build happens in the short window.
@@ -357,8 +342,9 @@ test("budgets: an opened teacher with a fit and a last-year line", async ({ page
   expect(both).toBeGreaterThan(0);
 });
 
-test("no forbidden words and no outside requests", async ({ page, context }) => {
-  test.setTimeout(180_000);
+// The same drops as the Start budgets test, so its opened-teacher measurements share this Build.
+test("no forbidden words and no outside requests, and budgets: an opened teacher with a fit", async ({ page, context }) => {
+  test.setTimeout(360_000);
   const seen = [];
   page.on("request", (r) => seen.push(r.url()));
   context.on("request", (r) => seen.push(r.url()));
@@ -392,6 +378,20 @@ test("no forbidden words and no outside requests", async ({ page, context }) => 
     const cells = dl.book.flatMap((s) => [s.name, ...s.rows.flat()]).filter((c) => c !== null && c !== undefined).map(String);
     expect(forbiddenIn(cells), `workbook, names ${on ? "on" : "off"}`).toEqual([]);
   }
+  // Budgets: every opened teacher with a fit, names on then off, in the window measure uses, as the Start measurements left it.
+  expect(withLine.length).toBeGreaterThan(0);
+  await page.setViewportSize({ width: 1366, height: 820 });
+  for (const on of [true, false]) {
+    await names(page).click();
+    await expect(names(page)).toHaveAttribute("aria-checked", String(on));
+    for (const id of withLine) {
+      await openCard(page, id);
+      await expect(fitLine(page)).toHaveCount(1);
+      await measure(page, "detail");
+      await back(page);
+    }
+  }
+  await page.setViewportSize(DEFAULT_WINDOW);
   await page.reload();
   await expect(page.locator("[data-result]")).toBeVisible();
   expect(await watch.csp()).toEqual([]);

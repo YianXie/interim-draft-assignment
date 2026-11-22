@@ -85,13 +85,23 @@ test("reload shows the same draft with no re-upload", async ({ page }) => {
   expect(await placements(page)).toEqual(before);
 });
 
-test("reload right after Build, before any edit, shows the draft", async ({ page }) => {
+// One Build, no edits: the reload first, then names on and a second reload. Neither reload changes what is stored.
+test("reload right after Build, before any edit, shows the draft, and names are off after a reload", async ({ page }) => {
+  const people = await staff();
   await goBuild(page);
   const before = await placements(page);
   await reloaded(page);
   await savedAt(page, BUILD);
   await expect(undo(page)).toHaveCount(0);
   expect(await placements(page)).toEqual(before);
+
+  // Names are off after a reload.
+  await names(page).click();
+  await expect(names(page)).toHaveAttribute("aria-checked", "true");
+  await reloaded(page);
+  await expect(names(page)).toHaveAttribute("aria-checked", "false");
+  const dom = await page.evaluate(() => document.documentElement.outerHTML);
+  for (const p of people) { expect(dom).not.toContain(p.name); expect(dom).not.toContain(p.email); }
 });
 
 test("an upload saved with no snapshots counts as nothing saved", async ({ page }) => {
@@ -246,14 +256,22 @@ test("Start over in a tab that cannot hear that another tab replaced its draft l
   expect(await placements(page)).toEqual(theirs);
 });
 
-test("two tabs stay in step: a change in either shows in the other, and both are kept", async ({ page, context }) => {
+// Names go on here before the other tab opens, as a tab keeps its own Show names when another tab saves; they go off again
+// before any placements are read, so the rest runs with names off as before.
+test("two tabs stay in step: a change in either shows in the other, both are kept, and each keeps its own Show names", async ({ page, context }) => {
   await goBuild(page);
+  await names(page).click();
+  await expect(names(page)).toHaveAttribute("aria-checked", "true");
   const other = await context.newPage();
   await other.goto("/");
   await expect(other.locator("[data-result]")).toBeVisible();
   await moveOne(other, placedIds(await placements(other), 1)[0]);
   await savedAt(other, 2);
   await savedAt(page, 2);
+  await expect(names(page)).toHaveAttribute("aria-checked", "true");
+  await expect(names(other)).toHaveAttribute("aria-checked", "false");
+  await names(page).click();
+  await expect(names(page)).toHaveAttribute("aria-checked", "false");
   expect(await placements(page)).toEqual(await placements(other));
 
   await moveOne(page, placedIds(await placements(page), 2)[1]);
@@ -266,19 +284,6 @@ test("two tabs stay in step: a change in either shows in the other, and both are
   await reloaded(page);
   expect(await placements(page)).toEqual(both);
   expect(await stored(page)).toEqual({ upload: 1, snapshots: 3 });
-});
-
-test("a tab keeps its own Show names when another tab saves", async ({ page, context }) => {
-  await goBuild(page);
-  await names(page).click();
-  await expect(names(page)).toHaveAttribute("aria-checked", "true");
-  const other = await context.newPage();
-  await other.goto("/");
-  await expect(other.locator("[data-result]")).toBeVisible();
-  await moveOne(other, placedIds(await placements(other), 1)[0]);
-  await savedAt(page, 2);
-  await expect(names(page)).toHaveAttribute("aria-checked", "true");
-  await expect(names(other)).toHaveAttribute("aria-checked", "false");
 });
 
 test("a tab follows another tab's Start over and its new draft", async ({ page, context }) => {
@@ -475,17 +480,6 @@ test("history shows T numbers after names on, move, names off", async ({ page })
   await names(page).click();
   await expect(names(page)).toHaveAttribute("aria-checked", "false");
   await expect(row).toContainText(`Moved ${id} to`);
-  const dom = await page.evaluate(() => document.documentElement.outerHTML);
-  for (const p of people) { expect(dom).not.toContain(p.name); expect(dom).not.toContain(p.email); }
-});
-
-test("names are off after a reload", async ({ page }) => {
-  const people = await staff();
-  await goBuild(page);
-  await names(page).click();
-  await expect(names(page)).toHaveAttribute("aria-checked", "true");
-  await reloaded(page);
-  await expect(names(page)).toHaveAttribute("aria-checked", "false");
   const dom = await page.evaluate(() => document.documentElement.outerHTML);
   for (const p of people) { expect(dom).not.toContain(p.name); expect(dom).not.toContain(p.email); }
 });

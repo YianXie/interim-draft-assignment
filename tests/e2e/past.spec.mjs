@@ -240,12 +240,52 @@ test("the allocation row shows how many were not matched, as a number only", asy
   for (const entry of unmatched) expect(dom).not.toContain(entry);
 });
 
-test("a teacher card shows its last-year line, and the reason is unchanged", async ({ page }) => {
-  test.setTimeout(120_000);
+// One Build for every card check. The checks that measure come after those that do not, and the window is put back to its
+// own size after each measurement, so each check sees the screen it saw when it was a test of its own.
+test("a To do item never shows the last-year line, a teacher card shows it under an unchanged reason, and every open card fits detail with past files", async ({ page }) => {
+  test.setTimeout(420_000);
+  watchPage(page);
   const { lastYear } = await fixture();
   await goTen(page);
+  const size = page.viewportSize();
+  const n = await todoCount(page);
+  // With names off a teacher's own item is headed by their T number, and only it carries a reason.
+  const ids = [];
+  for (let i = 0; i < n; i++) {
+    await expect(last(page)).toHaveCount(0);
+    if (await page.locator("#main [data-panel] .why").count()) ids.push(await page.locator("#main [data-panel] h2").innerText());
+    await nextItem(page);
+  }
+  // Every card fits detail by T number.
+  await expect(names(page)).toHaveAttribute("aria-checked", "false");
+  let measured = 0;
+  await eachCard(page, async () => {
+    measured += await last(page).count();
+    await expect(emailShown(page)).toHaveCount(0);
+    await measure(page, "detail");
+  });
+  expect(measured).toBeGreaterThan(0);
+  await page.setViewportSize(size);
+  // With names on, the To do items' teachers show their line on their opened card.
+  await tab(page, "Teachers").click();
   await names(page).click();
+  let opened = 0;
+  for (const id of ids) {
+    await page.locator(`#main [data-teacher="${id}"]`).click();
+    const want = lineFor(lastYear.get(await emailShown(page).innerText()));
+    await expect(last(page)).toHaveCount(want ? 1 : 0);
+    if (want) {
+      await expect(last(page)).toBeVisible();
+      await expect(last(page)).toHaveText(want);
+      opened += 1;
+    }
+    await page.getByRole("button", { name: "Back" }).click();
+  }
+  expect(opened).toBeGreaterThan(0);
+  // One pass with names on: each card's last-year line and reason, then the card, which also carries the name and the email, fits detail.
+  await expect(names(page)).toHaveAttribute("aria-checked", "true");
   let shown = 0;
+  measured = 0;
   await eachCard(page, async () => {
     const want = lineFor(lastYear.get(await emailShown(page).innerText()));
     await expect(last(page)).toHaveCount(want ? 1 : 0);
@@ -257,45 +297,24 @@ test("a teacher card shows its last-year line, and the reason is unchanged", asy
     }
     await expect(page.locator("#main .why")).toHaveText(/^Why\s+\S/);
     await expect(page.locator("#main .why")).not.toContainText(/last year/i);
+    measured += await last(page).count();
+    await expect(emailShown(page)).toHaveCount(1);
+    await measure(page, "detail");
+    await page.setViewportSize(size);
   });
   expect(shown).toBe([...lastYear.values()].filter(Boolean).length);
   expect(shown).toBeGreaterThan(0);
+  expect(measured).toBeGreaterThan(0);
 });
 
-test("a To do item never shows the last-year line, and the same teacher's opened card does", async ({ page }) => {
+test("search for 'none of their' lists only those teachers, and search finds the download's labels too", async ({ page }) => {
   const { lastYear } = await fixture();
-  await goTen(page);
-  const n = await todoCount(page);
-  // With names off a teacher's own item is headed by their T number, and only it carries a reason.
-  const ids = [];
-  for (let i = 0; i < n; i++) {
-    await expect(last(page)).toHaveCount(0);
-    if (await page.locator("#main [data-panel] .why").count()) ids.push(await page.locator("#main [data-panel] h2").innerText());
-    await nextItem(page);
-  }
-  await tab(page, "Teachers").click();
-  await names(page).click();
-  let shown = 0;
-  for (const id of ids) {
-    await page.locator(`#main [data-teacher="${id}"]`).click();
-    const want = lineFor(lastYear.get(await emailShown(page).innerText()));
-    await expect(last(page)).toHaveCount(want ? 1 : 0);
-    if (want) {
-      await expect(last(page)).toBeVisible();
-      await expect(last(page)).toHaveText(want);
-      shown += 1;
-    }
-    await page.getByRole("button", { name: "Back" }).click();
-  }
-  expect(shown).toBeGreaterThan(0);
-});
-
-test("search for 'none of their' lists only those teachers", async ({ page }) => {
-  const { lastYear } = await fixture();
-  const none = [...lastYear.values()].filter((was) => was && was.result === "none").length;
+  const withResult = (result) => [...lastYear.values()].filter((was) => was && was.result === result).length;
+  const none = withResult("none");
   expect(none).toBeGreaterThan(0);
   await goTen(page);
   await tab(page, "Teachers").click();
+  await expect(names(page)).toHaveAttribute("aria-checked", "false");
   const rows = page.locator("#main [data-row][data-teacher]:visible");
   await expect(rows).toHaveCount(TEACHERS);
   await search(page).fill("none of their");
@@ -308,15 +327,7 @@ test("search for 'none of their' lists only those teachers", async ({ page }) =>
     await page.getByRole("button", { name: "Back" }).click();
   }
   await expect(rows).toHaveCount(none);
-});
-
-test("search finds the download's labels too", async ({ page }) => {
-  const { lastYear } = await fixture();
-  const withResult = (result) => [...lastYear.values()].filter((was) => was && was.result === result).length;
-  await goTen(page);
-  await tab(page, "Teachers").click();
-  await expect(names(page)).toHaveAttribute("aria-checked", "false");
-  const rows = page.locator("#main [data-row][data-teacher]:visible");
+  await search(page).fill("");
   await expect(rows).toHaveCount(TEACHERS);
   for (const [typed, result, n] of [["top 4", "top4", 52], ["5 to 7", "5to7", 7], ["not found", "notFound", 1], ["none", "none", 11]]) {
     expect(withResult(result), typed).toBe(n);
@@ -365,12 +376,6 @@ test("Start with a past file refused fits first", async ({ page }) => {
   await measureStart(page);
 });
 
-test("Start with all ten ready fits first", async ({ page }) => {
-  watchPage(page);
-  await startTen(page);
-  await measureStart(page);
-});
-
 test("Start with one past file missing fits first", async ({ page }) => {
   watchPage(page);
   await page.goto("/");
@@ -380,23 +385,28 @@ test("Start with one past file missing fits first", async ({ page }) => {
   await measureStart(page);
 });
 
-test("every To do item fits first with past files", async ({ page }) => {
+// One Build: the To do items and Teachers are measured before the edit that brings Undo, and the window is put back to its own size after.
+test("every To do item fits first with past files, before and once Undo is showing, and Teachers fits list", async ({ page }) => {
+  test.setTimeout(120_000);
   watchPage(page);
   await goTen(page);
+  const size = page.viewportSize();
   const n = await todoCount(page);
   for (let i = 0; i < n; i++) { await measure(page, "first"); await nextItem(page); }
-});
-
-test("a To do item still fits first with past files once Undo is showing", async ({ page }) => {
-  watchPage(page);
-  await goTen(page);
+  await tab(page, "Teachers").click();
+  await measure(page, "list");
+  await search(page).fill("none of their");
+  await measure(page, "list");
+  await search(page).fill("");
+  await page.setViewportSize(size);
+  await tab(page, /^To do/).click();
   await toItem(page, /with no form$/);
   await page.getByRole("button", { name: "Leave them unplaced" }).click();
   await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
   // Undo is one more word on every item, and a teacher's own item is the fullest.
-  const n = await todoCount(page);
+  const m = await todoCount(page);
   let own = 0;
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < m; i++) {
     own += await page.locator("#main [data-panel] .why").count();
     await measure(page, "first");
     await nextItem(page);
@@ -404,63 +414,48 @@ test("a To do item still fits first with past files once Undo is showing", async
   expect(own).toBeGreaterThan(0);
 });
 
-test("every open teacher card fits detail with past files", async ({ page }) => {
-  test.setTimeout(240_000);
-  watchPage(page);
-  await goTen(page);
-  // Once by T number, once with names on, where the card also carries the name and the email.
-  for (const on of [false, true]) {
-    if (on) await names(page).click();
-    await expect(names(page)).toHaveAttribute("aria-checked", String(on));
-    let shown = 0;
-    await eachCard(page, async () => {
-      shown += await last(page).count();
-      await expect(emailShown(page)).toHaveCount(on ? 1 : 0);
-      await measure(page, "detail");
-    });
-    expect(shown).toBeGreaterThan(0);
-  }
-});
-
-test("Teachers fits list with past files", async ({ page }) => {
-  watchPage(page);
-  await goTen(page);
-  await tab(page, "Teachers").click();
-  await measure(page, "list");
-  await search(page).fill("none of their");
-  await measure(page, "list");
-});
-
-test("with names off no name, email or unmatched entry is in the DOM on any screen", async ({ page }) => {
-  test.setTimeout(240_000);
+// One Build and one walk for both checks. Start is reached both ways: one past file added after the other nine, then all ten at once.
+test("on every past screen no forbidden word shows, and with names off no name, email or unmatched entry is in the DOM", async ({ page }) => {
+  test.setTimeout(360_000);
   const secrets = await hidden();
   for (const entry of (await fixture()).unmatched) expect(secrets).toContain(entry);
-  const check = async (where) => {
+  const hiddenGone = async (where) => {
     const dom = await domText(page);
     expect(secrets.filter((s) => dom.includes(s)), where).toEqual([]);
   };
+  const wordsGone = async (where) => expect(forbiddenIn(await visibleStrings(page)), where).toEqual([]);
+  const both = async (where) => { await hiddenGone(where); await wordsGone(where); };
+  await page.goto("/");
+  await page.locator('[data-k="files"]').setInputFiles(tenFiles().slice(0, -1));
+  await expect(ready(page)).toHaveCount(9);
+  await wordsGone("Start, one past file missing");
+  await page.locator('[data-k="files"]').setInputFiles(pastFiles.at(-1));
+  await expect(rightOf(page, ALLOCATION)).toContainText("not matched");
+  await wordsGone("Start, ten ready after nine");
   await startTen(page);
-  await check("Start, ten ready");
+  await both("Start, ten ready");
   // A refused past file: the line gives the file and the row, never the name that was in the cell.
   for (const [at, line] of [[2, "sponsor appears twice in this file"], [5, "value outside the headed columns"]]) {
     await dropFiles(page, [await variantAllocation((rows) => { rows[2][at] = rows[1][2]; })]);
+    await expect(slot(page, ALLOCATION)).toContainText(line);
     await expect(rightOf(page, ALLOCATION)).toHaveText(`Row 3: ${line}`);
-    await check(`Start, ${line}`);
+    await both(`Start, ${line}`);
   }
   await dropFiles(page, [pastFiles[0]]);
   await expect(rightOf(page, ALLOCATION)).toContainText("not matched");
   await buildDraft(page);
   await expect(names(page)).toHaveAttribute("aria-checked", "false");
-  await walk(page, check);
-  // An edit made with names on leaves nothing behind once names are off again.
+  await walk(page, both);
   await names(page).click();
+  await wordsGone("Names on");
+  // An edit made with names on leaves nothing behind once names are off again.
   await moveOne(page);
   await expect(page.locator("#main .why")).toContainText("Moved by the office");
   await names(page).click();
   await expect(names(page)).toHaveAttribute("aria-checked", "false");
-  await check("Names off again, on the moved teacher's card");
+  await hiddenGone("Names off again, on the moved teacher's card");
   await tab(page, /^To do/).click();
-  await walk(page, check);
+  await walk(page, hiddenGone);
 });
 
 test("names on, move, names off, download: no name, email or unmatched entry in any raw XML part", async ({ page }) => {
@@ -482,30 +477,6 @@ test("names on, move, names off, download: no name, email or unmatched entry in 
   }
   expect(off.book.map((s) => s.name)).toEqual(["Courses", "Teachers", "Changes", "Last year", "Files", "Note"]);
   expect(sheetOf(off, "Teachers")[0]).toEqual(["Teacher", "Course Code", "Course", "Choice", "Last year", "Why", "Status"]);
-});
-
-test("forbidden words are gone on every past screen", async ({ page }) => {
-  test.setTimeout(120_000);
-  const check = async (where) => expect(forbiddenIn(await visibleStrings(page)), where).toEqual([]);
-  await page.goto("/");
-  await page.locator('[data-k="files"]').setInputFiles(tenFiles().slice(0, -1));
-  await expect(ready(page)).toHaveCount(9);
-  await check("Start, one past file missing");
-  await page.locator('[data-k="files"]').setInputFiles(pastFiles.at(-1));
-  await expect(rightOf(page, ALLOCATION)).toContainText("not matched");
-  await check("Start, ten ready");
-  await dropFiles(page, [await variantAllocation((rows) => { rows[2][2] = rows[1][2]; })]);
-  await expect(slot(page, ALLOCATION)).toContainText("sponsor appears twice");
-  await check("Start, a past file refused");
-  await dropFiles(page, [await variantAllocation((rows) => { rows[2][5] = rows[1][2]; })]);
-  await expect(slot(page, ALLOCATION)).toContainText("value outside the headed columns");
-  await check("Start, a past file refused for a stray value");
-  await dropFiles(page, [pastFiles[0]]);
-  await expect(rightOf(page, ALLOCATION)).toContainText("not matched");
-  await buildDraft(page);
-  await walk(page, check);
-  await names(page).click();
-  await check("Names on");
 });
 
 test("reload shows the same draft and last-year lines with no re-upload", async ({ page }) => {

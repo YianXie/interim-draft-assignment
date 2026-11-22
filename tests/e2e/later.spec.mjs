@@ -184,29 +184,29 @@ test("names off: the card, History and the download hold no name or email", asyn
 });
 const addedCount = (page) => page.locator("#main [data-row]").first().evaluate((r) => r.querySelector("span").lastChild.textContent.trim().split(" ").at(-1));
 
-test("the card says forms are not stored, and after Add and place each file says file not added again", async ({ page }) => {
+// The budget steps run on measure's 1366x820 viewport, as in their own test; the wording checks run back on the default one.
+test("the Add forms card fits the detail budget, says forms are not stored, and after Add and place each file says file not added again", async ({ page }) => {
+  test.setTimeout(120_000);
   watchPage(page);
   await buildRoundOne(page);
+  const viewport = page.viewportSize();
   const note = "Forms are read, never stored in this browser, so after Add and place each file says file not added again.";
+  await measure(page, "first");
   await openCard(page);
+  await measure(page, "detail");
+  await page.setViewportSize(viewport);
   await expect(page.locator("#main [data-later-note]")).toHaveText(note);
+  await page.setViewportSize({ width: 1366, height: 820 });
+  await dropFiles(page, later());
+  for (const f of LATER) await expect(slot(page, f)).toContainText("ready");
+  await measure(page, "detail");
+  await page.setViewportSize(viewport);
   await page.getByRole("button", { name: "Back" }).click();
   await addBoth(page);
   await openCard(page);
   await expect(page.locator("#main [data-later-note]")).toHaveText(note);
   // With nothing added, a row is a placeholder, not a slot.
   for (const f of LATER) await expect(page.locator(`#main [data-placeholder="${f}"]`)).toContainText("file not added");
-});
-
-test("the Add forms card fits the detail budget", async ({ page }) => {
-  watchPage(page);
-  await buildRoundOne(page);
-  await measure(page, "first");
-  await openCard(page);
-  await measure(page, "detail");
-  await dropFiles(page, later());
-  for (const f of LATER) await expect(slot(page, f)).toContainText("ready");
-  await measure(page, "detail");
 });
 
 // While Placing, the solver is still starting up, and the office can still move people. Holding back highs.wasm opens that gap
