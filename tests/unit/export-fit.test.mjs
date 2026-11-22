@@ -83,11 +83,20 @@ test("after names on, a move, names off: no Fact or Quote anywhere in the workbo
   const facts = school.teachers.flatMap((x) => x.fit.map((r) => r.fact)).filter((f) => !courseNames.some((n) => n.includes(f)));
   assert.ok(facts.length > 0);
   for (const s of [...quotes, ...facts]) for (const c of cells) assert.ok(!c.includes(s), `${c} holds ${s}`);
-  // And apart from the new column the workbook is the one built without fit.xlsx.
+  // And apart from the new column and the fit.xlsx row on Files (checked below) the workbook is the one built without fit.xlsx.
   const col = column(sheets.find((s) => s.name === "Teachers").rows);
-  const strip = (all) => all.map((s) => (s.name === "Teachers" ? { ...s, rows: s.rows.map((r) => r.filter((_, i) => i !== col)) } : s));
+  const noFitRow = (all) => all.map((s) => (s.name === "Files" ? { ...s, rows: s.rows.filter((r) => r[0] !== "fit.xlsx") } : s));
+  const strip = (all) => noFitRow(all).map((s) => (s.name === "Teachers" ? { ...s, rows: s.rows.map((r) => r.filter((_, i) => i !== col)) } : s));
   const withFit = strip(sheets);
   const before = Mock.history();
   Mock.init(withoutFit(school), before);
-  assert.deepEqual(withFit, sheetsFor(Mock));
+  assert.deepEqual(withFit, noFitRow(sheetsFor(Mock)));
+});
+
+test("Files says whether fit.xlsx and last year's files were added", () => {
+  const files = () => Object.fromEntries(sheetsFor(Mock).find((s) => s.name === "Files").rows.slice(1));
+  fresh();
+  assert.deepEqual(files(), { "past-allocation.xlsx": "No", "past-round1.xlsx": "No", "past-round2.xlsx": "No", "past-singapore.xlsx": "No", "fit.xlsx": "Yes" });
+  fresh(pastSchool, pastDraft);
+  assert.deepEqual(files(), { "past-allocation.xlsx": "Yes", "past-round1.xlsx": "Yes", "past-round2.xlsx": "Yes", "past-singapore.xlsx": "Yes", "fit.xlsx": "Yes" });
 });

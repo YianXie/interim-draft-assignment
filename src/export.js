@@ -1,5 +1,5 @@
 // The workbook for the draft as it stands, built from Mock on the current names switch. Browser code: no Node modules.
-import { RESULT_LABEL } from "./past.js";
+import { RESULT_LABEL, PAST_SLOTS } from "./past.js";
 
 const ILLEGAL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
 
@@ -93,11 +93,19 @@ function lastYearSheet(mock) {
   return { name: "Last year", rows };
 }
 
+// Which of the optional files this draft was built with: last year's four (all or none) and fit.xlsx.
+function filesSheet(mock) {
+  const added = (yes) => (yes ? "Yes" : "No");
+  const rows = [...PAST_SLOTS.map((file) => [file, added(mock.past())]), ["fit.xlsx", added(mock.fit())]];
+  return { name: "Files", rows: [["File", "Added"], ...rows] };
+}
+
 const noteSheet = () => ({ name: "Note", rows: [["Teachers are shown by T number. T numbers are pseudonymous, not anonymous."]] });
 
 export function sheetsFor(mock) {
   const sheets = [coursesSheet(mock), teachersSheet(mock), changesSheet(mock)];
   if (mock.past()) sheets.push(lastYearSheet(mock));
+  sheets.push(filesSheet(mock));
   if (!mock.state.namesOn) sheets.push(noteSheet());
   return sheets.map((s) => ({ name: s.name, rows: s.rows.map((r) => r.map(cellOf)) }));
 }

@@ -23,13 +23,13 @@ const firstPlaced = () => school.teachers.find((t) => draft[t.id]);
 
 test("sheets are Courses, Teachers, Changes when names are on", () => {
   Mock.setNames(true);
-  assert.deepEqual(names(), ["Courses", "Teachers", "Changes"]);
+  assert.deepEqual(names(), ["Courses", "Teachers", "Changes", "Files"]);
   assert.deepEqual(sheet("Teachers").rows[0], ["Teacher", "Email", "Course Code", "Course", "Choice", "Why", "Status"]);
   assert.equal(body("Teachers").length, school.teachers.length);
 });
 
 test("names off adds a Note sheet and removes the Email column", () => {
-  assert.deepEqual(names(), ["Courses", "Teachers", "Changes", "Note"]);
+  assert.deepEqual(names(), ["Courses", "Teachers", "Changes", "Files", "Note"]);
   assert.deepEqual(sheet("Teachers").rows[0], ["Teacher", "Course Code", "Course", "Choice", "Why", "Status"]);
   assert.ok(body("Teachers").every((r) => r.length === 6 && /^T\d+$/.test(r[0])));
 });
@@ -188,4 +188,9 @@ test("Courses keeps every sponsor when a move overfills a full course", () => {
   const row = rows.find((r) => r[0] === target.id);
   assert.equal(row.length, max + 4);
   for (const t of Mock.sponsors(target.id)) assert.ok(row.includes(Mock.label(t)));
+});
+
+test("Files says last year's files and fit.xlsx were not added", () => {
+  assert.deepEqual(sheet("Files").rows, [["File", "Added"], ["past-allocation.xlsx", "No"], ["past-round1.xlsx", "No"],
+    ["past-round2.xlsx", "No"], ["past-singapore.xlsx", "No"], ["fit.xlsx", "No"]]);
 });

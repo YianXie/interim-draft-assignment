@@ -480,7 +480,7 @@ test("names on, move, names off, download: no name, email or unmatched entry in 
     const text = strFromU8(data);
     expect(secrets.filter((s) => text.includes(s)), path).toEqual([]);
   }
-  expect(off.book.map((s) => s.name)).toEqual(["Courses", "Teachers", "Changes", "Last year", "Note"]);
+  expect(off.book.map((s) => s.name)).toEqual(["Courses", "Teachers", "Changes", "Last year", "Files", "Note"]);
   expect(sheetOf(off, "Teachers")[0]).toEqual(["Teacher", "Course Code", "Course", "Choice", "Last year", "Why", "Status"]);
 });
 
@@ -539,7 +539,7 @@ test("six files alone: no [data-last] anywhere and the workbook has no Last year
   for (const on of [false, true]) {
     if (on) await names(page).click();
     const dl = await download(page);
-    expect(dl.book.map((s) => s.name)).toEqual(on ? ["Courses", "Teachers", "Changes"] : ["Courses", "Teachers", "Changes", "Note"]);
+    expect(dl.book.map((s) => s.name)).toEqual(on ? ["Courses", "Teachers", "Changes", "Files"] : ["Courses", "Teachers", "Changes", "Files", "Note"]);
     expect(sheetOf(dl, "Teachers")[0]).not.toContain("Last year");
   }
 });

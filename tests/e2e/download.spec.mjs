@@ -72,7 +72,7 @@ test("names on, move, names off, download: no name or email in any raw XML part"
     const text = strFromU8(data);
     for (const p of people) { expect(text, path).not.toContain(p.name); expect(text, path).not.toContain(p.email); }
   }
-  expect(off.book.map((s) => s.name)).toEqual(["Courses", "Teachers", "Changes", "Note"]);
+  expect(off.book.map((s) => s.name)).toEqual(["Courses", "Teachers", "Changes", "Files", "Note"]);
   expect(sheetOf(off, "Teachers")[0]).not.toContain("Email");
 });
 

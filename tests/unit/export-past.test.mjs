@@ -42,10 +42,10 @@ const lastYear = (t) => (t.lastYear ? RESULT_LABEL[t.lastYear.result] : "No reco
 const expectedTable = (placed) => ROWS.map((row) => [row, ...HEAD.slice(1).map((col) =>
   school.teachers.filter((t) => lastYear(t) === row && thisYear(t, placed[t.id]) === col).length)]);
 
-test("with past files the sheets are Courses, Teachers, Changes, Last year (and Note with names off)", () => {
-  assert.deepEqual(names(), ["Courses", "Teachers", "Changes", "Last year", "Note"]);
+test("with past files the sheets are Courses, Teachers, Changes, Last year, Files (and Note with names off)", () => {
+  assert.deepEqual(names(), ["Courses", "Teachers", "Changes", "Last year", "Files", "Note"]);
   Mock.setNames(true);
-  assert.deepEqual(names(), ["Courses", "Teachers", "Changes", "Last year"]);
+  assert.deepEqual(names(), ["Courses", "Teachers", "Changes", "Last year", "Files"]);
 });
 
 test("Teachers has Last year after Choice, with the label or blank", () => {
@@ -232,4 +232,9 @@ test("the not-on-the-allocation list is the same under two T-number draws", asyn
   [p.id, q.id] = [q.id, p.id];
   flipped.teachers.sort((x, y) => x.id.localeCompare(y.id));
   assert.deepEqual(listed(flipped), want);
+});
+
+test("Files says last year's files were added and fit.xlsx was not", () => {
+  assert.deepEqual(sheet("Files").rows, [["File", "Added"], ["past-allocation.xlsx", "Yes"], ["past-round1.xlsx", "Yes"],
+    ["past-round2.xlsx", "Yes"], ["past-singapore.xlsx", "Yes"], ["fit.xlsx", "No"]]);
 });
