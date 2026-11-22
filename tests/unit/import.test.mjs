@@ -33,8 +33,8 @@ const seq = () => {
 
 test("six good files give the agreed school", async () => {
   const school = await readSchool();
-  assert.equal(school.school, "Fernhollow Academy");
-  assert.equal(school.year, "Interim 2028");
+  // Nothing names the invented school, so real files are never labelled as it.
+  assert.ok(!("school" in school) && !("year" in school));
   assert.equal(school.teachers.length, 96);
   assert.equal(school.courses.length, 54);
   assert.equal(school.courses.filter((c) => c.running).length, 48);

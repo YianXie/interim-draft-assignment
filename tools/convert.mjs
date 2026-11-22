@@ -48,7 +48,7 @@ const { files, report } = result;
 await mkdir(opt.out, { recursive: true });
 const written = [];
 for (const [name, rows] of Object.entries(files)) {
-  const bytes = await writeBook([{ name: "Fernhollow", rows }]);
+  const bytes = await writeBook([{ name: "Sheet1", rows }]);
   await writeFile(join(opt.out, name), bytes);
   written.push({ name, bytes });
 }

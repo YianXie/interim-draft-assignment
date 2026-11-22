@@ -350,7 +350,7 @@ export async function parseFiles(files, random = secureRandom) {
       });
     }
   }
-  const school = { school: "Fernhollow Academy", year: "Interim 2028", courses, teachers: [...teachers.values()] };
+  const school = { courses, teachers: [...teachers.values()] };
   if (fit) {
     for (const t of school.teachers) t.fit = [];
     for (const { email: e, course, kind, fact, quote } of got[FIT]) teachers.get(e).fit.push({ course, kind, fact, quote });

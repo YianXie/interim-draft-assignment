@@ -181,3 +181,5 @@ button.row:hover { background: var(--hover); }
 .repo-line { margin-top: 16px; font-size: 16px; }
 .repo-line .repo { color: var(--quiet); }
 .repo-line .repo:hover { color: var(--blue); text-decoration: underline; }
+/* Scrolled into view on a short window: stop a little above the bottom, never a fraction of a pixel below it. */
+[data-k="build"] { scroll-margin-bottom: 8px; }

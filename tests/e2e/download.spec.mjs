@@ -85,13 +85,13 @@ test("forbidden words are not in the workbook", async ({ page }) => {
   }
 });
 
-test("file name contains invented", async ({ page }) => {
+test("file name says Interim draft", async ({ page }) => {
   await goBuild(page);
-  expect((await download(page)).name).toBe("Fernhollow invented draft v1 T numbers.xlsx");
+  expect((await download(page)).name).toBe("Interim draft v1 T numbers.xlsx");
   await names(page).click();
-  expect((await download(page)).name).toBe("Fernhollow invented draft v1 with names.xlsx");
+  expect((await download(page)).name).toBe("Interim draft v1 with names.xlsx");
   await moveOne(page);
-  expect((await download(page)).name).toBe("Fernhollow invented draft v2 with names.xlsx");
+  expect((await download(page)).name).toBe("Interim draft v2 with names.xlsx");
 });
 
 test("the Download tooltip says which version the press gives", async ({ page }) => {

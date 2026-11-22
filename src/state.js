@@ -200,7 +200,7 @@ function summary() {
     returning: placed.filter((t) => t.returning && t.returningCourse === S.placements[t.id]).length,
     coursesRunning: courses().length, coursesStaffed: courses().filter((c) => sponsors(c.id).length >= c.seats).length,
     coursesShort: courses().filter((c) => sponsors(c.id).length < c.seats).length,
-    version: S.version, savedAt: S.savedAt, year: D.year, school: D.school,
+    version: S.version, savedAt: S.savedAt,
   };
 }
 

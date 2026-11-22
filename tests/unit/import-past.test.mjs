@@ -84,7 +84,7 @@ const noForm = { result: "noForm", rank: null, round: null };
 
 test("six files alone: no past key, no lastYear key, no past slot lines", async () => {
   const out = await run({ only: [] });
-  assert.deepEqual(Object.keys(out.school), ["school", "year", "courses", "teachers"]);
+  assert.deepEqual(Object.keys(out.school), ["courses", "teachers"]);
   assert.deepEqual(Object.keys(out.school.teachers[0]),
     ["id", "name", "email", "returning", "returningCourse", "submitted", "certificates", "prefs"]);
   assert.deepEqual(out.slots, Object.fromEntries(SLOTS.map((name) => [name, "ready"])));
@@ -94,7 +94,7 @@ test("six files alone: no past key, no lastYear key, no past slot lines", async 
 test("ten good files: school.past and a lastYear on every teacher", async () => {
   const out = await run();
   assert.deepEqual(out.slots, Object.fromEntries([...SLOTS, ...PAST_SLOTS].map((name) => [name, "ready"])));
-  assert.deepEqual(Object.keys(out.school), ["school", "year", "courses", "teachers", "past"]);
+  assert.deepEqual(Object.keys(out.school), ["courses", "teachers", "past"]);
   assert.deepEqual(out.school.past, { unmatched: [] });
   assert.equal(out.school.teachers.length, 96);
   for (const t of out.school.teachers) {

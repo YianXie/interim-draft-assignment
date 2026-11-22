@@ -47,7 +47,7 @@ test("the demo story end to end", async ({ browser }) => {
 
   // Download and find the change.
   const [d] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download", exact: true }).click()]);
-  expect(d.suggestedFilename()).toBe("Fernhollow invented draft v4 T numbers.xlsx");
+  expect(d.suggestedFilename()).toBe("Interim draft v4 T numbers.xlsx");
   const book = await readBook(new Uint8Array(readFileSync(await d.path())));
   const changes = book.find((s) => s.name === "Changes").rows;
   expect(changes.map((r) => r[2]).slice(1)).toEqual([expect.stringContaining(`Moved ${id} to `), "Undid the last change", expect.stringContaining(`Moved ${id} to `)]);

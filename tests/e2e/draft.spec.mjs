@@ -408,13 +408,14 @@ test("forbidden words are gone on every screen", async ({ page }) => {
   await check("History");
 });
 
-test("Invented school is shown on Start and in the top bar", async ({ page }) => {
+test("no screen calls the files an invented school or names a year, and the top bar names the page", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator("#main").getByText("Invented school")).toBeVisible();
-  await expect(page.getByText("Interim 2028")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Use sample data" })).toBeVisible();
+  await expect(page.getByText(/Invented school|Interim 20\d\d/)).toHaveCount(0);
   await dropSchool(page);
   await buildDraft(page);
-  await expect(page.locator("#top").getByText("Invented school")).toBeVisible();
+  await expect(page.locator("#top").getByText("Interim Draft Assistant")).toBeVisible();
+  await expect(page.getByText(/Invented school|Interim 20\d\d/)).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Download" })).toBeVisible();
   await expect(page.getByRole("button", { name: "More" })).toHaveCount(0);
 });

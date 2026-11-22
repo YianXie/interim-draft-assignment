@@ -118,11 +118,11 @@ test("Changes has one dated row per edit", () => {
   assert.match(body("Changes")[0][2], new RegExp(`Moved ${a.name} to not placed`));
 });
 
-test("file names say invented and follow the switch", () => {
-  assert.equal(fileName(Mock), "Fernhollow invented draft v1 T numbers.xlsx");
+test("file names say Interim draft and follow the switch", () => {
+  assert.equal(fileName(Mock), "Interim draft v1 T numbers.xlsx");
   Mock.setNames(true);
   Mock.move(firstPlaced().id, null);
-  assert.equal(fileName(Mock), "Fernhollow invented draft v2 with names.xlsx");
+  assert.equal(fileName(Mock), "Interim draft v2 with names.xlsx");
 });
 
 test("awkward values stay text", async () => {

@@ -5,7 +5,7 @@ test("page loads the stub with no CSP complaint", async ({ page }) => {
   const watch = watchPage(page);
   await watch.listenForCsp();
   await page.goto("/");
-  await expect(page.getByText("Interim 2028")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Use sample data" })).toBeVisible();
   expect(await watch.csp()).toEqual([]);
   expect(watch.problems).toEqual([]);
 });

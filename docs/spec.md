@@ -64,10 +64,10 @@ About 40 lines of plain code then re-check every rule. On failure the page shows
 
 The inline `<style>` block from `flow.html` moves as is to `style.css`; the only additions are rules for the drop zone. The glanceable limits are unchanged: first screen at most 80 words, of which at most 30 sit outside `data-rows`, one big line of at least 26 px, nothing under 15 px.
 
-- **Start:** one drop zone, the words "Invented school", at most 80 words.
+- **Start:** one drop zone, at most 80 words. No school name or year, since the office loads its own files (changed 2026-11-22 by the owner; it said "Invented school" and "Interim 2028").
 - **Tabs:** To do (opens first, one item at a time), Teachers, Courses. The big line says how many To do items are left.
 - **To do items:** short or empty offered courses; people with a form not placed; one single group item for everyone with no form who isn't placed, with "Leave them unplaced".
-- **Top bar:** the words "Invented school", Show names (off at start) and Download. **Bottom line:** "Saved in this browser", Undo.
+- **Top bar:** the words "Interim Draft Assistant" (was "Invented school" until 2026-11-22), Show names (off at start) and Download. **Bottom line:** "Saved in this browser", Undo.
 - **Editing:** Move to (including Not placed), Move here on short courses, Leave unplaced, Undo. A move that breaks a rule shows a warning and stands.
 - **Reason per teacher:** recomputed from the current draft, at most 20 words, names no other teacher. A moved teacher shows only "Moved by the office" and their choice. A running course with a free seat gets its own sentence, not "too few sponsors to run".
 - **History:** a plain list with Restore, which writes a new version. Start over wipes everything.
@@ -82,7 +82,7 @@ IndexedDB, loaded before page code starts: one record of the parsed upload (with
 
 ## Download
 
-One `.xlsx` that follows the switch, built from the current draft, plain values, strings always as text, named with "invented". Sheets: Courses (Course Code, Course Name, Sponsor 1..n, Status), Teachers (Teacher, Email, Course, Choice, Why, Status; with names off, Teacher is the T number and there is no Email column), Changes (dated, one row per edit). With names off, a Note sheet says T numbers are pseudonymous, not anonymous.
+One `.xlsx` that follows the switch, built from the current draft, plain values, strings always as text, named "Interim draft v<version> T numbers" or "… with names" (said "Fernhollow invented draft" until 2026-11-22). Sheets: Courses (Course Code, Course Name, Sponsor 1..n, Status), Teachers (Teacher, Email, Course, Choice, Why, Status; with names off, Teacher is the T number and there is no Email column), Changes (dated, one row per edit). With names off, a Note sheet says T numbers are pseudonymous, not anonymous.
 
 ## Done means
 

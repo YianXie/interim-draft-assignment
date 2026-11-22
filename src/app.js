@@ -233,7 +233,6 @@ function startView() {
   const past = PAST_SLOTS;
   return `<div class="narrow drop" data-drop>
     <h1 class="big" data-big>${buildFailed ? "Couldn't build a draft from these files" : startTab === "now" ? "Drop this year's files here" : "Drop last year's four files here"}</h1>
-    <p class="sub"><span>Invented school</span>&ensp;<span>Interim 2028</span></p>
     <div class="links"><label class="link choose">Choose files<input type="file" multiple accept=".xlsx" data-k="files"></label>
     <button class="link sample" data-act="sample">Use sample data</button>
     <a class="link sample-zip" data-k="sample-zip" href="sample/${startTab === "now" ? "sample-this-year.zip" : "sample-last-year.zip"}" download>Download sample data</a></div>
@@ -336,7 +335,7 @@ function topBar() {
   const running = Mock.courses().filter((c) => Mock.sponsors(c.id).length).length;
   const tab = (id, text) => `<button class="tab" role="tab" data-tab="${id}" data-k="tab-${id}" aria-selected="${view.tab === id}">${text}</button>`;
   return `<div class="wrap bar" data-result data-placed="${s.placed}" data-running="${running}">
-    <div class="brand">Invented school</div>
+    <div class="brand">Interim Draft Assistant</div>
     <div class="tabs" role="tablist">${tab("todo", n ? `To do ${n}` : "To do")}${tab("teachers", "Teachers")}${tab("courses", "Courses")}</div>
     <div class="right">
       <button class="switch" role="switch" data-names data-k="names" aria-checked="${Mock.state.namesOn}">Show names <span class="track"><span class="knob"></span></span></button>

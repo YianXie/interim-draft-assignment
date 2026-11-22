@@ -36,7 +36,7 @@ test("an outside fetch and an outside image are refused by the policy", async ({
   context.on("requestfinished", (r) => { if (!r.url().startsWith(ORIGIN)) answered.push(r.url()); });
   context.on("requestfailed", (r) => { if (!r.url().startsWith(ORIGIN)) blocked.push(r.failure().errorText); });
   await page.goto("/");
-  await expect(page.getByText("Interim 2028")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Use sample data" })).toBeVisible();
   const result = await page.evaluate((url) => {
     const violations = [];
     document.addEventListener("securitypolicyviolation", (e) => violations.push(`${e.violatedDirective} ${e.blockedURI}`));

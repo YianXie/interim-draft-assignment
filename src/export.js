@@ -13,7 +13,7 @@ const byText = (a, b) => a.localeCompare(b);
 const two = (n) => String(n).padStart(2, "0");
 
 export function fileName(mock) {
-  return `Fernhollow invented draft v${mock.summary().version} ${mock.state.namesOn ? "with names" : "T numbers"}.xlsx`;
+  return `Interim draft v${mock.summary().version} ${mock.state.namesOn ? "with names" : "T numbers"}.xlsx`;
 }
 
 function coursesSheet(mock) {
