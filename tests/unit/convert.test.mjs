@@ -15,10 +15,16 @@ test("courses take code and seats from the allocation, type from the country", (
     HEADERS["courses.xlsx"],
     ["AUST-1", "Great Ocean Road", "International", 3, "Yes", "", "Australia", "Portside", "v1"],
     ["TASL-2", "River Walk", "International", 1, "Yes", "", "Tasland", "Tash", "v2"],
-    ["", "Glacier Camp", "International", 2, "Yes", "", "Moravia", "Morv", "v3"],
+    ["NOTRUN-1", "Glacier Camp", "International", 2, "No", "", "Moravia", "Morv", "v3"],
     ["SING-1", "Garden Trails", "Singapore", 1, "Yes", "", "Singapore", "Singapore", "v4"],
   ]);
-  assert.ok(has(report, "Glacier Camp", "Course Code", "blank"));
+  assert.ok(has(report, "Glacier Camp", "NOTRUN-1", "not offered"));
+});
+
+test("a not-offered code never repeats a code already in use", () => {
+  const allocation = [...rawSchool()["allocation.xlsx"], ["NOTRUN-1", "NOTRUN-1 Moon Base", "Eve Ng", "", ""]];
+  const { files } = run({ "allocation.xlsx": allocation });
+  assert.ok(files["courses.xlsx"].some((r) => r[1] === "Glacier Camp" && r[0] === "NOTRUN-2" && r[4] === "No"));
 });
 
 test("an allocation course that is not on the course list is added as a Singapore course and reported", () => {

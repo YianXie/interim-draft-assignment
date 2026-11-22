@@ -93,12 +93,20 @@ export function convert(raw) {
   }
   if (added.length) report.push(`allocation.xlsx: ${added.length} course${added.length > 1 ? "s are" : " is"} not in courses.xlsx, so added as Singapore: ${added.join(", ")}; check each is a Singapore course`);
   for (const name of index.duplicates) report.push(`courses.xlsx: two courses have the same name "${name}"; the page needs each name once`);
-  for (const c of courses) if (!c.code) report.push(`courses.xlsx: "${c.name}" is not on the allocation, so its Course Code is blank; fill it in`);
+  // A course not on the final allocation did not run: Offered No, with a NOTRUN-n code no other course uses.
   const codes = new Set(courses.map((c) => c.code).filter(Boolean));
+  let next = 1;
+  for (const c of courses.filter((c) => !c.code)) {
+    while (codes.has(`NOTRUN-${next}`)) next++;
+    c.code = `NOTRUN-${next}`;
+    c.offered = "No";
+    codes.add(c.code);
+    report.push(`courses.xlsx: "${c.name}" is not on the allocation, so it is marked not offered as ${c.code}`);
+  }
 
   const files = {};
   files["courses.xlsx"] = [HEADERS["courses.xlsx"], ...courses.map((c) => [
-    c.code, c.name, norm(c.country) === "singapore" ? "Singapore" : "International", c.seats ?? 2, "Yes", "", c.country, c.city, c.vendor,
+    c.code, c.name, norm(c.country) === "singapore" ? "Singapore" : "International", c.seats ?? 2, c.offered ?? "Yes", "", c.country, c.city, c.vendor,
   ])];
 
   // Forms: page column order, choices written as the course name, latest repeat kept.
