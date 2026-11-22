@@ -77,11 +77,11 @@ test("wrong file name is refused", async () => {
   assert.match(out.slots["staff.xlsx"], /^staff\.xlsx: /);
 });
 
-test("sheet not named Fernhollow is refused", async () => {
-  const out = await run((rows) => (rows["round2.xlsx"].sheetName = "Sheet1"));
-  assert.equal(out.school, null);
-  assert.equal(out.slots["round2.xlsx"], "round2.xlsx: first sheet must be named Fernhollow");
-  assert.equal(out.slots["staff.xlsx"], "ready");
+test("the first sheet is read whatever its name", async () => {
+  const base = await run(null, seq());
+  const out = await run((rows) => (rows["round2.xlsx"].sheetName = "Sheet1"), seq());
+  assert.equal(out.slots["round2.xlsx"], "ready");
+  assert.deepEqual(out.school, base.school);
 });
 
 test("wrong header is refused with the file name", async () => {
@@ -138,10 +138,22 @@ test("a value past the last header of a form refuses the row", async () => {
   assert.deepEqual(out.school, base.school);
 });
 
-test("email outside fernhollow.example is refused with file and row", async () => {
-  const out = await run((rows) => (rows["staff.xlsx"][4][0] = "x.y@elsewhere.example"));
-  assert.equal(out.school, null);
-  assert.equal(out.slots["staff.xlsx"], "staff.xlsx, row 5: email is not on fernhollow.example");
+test("an email on any domain is read as written, in lower case", async () => {
+  // One teacher moved to another domain in every file that names them.
+  const out = await run((rows) => {
+    const was = rows["staff.xlsx"][4][0];
+    for (const sheet of Object.values(rows)) for (const r of sheet) r.forEach((c, i) => c === was && (r[i] = " X.Y@Elsewhere.example "));
+  });
+  assert.ok(out.school, JSON.stringify(out.slots));
+  assert.ok(out.school.teachers.some((t) => t.email === "x.y@elsewhere.example"));
+});
+
+test("an email that is not one address is refused with file and row", async () => {
+  for (const bad of ["x.y", "@elsewhere.example", "x.y@", "a@b@elsewhere.example", "x y@elsewhere.example"]) {
+    const out = await run((rows) => (rows["staff.xlsx"][4][0] = bad));
+    assert.equal(out.school, null, bad);
+    assert.equal(out.slots["staff.xlsx"], "staff.xlsx, row 5: email is not one address", bad);
+  }
 });
 
 test("form email not on the staff list is refused", async () => {

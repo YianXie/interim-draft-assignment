@@ -6,12 +6,10 @@ export function norm(s) {
   return String(s).toLowerCase().replace(/\s*[—–-]\s*/g, " - ").replace(/\s+/g, " ").trim();
 }
 
-// "local@any.domain" → "local@fernhollow.example"; null when it is not one plain address.
-export function newEmail(raw) {
+// One address, trimmed and lower case, domain kept; null when it is not one plain address.
+export function cleanEmail(raw) {
   const e = String(raw ?? "").trim().toLowerCase();
-  const parts = e.split("@");
-  if (parts.length !== 2 || !parts[0] || !parts[1] || /\s/.test(e)) return null;
-  return `${parts[0]}@fernhollow.example`;
+  return /^[^@\s]+@[^@\s]+$/.test(e) ? e : null;
 }
 
 // courses: [{ name, country }]. find(text) tries "Country - Name", then the bare name when only one course has it,

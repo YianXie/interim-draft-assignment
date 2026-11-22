@@ -30,14 +30,14 @@ test("an allocation course that is not on the course list is reported", () => {
 test("round 1 is put in the page's column order with choices written as the course name", () => {
   const { files } = run();
   assert.deepEqual(files["round1.xlsx"][0], HEADERS["round1.xlsx"]);
-  assert.deepEqual(files["round1.xlsx"][1], [NEW, "woxley@fernhollow.example", "Great Ocean Road", "River Walk", ...blanks(5), "ans1", "pri1", "fin1"]);
-  assert.deepEqual(files["singapore.xlsx"][1], [NEW, "drao@fernhollow.example", "Garden Trails", ...blanks(4), "sg ans", "sg more"]);
+  assert.deepEqual(files["round1.xlsx"][1], [NEW, "woxley@oldschool.example", "Great Ocean Road", "River Walk", ...blanks(5), "ans1", "pri1", "fin1"]);
+  assert.deepEqual(files["singapore.xlsx"][1], [NEW, "drao@oldschool.example", "Garden Trails", ...blanks(4), "sg ans", "sg more"]);
 });
 
 test("a repeat form keeps the latest timestamp and reports the one left out", () => {
   const { files, report } = run();
   const emails = files["round1.xlsx"].slice(1).map((r) => r[1]);
-  assert.deepEqual(emails, ["woxley@fernhollow.example", "clim@fernhollow.example"]);
+  assert.deepEqual(emails, ["woxley@oldschool.example", "clim@oldschool.example"]);
   assert.ok(has(report, "round1.xlsx", "row 3", "row 2 kept"));
 });
 
@@ -59,7 +59,7 @@ test("a choice that matches no course is kept as written and reported", () => {
 
 test("returning copies Prior Course as the code and reports one not on this year's list", () => {
   const { files, report } = run();
-  assert.deepEqual(files["returning.xlsx"], [HEADERS["returning.xlsx"], ["woxley@fernhollow.example", "AUST-1"], ["drao@fernhollow.example", "SING-9"]]);
+  assert.deepEqual(files["returning.xlsx"], [HEADERS["returning.xlsx"], ["woxley@oldschool.example", "AUST-1"], ["drao@oldschool.example", "SING-9"]]);
   assert.ok(has(report, "returning.xlsx", "row 3", "SING-9"));
   assert.ok(!has(report, "AUST-1"));
 });
@@ -77,9 +77,11 @@ test("a row whose email is not one address is left out and reported", () => {
   assert.ok(has(report, "round1.xlsx", "row 2", "email"));
 });
 
-test("two different addresses that would become one stop the run", () => {
+test("emails keep their own domain, in lower case, so one name on two domains stays two people", () => {
   const ret = rawSchool()["returning.xlsx"];
-  assert.throws(() => run({ "returning.xlsx": [...ret, ["woxley@elsewhere.example", "Repeat", "AUST-1"]] }), /woxley@fernhollow\.example/);
+  const { files } = run({ "returning.xlsx": [...ret, [" WOxley@Elsewhere.example ", "Repeat", "AUST-1"]] });
+  const emails = files["returning.xlsx"].slice(1).map((r) => r[0]);
+  assert.deepEqual(emails, ["woxley@oldschool.example", "drao@oldschool.example", "woxley@elsewhere.example"]);
 });
 
 test("a missing column stops the run with the file and column named", () => {
@@ -96,9 +98,9 @@ test("staff lists every form and returning email, named from the allocation", ()
   const { files, report } = run();
   assert.deepEqual(files["staff.xlsx"], [
     HEADERS["staff.xlsx"],
-    ["clim@fernhollow.example", "Cara Lim", ""],
-    ["drao@fernhollow.example", "Dev Rao", ""],
-    ["woxley@fernhollow.example", "Wen Oxley", ""],
+    ["clim@oldschool.example", "Cara Lim", ""],
+    ["drao@oldschool.example", "Dev Rao", ""],
+    ["woxley@oldschool.example", "Wen Oxley", ""],
   ]);
   assert.ok(has(report, "Ana De Souza", "no email"));
   assert.ok(has(report, "Ben Ode", "no email"));
@@ -107,7 +109,7 @@ test("staff lists every form and returning email, named from the allocation", ()
 test("a two-word last name finds its email", () => {
   const ret = rawSchool()["returning.xlsx"];
   const { files } = run({ "returning.xlsx": [...ret, ["adesouza@oldschool.example", "Repeat", "AUST-1"]] });
-  assert.ok(files["staff.xlsx"].some((r) => r[0] === "adesouza@fernhollow.example" && r[1] === "Ana De Souza"));
+  assert.ok(files["staff.xlsx"].some((r) => r[0] === "adesouza@oldschool.example" && r[1] === "Ana De Souza"));
 });
 
 test("two sponsors for one email leave the name blank, and so does an email no sponsor fits", () => {
@@ -118,10 +120,10 @@ test("two sponsors for one email leave the name blank, and so does an email no s
     "allocation.xlsx": [...alloc, ["MORV-1", "MORV-1 Glacier Camp", "Jo Smith", "Jay Smith", ""]],
   });
   const row = (e) => files["staff.xlsx"].find((r) => r[0] === e);
-  assert.deepEqual(row("jsmith@fernhollow.example"), ["jsmith@fernhollow.example", "", ""]);
-  assert.deepEqual(row("qwu@fernhollow.example"), ["qwu@fernhollow.example", "", ""]);
-  assert.ok(has(report, "jsmith@fernhollow.example", "Jo Smith", "Jay Smith"));
-  assert.ok(has(report, "qwu@fernhollow.example", "no name"));
+  assert.deepEqual(row("jsmith@oldschool.example"), ["jsmith@oldschool.example", "", ""]);
+  assert.deepEqual(row("qwu@oldschool.example"), ["qwu@oldschool.example", "", ""]);
+  assert.ok(has(report, "jsmith@oldschool.example", "Jo Smith", "Jay Smith"));
+  assert.ok(has(report, "qwu@oldschool.example", "no name"));
 });
 
 test("a sponsor whose key also fits a numbered email is left blank and reported", () => {
@@ -134,9 +136,9 @@ test("a sponsor whose key also fits a numbered email is left blank and reported"
     "allocation.xlsx": [...alloc, ["MORV-1", "MORV-1 Glacier Camp", "Jane Smith", "", ""]],
   });
   const row = (e) => files["staff.xlsx"].find((r) => r[0] === e);
-  assert.equal(row("jsmith@fernhollow.example")[1], "");
-  assert.equal(row("jsmith2@fernhollow.example")[1], "");
-  assert.ok(has(report, "Jane Smith", "jsmith@fernhollow.example", "jsmith2@fernhollow.example"));
+  assert.equal(row("jsmith@oldschool.example")[1], "");
+  assert.equal(row("jsmith2@oldschool.example")[1], "");
+  assert.ok(has(report, "Jane Smith", "jsmith@oldschool.example", "jsmith2@oldschool.example"));
 });
 
 test("text timestamps are read only when they cannot be misread, and the report says so otherwise", () => {

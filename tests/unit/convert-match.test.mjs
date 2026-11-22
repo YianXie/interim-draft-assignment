@@ -1,7 +1,7 @@
 // Matching helpers for tools/convert.mjs. Invented data only.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { norm, newEmail, courseIndex, nameKeys, findColumn } from "../../tools/convert/match.mjs";
+import { norm, cleanEmail, courseIndex, nameKeys, findColumn } from "../../tools/convert/match.mjs";
 
 test("norm makes every dash, space and letter case the same", () => {
   assert.equal(norm("Australia —  Great  Ocean Road "), norm("australia - great ocean road"));
@@ -9,12 +9,13 @@ test("norm makes every dash, space and letter case the same", () => {
   assert.equal(norm(null), "");
 });
 
-test("newEmail keeps the part before @ and moves it to fernhollow.example", () => {
-  assert.equal(newEmail(" WOxley@OldSchool.example "), "woxley@fernhollow.example");
-  assert.equal(newEmail("nobody"), null);
-  assert.equal(newEmail("@oldschool.example"), null);
-  assert.equal(newEmail("a@b@oldschool.example"), null);
-  assert.equal(newEmail(""), null);
+test("cleanEmail trims and lower-cases one address and keeps its domain", () => {
+  assert.equal(cleanEmail(" WOxley@OldSchool.example "), "woxley@oldschool.example");
+  assert.equal(cleanEmail("nobody"), null);
+  assert.equal(cleanEmail("@oldschool.example"), null);
+  assert.equal(cleanEmail("woxley@"), null);
+  assert.equal(cleanEmail("a@b@oldschool.example"), null);
+  assert.equal(cleanEmail(""), null);
 });
 
 test("courseIndex finds a course with or without its country, and lists shared bare names", () => {

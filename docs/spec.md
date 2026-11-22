@@ -33,7 +33,7 @@ Before the expected results are written, and with all AI sessions closed, the ow
 
 ## The six files
 
-Each is `.xlsx`, first sheet named `Fernhollow`, headers in row 1, exact wording. The file name picks the slot. That sheet name and the email domain guard against the owner's own mistake and are never described as security.
+Each is `.xlsx`, read from its first sheet whatever its name, headers in row 1, exact wording. The file name picks the slot. Emails are read on any domain (sheet-name and domain rules dropped 2026-11-22 by the owner, so the office can load its own files and download its own addresses); the invented fixtures keep `fernhollow.example`.
 
 | File             | Columns                                                                                                                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -44,7 +44,7 @@ Each is `.xlsx`, first sheet named `Fernhollow`, headers in row 1, exact wording
 | `round2.xlsx`    | Timestamp, Email, Choice 1 to Choice 3 (course names)                                                                                                         |
 | `singapore.xlsx` | Timestamp, Email, Choice 1 to Choice 5 (course names), Enhancing Learning or Safety, Additional Comments or Questions                                         |
 
-No gender columns. Timestamp (dd/mm/yyyy h:mm:ss), the written answers, Arrival Country, Arrival City and Vendor Link are there so the files match the office's layout (added 2026-11-15); their headers must be present, but the page reads nothing under them. A file that doesn't fit is refused with one plain line (file, row, problem), and all six must pass before Build unlocks. Any email outside `fernhollow.example` refuses that file.
+No gender columns. Timestamp (dd/mm/yyyy h:mm:ss), the written answers, Arrival Country, Arrival City and Vendor Link are there so the files match the office's layout (added 2026-11-15); their headers must be present, but the page reads nothing under them. A file that doesn't fit is refused with one plain line (file, row, problem), and all six must pass before Build unlocks. An email that is not one address refuses that file.
 
 An optional seventh file, `fit.xlsx` (what the reader found in the written answers, checked by the office), is described in `docs/superpowers/specs/2026-11-15-fit-file-design.md` (added 2026-11-15).
 

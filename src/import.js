@@ -9,8 +9,6 @@ export const SLOTS = ["courses.xlsx", "staff.xlsx", "returning.xlsx", "round1.xl
 // Optional: what the reader found in the written answers, checked by the office. One row per fact.
 export const FIT = "fit.xlsx";
 export const KINDS = ["Language", "Certificate", "Experience", "Skill", "Limitation"];
-const SHEET = "Fernhollow";
-const DOMAIN = "@fernhollow.example";
 const choices = (n) => Array.from({ length: n }, (_, i) => `Choice ${i + 1}`);
 // The forms are laid out like the office's: Timestamp, Email, the choices, then the written answers. Courses end with
 // where the course flies to and its vendor. Those extra columns must be there, under these headers, but are not read.
@@ -65,7 +63,7 @@ function headerRow(file, head) {
   return ["Course Code", "Course Name", ...Array.from({ length: Math.max(1, last - 1) }, (_, i) => `Sponsor ${i + 1}`)];
 }
 
-// Checks sheet name and headers, returns [{ n, cells }] for non-empty rows, n being the sheet row number.
+// Reads the first sheet, checks headers, returns [{ n, cells }] for non-empty rows, n being the sheet row number.
 // In a past file or a form, a value under no header refuses the row: a sponsor or a choice typed one column too far
 // would otherwise be lost, since the answers after the choices are not read.
 async function table(file, bytes) {
@@ -75,7 +73,7 @@ async function table(file, bytes) {
   } catch {
     refuse(file, 0, "not a readable .xlsx file");
   }
-  if (!book.length || book[0].name !== SHEET) refuse(file, 0, `first sheet must be named ${SHEET}`);
+  if (!book.length) refuse(file, 0, "no sheet in this file");
   const [head = [], ...rest] = book[0].rows;
   const want = headerRow(file, head);
   if (want.some((h, i) => head[i] !== h) || head.slice(want.length).some((h) => !blank(h))) {
@@ -92,7 +90,7 @@ async function table(file, bytes) {
 function email(file, r, seen, at = 0) {
   const e = normEmail(r.cells[at]);
   if (!e) refuse(file, r.n, "email is empty");
-  if (!e.endsWith(DOMAIN) || e.length === DOMAIN.length) refuse(file, r.n, "email is not on fernhollow.example");
+  if (!/^[^@\s]+@[^@\s]+$/.test(e)) refuse(file, r.n, "email is not one address");
   if (seen.has(e)) refuse(file, r.n, "email appears twice in this file");
   seen.add(e);
   return e;

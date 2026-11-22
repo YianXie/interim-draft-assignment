@@ -51,10 +51,10 @@ test("someone who sent only a Round 2 form counts as no form when round2.xlsx is
 
 test("a round2.xlsx that is added but wrong still holds up Build", async () => {
   const [sheet] = await readBook((await fixture(ROUND2)).bytes);
-  const bad = { name: ROUND2, bytes: await writeBook([{ name: "Sheet1", rows: sheet.rows }]) };
+  const bad = { name: ROUND2, bytes: await writeBook([{ name: "Sheet1", rows: [["Mail", ...sheet.rows[0].slice(1)], ...sheet.rows.slice(1)] }]) };
   const out = await parseFiles([...(await withoutRound2()), bad], seq());
   assert.equal(out.school, null);
-  assert.equal(out.slots[ROUND2], "round2.xlsx: first sheet must be named Fernhollow");
+  assert.match(out.slots[ROUND2], /^round2\.xlsx, row 1: headers must be exactly/);
 });
 
 test("the other four are still needed", async () => {

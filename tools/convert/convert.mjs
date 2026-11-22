@@ -2,7 +2,7 @@
 // with one report line for everything it could not settle. It never guesses: an unmatched course or name is left
 // blank or as written and reported. Columns are found by key words, so the forms' own wording is not written here.
 import { HEADERS } from "../../src/import.js";
-import { norm, newEmail, courseIndex, nameKeys, findColumn } from "./match.mjs";
+import { norm, cleanEmail, courseIndex, nameKeys, findColumn } from "./match.mjs";
 
 export const REQUIRED = ["courses.xlsx", "returning.xlsx", "round1.xlsx", "allocation.xlsx"];
 export const OPTIONAL = ["round2.xlsx", "singapore.xlsx"];
@@ -38,16 +38,9 @@ const body = (rows) => rows.slice(1).map((cells, i) => ({ n: i + 2, cells })).fi
 export function convert(raw) {
   for (const file of REQUIRED) if (!raw[file]) throw new Error(`${file}: not found`);
   const report = [];
-  const oldOf = new Map(); // new email → raw address, so two addresses never become one silently
   const email = (file, n, v) => {
-    const e = newEmail(v);
-    if (!e) {
-      report.push(`${file}, row ${n}: email "${text(v)}" is not one address; row left out`);
-      return null;
-    }
-    const was = text(v).toLowerCase();
-    if (oldOf.has(e) && oldOf.get(e) !== was) throw new Error(`${file}, row ${n}: "${was}" and "${oldOf.get(e)}" would both become ${e}`);
-    oldOf.set(e, was);
+    const e = cleanEmail(v);
+    if (!e) report.push(`${file}, row ${n}: email "${text(v)}" is not one address; row left out`);
     return e;
   };
 

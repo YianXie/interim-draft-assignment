@@ -167,9 +167,6 @@ const refused = async (file, edit, line) => {
 };
 
 test("each allocation refusal gives file and row", async () => {
-  for (const file of PAST_SLOTS) {
-    await refused(file, (past) => (past[file].sheetName = "Sheet1"), `${file}: first sheet must be named Fernhollow`);
-  }
   await refused(ALLOCATION, (past) => (past[ALLOCATION][0] = ["Course Code", "Course Name"]), ALLOCATION_HEADERS);
   await refused(ALLOCATION, (past) => (past[ALLOCATION][2][0] = " "), "past-allocation.xlsx, row 3: course code is empty");
   await refused(ALLOCATION, (past) => (past[ALLOCATION][4][0] = courses[1][0]),
@@ -271,26 +268,26 @@ test("a past email not on this year's staff is accepted and ignored", async () =
   assert.deepEqual(out.school, base.school);
 });
 
-test("a past email outside fernhollow.example is refused with file and row", async () => {
-  const out = await run({ edit: (past) => (past[ROUND1][2][1] = "x.y@elsewhere.example") });
+test("a past email that is not one address is refused with file and row", async () => {
+  const out = await run({ edit: (past) => (past[ROUND1][2][1] = "x.y") });
   assert.equal(out.school, null);
-  assert.equal(out.slots[ROUND1], "past-round1.xlsx, row 3: email is not on fernhollow.example");
+  assert.equal(out.slots[ROUND1], "past-round1.xlsx, row 3: email is not one address");
   const second = await run({ edit: (past) => (past[SINGAPORE][1][1] = "@fernhollow.example") });
-  assert.equal(second.slots[SINGAPORE], "past-singapore.xlsx, row 2: email is not on fernhollow.example");
+  assert.equal(second.slots[SINGAPORE], "past-singapore.xlsx, row 2: email is not one address");
 });
 
 test("no name, email or course text reaches a past problem line", async () => {
   const edits = [
     (past) => {
       past[ALLOCATION][5][2] = named(0);
-      past[ROUND1][2][1] = "x.y@elsewhere.example";
+      past[ROUND1][2][1] = "x.y";
       past[ROUND2].push(sent(who(3), "A course that did not run"));
       past[SINGAPORE][0][3] = "Second";
     },
     (past) => {
       past[ALLOCATION][5][1] = course(0);
       past[ROUND1][1][1] = null;
-      past[ROUND2].sheetName = "Sheet1";
+      past[ROUND2][0][1] = "Mail";
     },
     (past) => (past[ALLOCATION][4][0] = courses[1][0]),
     (past) => (past[ALLOCATION][0][3] = "Sponsor B"),

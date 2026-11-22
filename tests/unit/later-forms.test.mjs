@@ -65,10 +65,10 @@ test("submitted never goes back to false", async () => {
 
 test("checks match Start", async () => {
   const [sheet] = await readBook((await fixture(ROUND2)).bytes);
-  const wrongSheet = { name: ROUND2, bytes: await writeBook([{ name: "Sheet1", rows: sheet.rows }]) };
-  let out = await readForms(base, [wrongSheet]);
+  const wrongHead = { name: ROUND2, bytes: await writeBook([{ name: "Sheet1", rows: [["Mail", ...sheet.rows[0].slice(1)], ...sheet.rows.slice(1)] }]) };
+  let out = await readForms(base, [wrongHead]);
   assert.equal(out.school, null);
-  assert.equal(out.slots[ROUND2], "round2.xlsx: first sheet must be named Fernhollow");
+  assert.match(out.slots[ROUND2], /^round2\.xlsx, row 1: headers must be exactly/);
   const course = base.courses[0].name;
   out = await readForms(base, [await form(ROUND2, [row(ROUND2, "nobody@fernhollow.example", course)])]);
   assert.equal(out.school, null);

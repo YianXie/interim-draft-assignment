@@ -142,7 +142,7 @@ test("a refused file keeps Add and place locked and changes nothing", async ({ p
   const dir = mkdtempSync(join(tmpdir(), "interim-later-"));
   dirs.push(dir);
   const [sheet] = await readBook(readFileSync("fixtures/school/round2.xlsx"));
-  writeFileSync(join(dir, "round2.xlsx"), await writeBook([{ name: "Sheet1", rows: sheet.rows }]));
+  writeFileSync(join(dir, "round2.xlsx"), await writeBook([{ name: "Sheet1", rows: [["Mail", ...sheet.rows[0].slice(1)], ...sheet.rows.slice(1)] }]));
   const watch = watchPage(page);
   await buildRoundOne(page);
   const was = await placed(page);
