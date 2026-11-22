@@ -53,6 +53,13 @@ Its sample data and tests are invented: an invented school, invented people, inv
 - Names match whatever their case, spacing or punctuation ("—" or ":", "&" or "and"). A "(FEMALE)" or "(MALE)" marker is taken off and the course listed for a check, since the page does not read it. A small slip or a shortened choice is matched only when one course is clearly closest, and listed. A course on the allocation but not in `courses.xlsx` is added as a Singapore course. A course in `courses.xlsx` but not on the allocation did not run: it gets Offered No and a `NOTRUN-n` code. The On-Deck and Flex roles are not courses: they are taken out of the choices (later ones move up) and each pick is listed.
 - It never guesses and never overwrites. Whatever it could not settle is listed in `convert-report.txt`, which ends with the line Start would show for the new files.
 
+## Draft against the office's allocation
+
+- `tools/compare.mjs` measures a downloaded draft and the office's final allocation the same way, against the files loaded on Start: `node tools/compare.mjs --six <folder> --draft <download with names.xlsx> --office <allocation.xlsx> --out <compare.xlsx>`.
+- `--six` is the folder of files loaded on Start: the six, plus the four `past-*.xlsx` and `fit.xlsx` when they were loaded, which adds their measures. `--office` is the same raw `allocation.xlsx` given to the converter. `--out` is optional and never overwritten.
+- It prints seats filled, what choice each side gave (1st, top 3, top 4, average), the draft's own points, rules the page checks, and how many teachers are on the same course in both, then a table of the draft's choice against the office's. The `--out` workbook adds a row per teacher and per course, with names, so keep it outside the repo.
+- Sponsors are matched to `staff.xlsx` by name, else by first initial and last name in the email when only one fits. Anything it could not match is listed.
+
 ## Check it
 
 - `npm run check` builds, runs the unit tests and the browser tests, and ends with `CHECK OK`.
