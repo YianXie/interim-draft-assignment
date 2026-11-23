@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { convert } from "../../tools/convert/convert.mjs";
-import { HEADERS } from "../../src/import.js";
+import { HEADERS, PAST_SLOTS } from "../../src/import.js";
 
 import { rawSchool, NEW, blanks } from "./convert-fixture.mjs";
 
@@ -211,4 +211,73 @@ test("an On-Deck or Flex role is taken out of the choices, later choices move up
   assert.ok(has(report, "singapore.xlsx", "row 2", "drao@oldschool.example", "On-Deck", "Choice 1"));
   assert.ok(has(report, "singapore.xlsx", "row 2", "drao@oldschool.example", "Flex", "Choice 3"));
   assert.ok(!has(report, "singapore.xlsx", "matches no course"));
+});
+
+// An upcoming year has no final allocation yet: codes and seats come from courses.xlsx when it has them.
+const noAllocation = (courses) => { const raw = rawSchool(); delete raw["allocation.xlsx"]; return convert(courses ? { ...raw, "courses.xlsx": courses } : raw); };
+
+test("without the allocation, code and seats come from courses.xlsx, every course is offered, and names are left to fill in", () => {
+  const courses = [["Course Code", "Course Name", "Seats", "Vendor", "Arrival City", "Country"],
+    ["AUST-1", "Great Ocean Road", 3, "v1", "Portside", "Australia"],
+    ["TASL-2", "River Walk", "2", "v2", "Tash", "Tasland"],
+    ["", "Glacier Camp", "", "v3", "Morv", "Moravia"],
+    ["SING-1", "Garden Trails", 1, "v4", "Singapore", "Singapore"]];
+  const { files, report } = noAllocation(courses);
+  assert.deepEqual(files["courses.xlsx"], [
+    HEADERS["courses.xlsx"],
+    ["AUST-1", "Great Ocean Road", "International", 3, "Yes", "", "Australia", "Portside", "v1"],
+    ["TASL-2", "River Walk", "International", 2, "Yes", "", "Tasland", "Tash", "v2"],
+    ["", "Glacier Camp", "International", 2, "Yes", "", "Moravia", "Morv", "v3"],
+    ["SING-1", "Garden Trails", "Singapore", 1, "Yes", "", "Singapore", "Singapore", "v4"],
+  ]);
+  assert.ok(has(report, "Glacier Camp", "no course code"));
+  assert.ok(has(report, "Glacier Camp", "seats", "2"));
+  assert.ok(!report.some((l) => /not offered|NOTRUN/.test(l)));
+  // Names come only from the allocation: one line for all of them, not one per email.
+  assert.ok(files["staff.xlsx"].slice(1).every((r) => r[1] === ""));
+  assert.equal(report.filter((l) => l.startsWith("staff.xlsx")).length, 1);
+  assert.ok(has(report, "staff.xlsx", "no allocation.xlsx", "3 names"));
+  // Returning codes are checked against the codes courses.xlsx gave.
+  assert.ok(has(report, "returning.xlsx", "SING-9"));
+  assert.ok(!has(report, "returning.xlsx", "AUST-1"));
+});
+
+test("without the allocation or a code column, every code is left to fill in and seats are 2", () => {
+  const { files, report } = noAllocation();
+  assert.ok(files["courses.xlsx"].slice(1).every((r) => r[0] === "" && r[3] === 2 && r[4] === "Yes"));
+  assert.ok(has(report, "courses.xlsx", "no Course Code column", "4"));
+  assert.ok(has(report, "courses.xlsx", "no Seats column", "2 seats"));
+  assert.ok(has(report, "no allocation.xlsx", "Singapore"));
+});
+
+test("with --past, the allocation and the forms become last year's four files", () => {
+  const { files } = convert(rawSchool(), { past: true });
+  assert.deepEqual(Object.keys(files).sort(), [...PAST_SLOTS].sort());
+  assert.deepEqual(files["past-allocation.xlsx"], [
+    ["Course Code", "Course Name", "Sponsor 1", "Sponsor 2", "Sponsor 3"],
+    ["AUST-1", "Great Ocean Road", "Wen Oxley", "Ana De Souza", "Ben Ode"],
+    ["TASL-2", "River Walk", "Cara Lim", "", ""],
+    ["SING-1", "Garden Trails", "Dev Rao", "", ""],
+  ]);
+  const six = convert(rawSchool());
+  assert.deepEqual(files["past-round1.xlsx"], [HEADERS["past-round1.xlsx"], ...six.files["round1.xlsx"].slice(1)]);
+  assert.deepEqual(files["past-singapore.xlsx"], [HEADERS["past-singapore.xlsx"], ...six.files["singapore.xlsx"].slice(1)]);
+  // No Round 2 forms: the file is still written, with headers only, since the page takes all four or none.
+  assert.deepEqual(files["past-round2.xlsx"], [HEADERS["past-round2.xlsx"]]);
+});
+
+test("--past needs the allocation, and not the returning list", () => {
+  const raw = rawSchool();
+  delete raw["returning.xlsx"];
+  assert.ok(convert(raw, { past: true }).files["past-allocation.xlsx"]);
+  delete raw["allocation.xlsx"];
+  assert.throws(() => convert(raw, { past: true }), /allocation\.xlsx: not found/);
+});
+
+test("--past lists a sponsor name that is on two courses", () => {
+  const raw = rawSchool();
+  raw["allocation.xlsx"].push(["MORV-1", "MORV-1 Glacier Camp", "cara  lim", "", ""]);
+  const { report } = convert(raw, { past: true });
+  assert.ok(has(report, "allocation.xlsx", "2 courses", "River Walk", "Glacier Camp"));
+  assert.ok(!convert(rawSchool(), { past: true }).report.some((l) => l.includes("courses (")));
 });

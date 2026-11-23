@@ -56,6 +56,22 @@ class Refusal extends Error {}
 const refuse = (file, row, problem) => {
   throw new Refusal(row ? `${file}, row ${row}: ${problem}` : `${file}: ${problem}`);
 };
+// Checks every row, so the office sees the size of the job: the first row's problem is the line, and it ends with how many
+// other rows have one. A row-level check throws a Refusal; anything else is a bug and goes straight through.
+function eachRow(rows, fn) {
+  let first = null, more = 0;
+  for (const r of rows) {
+    try {
+      fn(r);
+    } catch (e) {
+      if (!(e instanceof Refusal)) throw e;
+      if (first) more += 1;
+      else first = e;
+    }
+  }
+  if (first && more) first.message += `; ${more} more row${more === 1 ? "" : "s"} to fix`;
+  if (first) throw first;
+}
 const blank = (v) => v === null || v === undefined || String(v).trim() === "";
 const text = (v) => (blank(v) ? "" : String(v).trim());
 const normEmail = (v) => text(v).toLowerCase();
@@ -96,7 +112,7 @@ async function table(file, bytes) {
   }
   const rows = rest.map((cells, i) => ({ n: i + 2, cells })).filter((r) => r.cells.some((c) => !blank(c)));
   if (PAST_SLOTS.includes(file) || file in FORMS || file === FIT) {
-    for (const r of rows) if (r.cells.slice(want.length).some((c) => !blank(c))) refuse(file, r.n, "value outside the headed columns");
+    eachRow(rows, (r) => { if (r.cells.slice(want.length).some((c) => !blank(c))) refuse(file, r.n, "value outside the headed columns"); });
   }
   return rows;
 }
@@ -117,7 +133,7 @@ function readCourses(file, rows) {
   const courses = [];
   const codes = new Set();
   const names = new Set();
-  for (const r of rows) {
+  eachRow(rows, (r) => {
     // Type, Seats and Offered are read as meant: spaces around them, letter case, and a whole number typed as text all pass.
     const [code, name, , , , cert] = r.cells;
     const type = ["International", "Singapore"].find((k) => k.toLowerCase() === text(r.cells[2]).toLowerCase());
@@ -134,19 +150,20 @@ function readCourses(file, rows) {
     codes.add(id);
     names.add(text(name));
     courses.push({ id, name: text(name), kind: type, seats, running: offered === "Yes", needs: text(cert) || null });
-  }
+  });
   return courses;
 }
 
 function readStaff(file, rows) {
-  const seen = new Set();
-  return rows.map((r) => {
+  const seen = new Set(), out = [];
+  eachRow(rows, (r) => {
     const e = email(file, r, seen);
     if (!text(r.cells[1])) refuse(file, r.n, "name is empty");
     // One per line or separated by ";". Commas are split later, once the course list says which names hold a comma.
     const certificates = text(r.cells[2]).split(/[;\r\n]+/).map((c) => c.trim()).filter(Boolean);
-    return { n: r.n, email: e, name: text(r.cells[1]), certificates };
+    out.push({ n: r.n, email: e, name: text(r.cells[1]), certificates });
   });
+  return out;
 }
 
 // returning.xlsx gives cells [Course Code]; a form gives just its choices, Choice 1 first, and nothing after them.
@@ -156,14 +173,16 @@ function readEmailRows(file, rows) {
   const at = head.indexOf("Email");
   const first = head.indexOf("Choice 1");
   const until = first < 0 ? head.length : first + head.filter((h) => h.startsWith("Choice ")).length;
-  return rows.map((r) => ({ n: r.n, email: email(file, r, seen, at), cells: r.cells.slice(first < 0 ? at + 1 : first, until) }));
+  const out = [];
+  eachRow(rows, (r) => out.push({ n: r.n, email: email(file, r, seen, at), cells: r.cells.slice(first < 0 ? at + 1 : first, until) }));
+  return out;
 }
 
 // Last year's allocation: [{ n, course, sponsors }], course being the Course Name and sponsors the names as written.
 function readPastAllocation(file, rows) {
   const codes = new Set();
-  const names = new Set();
-  return rows.map((r) => {
+  const names = new Set(), out = [];
+  eachRow(rows, (r) => {
     const [code, name, ...entries] = r.cells.map(text);
     if (!code) refuse(file, r.n, "course code is empty");
     if (codes.has(code)) refuse(file, r.n, "course code appears twice");
@@ -171,8 +190,9 @@ function readPastAllocation(file, rows) {
     if (names.has(name)) refuse(file, r.n, "course name appears twice");
     codes.add(code);
     names.add(name);
-    return { n: r.n, course: name, sponsors: entries.filter(Boolean) };
+    out.push({ n: r.n, course: name, sponsors: entries.filter(Boolean) });
   });
+  return out;
 }
 
 // One person on two of last year's courses refuses the file. A sponsor entry is one person only when exactly one of
@@ -181,42 +201,44 @@ function oncePerPerson(file, allocation, staff) {
   const holders = new Map();
   for (const s of staff) holders.set(normName(s.name), (holders.get(normName(s.name)) || 0) + 1);
   const seen = new Set();
-  for (const { n, sponsors } of allocation) {
+  eachRow(allocation, ({ n, sponsors }) => {
     for (const entry of sponsors) {
       const name = normName(entry);
       if (holders.get(name) !== 1) continue;
       if (seen.has(name)) refuse(file, n, "sponsor appears twice in this file");
       seen.add(name);
     }
-  }
+  });
 }
 
 // fit.xlsx: [{ n, email, course, kind, fact, quote }]. One email may have many rows; course is null for a general fact.
 function readFit(file, rows) {
-  return rows.map((r) => {
+  const out = [];
+  eachRow(rows, (r) => {
     const e = email(file, r, new Set());
     const kind = text(r.cells[2]);
     if (!KINDS.includes(kind)) refuse(file, r.n, "kind must be Language, Certificate, Experience, Skill or Limitation");
     const fact = text(r.cells[3]);
     if (!fact) refuse(file, r.n, "fact is empty");
-    return { n: r.n, email: e, course: text(r.cells[1]) || null, kind, fact, quote: text(r.cells[4]) };
+    out.push({ n: r.n, email: e, course: text(r.cells[1]) || null, kind, fact, quote: text(r.cells[4]) });
   });
+  return out;
 }
 
 // A form's emails must be on the staff list and its choices on the course list. Either list may be missing (that file
 // did not read), and then that part is skipped. Round 1 and Round 2 are the International forms, Singapore its own.
 const KIND = { "round1.xlsx": "International", "round2.xlsx": "International", "singapore.xlsx": "Singapore" };
 function checkForm(file, rows, onStaff, byName) {
-  for (const r of rows) {
+  eachRow(rows, (r) => {
     if (onStaff && !onStaff.has(r.email)) refuse(file, r.n, "email is not on the staff list");
-    if (!byName) continue;
+    if (!byName) return;
     r.cells.forEach((c, i) => {
       if (blank(c)) return;
       const course = byName.get(text(c));
       if (!course) refuse(file, r.n, `Choice ${i + 1} is not on the course list`);
       if (course.kind !== KIND[file]) refuse(file, r.n, `Choice ${i + 1} is not ${KIND[file] === "Singapore" ? "a Singapore" : "an International"} course`);
     });
-  }
+  });
 }
 
 const SECTION = (file, fn) => async (bytes) => {
@@ -295,6 +317,9 @@ export async function parseFiles(files, random = secureRandom) {
     return out;
   });
   if (staff) for (const s of staff) s.certificates = held(s.certificates);
+  // Certificates on the staff list that no course asks for. A misspelled one quietly keeps its holder off the course that
+  // needs it, so they are counted on the staff row; never shown, since nothing typed in a file is put on screen.
+  const otherCerts = courses && staff ? new Set(staff.flatMap((st) => st.certificates.map(normCert)).filter((c) => !known.has(c))).size : 0;
   const byId = courses && new Map(courses.map((c) => [c.id, c]));
   const byName = courses && new Map(courses.map((c) => [c.name, c]));
   const onStaff = staff && new Set(staff.map((s) => s.email));
@@ -306,16 +331,16 @@ export async function parseFiles(files, random = secureRandom) {
         // A returning sponsor stays on an offered course, so one who cannot be put there would leave no draft at all.
         const certs = staff && new Map(staff.map((s) => [s.email, s.certificates.map(normCert)]));
         const back = new Map();
-        for (const r of rows) {
+        eachRow(rows, (r) => {
           if (onStaff && !onStaff.has(r.email)) refuse(file, r.n, "email is not on the staff list");
-          if (!courses) continue;
+          if (!courses) return;
           const c = byId.get(text(r.cells[0]));
           if (!c) refuse(file, r.n, "course code is not on the course list");
-          if (!c.running) continue;
+          if (!c.running) return;
           if (c.needs && certs && !certs.get(r.email)?.includes(normCert(c.needs))) refuse(file, r.n, "this sponsor does not hold the certificate the course needs");
           back.set(c.id, (back.get(c.id) ?? 0) + 1);
           if (back.get(c.id) > c.seats) refuse(file, r.n, "more returning sponsors than seats on this course");
-        }
+        });
       } else checkForm(file, rows, onStaff, byName);
     } catch (e) {
       if (!(e instanceof Refusal)) throw e;
@@ -326,10 +351,10 @@ export async function parseFiles(files, random = secureRandom) {
 
   if (got[FIT]) {
     try {
-      for (const r of got[FIT]) {
+      eachRow(got[FIT], (r) => {
         if (onStaff && !onStaff.has(r.email)) refuse(FIT, r.n, "email is not on the staff list");
         if (byId && r.course !== null && !byId.has(r.course)) refuse(FIT, r.n, "course code is not on the course list");
-      }
+      });
     } catch (e) {
       if (!(e instanceof Refusal)) throw e;
       slots[FIT] = e.message;
@@ -349,14 +374,14 @@ export async function parseFiles(files, random = secureRandom) {
 
   for (const file of wanted) if (got[file] && !slots[file]) slots[file] = "ready";
   if (Object.values(slots).some((v) => v !== "ready" && v !== OPTIONAL)) {
-    return { school: null, slots };
+    return { school: null, slots, otherCerts };
   }
 
   // T numbers: T100..T999, each used once, drawn from the random source.
   const pool = Array.from({ length: 900 }, (_, i) => i + 100);
   if (staff.length > pool.length) {
     slots["staff.xlsx"] = "staff.xlsx: more than 900 people";
-    return { school: null, slots };
+    return { school: null, slots, otherCerts };
   }
   const spelling = new Map();
   for (const c of courses) if (c.needs && !spelling.has(normCert(c.needs))) spelling.set(normCert(c.needs), c.needs);
@@ -412,7 +437,7 @@ export async function parseFiles(files, random = secureRandom) {
     for (const t of school.teachers) t.lastYear = byEmail.get(t.email) ?? null;
     school.past = { unmatched };
   }
-  return { school, slots };
+  return { school, slots, otherCerts };
 }
 
 // The files a draft that is already built can still take, in the order their rounds are read.

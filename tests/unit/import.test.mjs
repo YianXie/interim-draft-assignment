@@ -117,6 +117,32 @@ test("courses.xlsx: stray spaces, letter case and a number typed as text are rea
   }
 });
 
+// Every row is checked, so the office knows the size of the job: the first problem, then how many other rows have one.
+test("a refused file says how many other rows have a problem", async () => {
+  const seats = await run((rows) => { for (const r of rows["courses.xlsx"].slice(1, 5)) r[3] = "two"; });
+  assert.equal(seats.slots["courses.xlsx"], "courses.xlsx, row 2: seats must be a positive whole number; 3 more rows to fix");
+  const emails = await run((rows) => { rows["round1.xlsx"][1][EMAIL] = "nobody1@fernhollow.example"; rows["round1.xlsx"][2][EMAIL] = "nobody2@fernhollow.example"; });
+  assert.equal(emails.slots["round1.xlsx"], "round1.xlsx, row 2: email is not on the staff list; 1 more row to fix");
+  // Different problems on different rows still count once each.
+  const mixed = await run((rows) => { rows["staff.xlsx"][3][1] = ""; rows["staff.xlsx"][5][0] = "two@one@x"; });
+  assert.equal(mixed.slots["staff.xlsx"], "staff.xlsx, row 4: name is empty; 1 more row to fix");
+});
+
+// A certificate on the staff list that no course asks for may be a misspelling: its holder never qualifies for the
+// course that needs it. Counted only, since nothing typed in a file is shown.
+test("certificates no course asks for are counted", async () => {
+  const plain = await run();
+  assert.equal(plain.otherCerts, 0);
+  const odd = await run((rows) => {
+    const free = rows["staff.xlsx"].slice(1).filter((r) => !r[2]);
+    free[0][2] = "Scubba certificate";
+    free[1][2] = "First aid; scubba  CERTIFICATE";
+    free[2][2] = "First Aid";
+  });
+  assert.ok(odd.school);
+  assert.equal(odd.otherCerts, 2);
+});
+
 test("the first sheet is read whatever its name", async () => {
   const base = await run(null, seq());
   const out = await run((rows) => (rows["round2.xlsx"].sheetName = "Sheet1"), seq());

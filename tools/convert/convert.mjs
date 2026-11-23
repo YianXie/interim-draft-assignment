@@ -4,8 +4,11 @@
 import { HEADERS } from "../../src/import.js";
 import { norm, cleanEmail, courseIndex, nameKeys, findColumn, marker, stripMarker, role } from "./match.mjs";
 
-export const REQUIRED = ["courses.xlsx", "returning.xlsx", "round1.xlsx", "allocation.xlsx"];
-export const OPTIONAL = ["round2.xlsx", "singapore.xlsx"];
+// allocation.xlsx is optional for the six: an upcoming year has no final allocation yet. For last year's four (past)
+// it is the one file that says who went where, and the returning list is not needed.
+export const REQUIRED = ["courses.xlsx", "returning.xlsx", "round1.xlsx"];
+export const PAST_REQUIRED = ["courses.xlsx", "round1.xlsx", "allocation.xlsx"];
+export const OPTIONAL = ["allocation.xlsx", "returning.xlsx", "round2.xlsx", "singapore.xlsx"];
 const FORMS = ["round1.xlsx", "round2.xlsx", "singapore.xlsx"];
 const ORDINAL = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh"];
 // Key words for each written-answer column the page expects, by the page's header.
@@ -35,8 +38,9 @@ function column(file, head, words, label) {
 // Body rows with their sheet row number (header = row 1), blank rows left out.
 const body = (rows) => rows.slice(1).map((cells, i) => ({ n: i + 2, cells })).filter((r) => r.cells.some((c) => !blank(c)));
 
-export function convert(raw) {
-  for (const file of REQUIRED) if (!raw[file]) throw new Error(`${file}: not found`);
+// past: write last year's four files (past-allocation.xlsx and the three past forms) instead of the six.
+export function convert(raw, { past = false } = {}) {
+  for (const file of past ? PAST_REQUIRED : REQUIRED) if (!raw[file]) throw new Error(`${file}: not found`);
   const report = [];
   const email = (file, n, v) => {
     const e = cleanEmail(v);
@@ -54,54 +58,70 @@ export function convert(raw) {
     city: column("courses.xlsx", ch, ["city"], "Arrival City"),
     country: column("courses.xlsx", ch, ["country"], "Country"),
   };
+  // Without the allocation, a Code and a Seats column in courses.xlsx are read when it has them.
+  const own = raw["allocation.xlsx"] ? null : { code: findColumn(ch, ["code"]), seats: findColumn(ch, ["seat"]) };
+  const seatsOf = (v) => (typeof v === "number" && Number.isInteger(v) && v > 0 ? v : /^\d+$/.test(text(v)) && Number(text(v)) > 0 ? Number(text(v)) : null);
   const courses = body(raw["courses.xlsx"]).map(({ cells }) => {
     const name = stripMarker(cells[at.name]);
     mark(name, cells[at.name]);
-    return { name, vendor: text(cells[at.vendor]), city: text(cells[at.city]), country: text(cells[at.country]), code: "", seats: null };
+    return { name, vendor: text(cells[at.vendor]), city: text(cells[at.city]), country: text(cells[at.country]),
+      code: own && own.code >= 0 ? text(cells[own.code]) : "", seats: own && own.seats >= 0 ? seatsOf(cells[own.seats]) : null };
   });
   let index = courseIndex(courses);
+  const ran = []; // the allocation's rows, in order: { code, course, names }
+  if (own) {
+    report.push("no allocation.xlsx: every course is offered, Singapore courses come only from courses.xlsx, and staff names are left blank");
+    const noCode = courses.filter((c) => !c.code);
+    if (own.code < 0) report.push(`courses.xlsx: no Course Code column, so all ${courses.length} codes are blank; fill them in`);
+    else for (const c of noCode) report.push(`courses.xlsx: "${c.name}" has no course code; fill it in`);
+    if (own.seats < 0) report.push("courses.xlsx: no Seats column, so every course has 2 seats; check them");
+    else for (const c of courses.filter((x) => x.seats === null)) report.push(`courses.xlsx: "${c.name}" has no seats number, so it has 2; check it`);
+  }
 
-  const ah = raw["allocation.xlsx"][0] ?? [];
-  const aCode = column("allocation.xlsx", ah, ["code"], "Trip Code");
-  const aName = column("allocation.xlsx", ah, ["course", "name"], "Course Name");
-  const aSponsors = ah.map((h, i) => (norm(h).includes("sponsor") ? i : -1)).filter((i) => i >= 0);
-  if (!aSponsors.length) throw new Error(`allocation.xlsx: no column for Sponsor 1 (looked for a header with "sponsor")`);
   const sponsors = [];
   const added = [];
-  for (const { n, cells } of body(raw["allocation.xlsx"])) {
-    const code = text(cells[aCode]);
-    let name = text(cells[aName]);
-    if (code && norm(name).startsWith(norm(code))) name = name.slice(code.length).replace(/^[\s—–:-]+/, "");
-    const names = aSponsors.map((i) => text(cells[i])).filter(Boolean);
-    sponsors.push(...names.map((full) => ({ n, full })));
-    let c = index.find(name);
-    if (!c && (c = index.near(name, { words: false }))) report.push(`allocation.xlsx, row ${n}: "${name}" taken as "${c.name}", the closest name in courses.xlsx; check it`);
-    if (!c) {
-      // Singapore courses are on the allocation only.
-      c = { name: stripMarker(name), vendor: "", city: "", country: "Singapore", code: "", seats: null };
-      courses.push(c);
-      added.push(c.name);
-      index = courseIndex(courses);
+  if (raw["allocation.xlsx"]) {
+    const ah = raw["allocation.xlsx"][0] ?? [];
+    const aCode = column("allocation.xlsx", ah, ["code"], "Trip Code");
+    const aName = column("allocation.xlsx", ah, ["course", "name"], "Course Name");
+    const aSponsors = ah.map((h, i) => (norm(h).includes("sponsor") ? i : -1)).filter((i) => i >= 0);
+    if (!aSponsors.length) throw new Error(`allocation.xlsx: no column for Sponsor 1 (looked for a header with "sponsor")`);
+    for (const { n, cells } of body(raw["allocation.xlsx"])) {
+      const code = text(cells[aCode]);
+      let name = text(cells[aName]);
+      if (code && norm(name).startsWith(norm(code))) name = name.slice(code.length).replace(/^[\s—–:-]+/, "");
+      const names = aSponsors.map((i) => text(cells[i])).filter(Boolean);
+      sponsors.push(...names.map((full) => ({ n, full })));
+      let c = index.find(name);
+      if (!c && (c = index.near(name, { words: false }))) report.push(`allocation.xlsx, row ${n}: "${name}" taken as "${c.name}", the closest name in courses.xlsx; check it`);
+      if (!c) {
+        // Singapore courses are on the allocation only.
+        c = { name: stripMarker(name), vendor: "", city: "", country: "Singapore", code: "", seats: null };
+        courses.push(c);
+        added.push(c.name);
+        index = courseIndex(courses);
+      }
+      mark(c.name, name);
+      if (c.code) {
+        report.push(`allocation.xlsx, row ${n}: "${c.name}" is on the allocation twice; the first row is used`);
+        continue;
+      }
+      c.code = code;
+      c.seats = names.length || null;
+      ran.push({ code, course: c, names });
     }
-    mark(c.name, name);
-    if (c.code) {
-      report.push(`allocation.xlsx, row ${n}: "${c.name}" is on the allocation twice; the first row is used`);
-      continue;
-    }
-    c.code = code;
-    c.seats = names.length || null;
   }
   if (added.length) report.push(`allocation.xlsx: ${added.length} course${added.length > 1 ? "s are" : " is"} not in courses.xlsx, so added as Singapore: ${added.join(", ")}; check each is a Singapore course`);
   for (const name of index.duplicates) report.push(`courses.xlsx: two courses have the same name "${name}"; the page needs each name once`);
   // A course not on the final allocation did not run: Offered No, with a NOTRUN-n code no other course uses.
   const codes = new Set(courses.map((c) => c.code).filter(Boolean));
   let next = 1;
-  for (const c of courses.filter((c) => !c.code)) {
+  for (const c of own ? [] : courses.filter((c) => !c.code)) {
     while (codes.has(`NOTRUN-${next}`)) next++;
     c.code = `NOTRUN-${next}`;
     c.offered = "No";
     codes.add(c.code);
-    report.push(`courses.xlsx: "${c.name}" is not on the allocation, so it is marked not offered as ${c.code}`);
+    if (!past) report.push(`courses.xlsx: "${c.name}" is not on the allocation, so it is marked not offered as ${c.code}`);
   }
 
   const files = {};
@@ -159,6 +179,23 @@ export function convert(raw) {
     files[file] = [want, ...[...kept.values()].sort((a, b) => a.n - b.n).map((x) => x.row)];
   }
 
+  // Last year's four: the allocation as the page reads it (each course and its sponsors by name), and the forms as they
+  // are. A form with no raw file is written with headers only, since the page takes all four or none.
+  if (past) {
+    const n = Math.max(1, ...ran.map((r) => r.names.length));
+    const out = {
+      "past-allocation.xlsx": [["Course Code", "Course Name", ...Array.from({ length: n }, (_, i) => `Sponsor ${i + 1}`)],
+        ...ran.map((r) => [r.code, r.course.name, ...Array.from({ length: n }, (_, i) => r.names[i] ?? "")])],
+    };
+    for (const file of FORMS) out[`past-${file}`] = [HEADERS[`past-${file}`], ...(files[file]?.slice(1) ?? [])];
+    // The Last year tab refuses one person on two courses, but can only tell once this year's staff.xlsx is beside it.
+    const on = new Map();
+    for (const r of ran) for (const who of r.names) on.set(norm(who), [...(on.get(norm(who)) ?? []), r.course.name]);
+    for (const [, where] of on) if (where.length > 1) report.push(`allocation.xlsx: one sponsor name is on ${where.length} courses (${where.join(", ")}); the Last year tab refuses that if it is one person`);
+    for (const [name, m] of marked) report.push(`"${name}" is marked (${m}) in the raw files; the page does not read this`);
+    return { files: out, report };
+  }
+
   for (const [name, m] of marked) report.push(`"${name}" is marked (${m}) in the raw files; the page does not read this, so check who is placed on it`);
 
   // Returning: Prior Course copied as the code, checked by hand when it is not one of this year's codes.
@@ -179,13 +216,13 @@ export function convert(raw) {
   }
   files["returning.xlsx"] = [HEADERS["returning.xlsx"], ...back.values()];
 
-  files["staff.xlsx"] = [HEADERS["staff.xlsx"], ...staff(files, sponsors, report)];
+  files["staff.xlsx"] = [HEADERS["staff.xlsx"], ...staff(files, sponsors, report, !own)];
   return { files, report };
 }
 
 // Every email on a form or the returning list, named from the allocation only when exactly one sponsor fits it and
 // that sponsor fits no other email. Certificates are left blank.
-function staff(files, sponsors, report) {
+function staff(files, sponsors, report, named) {
   const emails = new Set(files["returning.xlsx"].slice(1).map((r) => r[0]));
   for (const file of FORMS) for (const r of files[file]?.slice(1) ?? []) emails.add(r[1]);
   // A key fits its own local part and that part with a number after it (jsmith, jsmith2), so a numbered twin is never missed.
@@ -196,6 +233,10 @@ function staff(files, sponsors, report) {
     if (!fits.length) report.push(`allocation.xlsx, row ${n}: sponsor "${full}" has no email on any form or the returning list; add them to staff.xlsx by hand`);
     else if (fits.length > 1) report.push(`allocation.xlsx, row ${n}: sponsor "${full}" fits more than one email (${fits.join(", ")}); fill in those names by hand`);
     else names.get(fits[0]).add(full);
+  }
+  if (!named) {
+    report.push(`staff.xlsx: no allocation.xlsx, so all ${emails.size} names are blank; fill them in`);
+    return [...emails].sort().map((e) => [e, "", ""]);
   }
   return [...emails].sort().map((e) => {
     const fit = [...names.get(e)];

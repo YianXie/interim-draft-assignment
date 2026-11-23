@@ -112,8 +112,9 @@ Turning the office's raw form exports into these files, and comparing a draft wi
 - **Moves happen in one click**, with no "are you sure". **Undo** at the bottom right takes the last one back.
 - **A move that breaks a rule is allowed.** The options list warns before you click, for example "Full" or "No scuba certificate". Afterwards a course that is over its seats, or has a sponsor without the certificate, is on **To do** until it is put right, and the download says so under Status.
 - **Start over** is at the bottom of **History**.
-- **The file name picks what a file is**: `courses.xlsx`, `staff.xlsx` and so on. Capital letters and a second download's `courses (1).xlsx` or `courses copy.xlsx` are fine; any other name is not read. Unzip the sample zip first; the zip itself is not read.
-- **One problem per file is shown at a time.** Fix it, add the file again, and the next one (if any) shows.
+- **The file name picks what a file is**: `courses.xlsx`, `staff.xlsx` and so on. Capital letters and a second download's `courses (1).xlsx` or `courses copy.xlsx` are fine; any other name is not read. A folder holding the files, or a zip of them such as the sample zip, can be dropped as it is.
+- **A red file row shows its first problem**, and how many more rows need fixing. Fix them, add the file again, and the next problem (if any) shows.
+- **`staff.xlsx` may say "1 certificate no course needs".** That is fine for a certificate like First Aid. If it should be one a course asks for, check its spelling matches `courses.xlsx`; otherwise those teachers are never placed on that course.
 - The draft is saved in Chrome on this Mac, so it is still there after closing everything.
 
 ## 5. Stop it

@@ -4,6 +4,7 @@ import { RESULT_LABEL } from "./past.js";
 import { loadHighs, solveDraft, toDraft } from "./solver.js";
 import { recheck, newProblems } from "./recheck.js";
 import { sheetsFor, fileName } from "./export.js";
+import { expand } from "./drop.js";
 import { writeBook } from "./xlsx.js";
 import { addSnapshot, loadAll, replaceUpload, saveUpload, wipe } from "./store.js";
 
@@ -24,6 +25,7 @@ let phase = "loading"; // loading, start, building or draft
 let buildFailed = false; // the last Build gave no draft: Start says so, with the same files still listed, until they change
 let slots = {};
 let parsed = null;
+let otherCerts = 0; // certificates on staff.xlsx that no course asks for, counted on its row
 let reading = 0;
 let wasReady = false; // Build could be pressed at the last render
 let queue = Promise.resolve();
@@ -106,10 +108,15 @@ const KNOWN = [...SLOTS, ...PAST_SLOTS, FIT];
 const readBytes = (f) => f.arrayBuffer().then((b) => new Uint8Array(b), () => new Uint8Array());
 // A dropped file is held under the slot its name picks, so "Courses (1).xlsx" replaces courses.xlsx and is listed as it.
 const namedFor = (f) => { const name = slotName(f.name); return { name, arrayBuffer: () => f.arrayBuffer() }; };
-// Drops and removals are handled strictly in order, so a later file always replaces an earlier one of the same name.
+// The files a drop or the chooser holds, with folders opened and zips unpacked. Taken at once: a drop's items, and the
+// chooser's list once it is cleared, are gone after the event.
+const dropped = (e) => expand([...e.dataTransfer.items].filter((i) => i.kind === "file").map((i) => ({ entry: i.webkitGetAsEntry?.() ?? null, file: i.getAsFile() })));
+const chosen = (input) => expand([...input.files].map((file) => ({ entry: null, file })));
+// list: files, or a promise of them. Drops and removals are handled strictly in order, so a later file always replaces
+// an earlier one of the same name.
 function addFiles(list, remove = null) {
   if (phase !== "start") return;
-  const files = [...list].map(namedFor);
+  const files = Promise.resolve(list).then((l) => [...l].map(namedFor));
   reading += 1;
   parsed = null;
   buildFailed = false;
@@ -117,15 +124,17 @@ function addFiles(list, remove = null) {
   queue = queue.then(async () => {
     try {
       if (remove !== null) held.delete(remove);
-      for (const f of files) held.set(f.name, { name: f.name, bytes: await readBytes(f) });
+      for (const f of await files) held.set(f.name, { name: f.name, bytes: await readBytes(f) });
       // Last year's files are read together with the six, so the School carries last year.
       const named = (yes) => [...held.values()].filter((f) => KNOWN.includes(f.name) === yes);
       // A file with any other name keeps its one line but never holds up Build.
       const out = await parseFiles(named(true));
       slots = { ...(await parseFiles(named(false))).slots, ...out.slots };
       parsed = out.school;
+      otherCerts = out.otherCerts;
     } catch {
       parsed = null;
+      otherCerts = 0;
     } finally {
       reading -= 1;
       render();
@@ -215,9 +224,10 @@ function slotRowBody(name, s = slots) {
   const v = s[name], about = ABOUT[name] ? `<small class="q about">${esc(ABOUT[name])}</small>` : "";
   // Entries on last year's allocation that matched nobody on the staff list: a number only, never the entries.
   const lost = name === PAST_SLOTS[0] && parsed && parsed.past ? parsed.past.unmatched.length : 0;
+  const certs = name === "staff.xlsx" && s === slots ? otherCerts : 0;
   const head = `<span><b>${esc(name)}</b>${about}</span>`;
   if (v === OPTIONAL) return `<div class="row r-two r-file" data-row data-slot="${esc(name)}">${head}<span class="q" data-line>optional, not added</span></div>`;
-  if (v === "ready") return `<div class="row r-two r-file" data-row data-slot="${esc(name)}">${head}<span class="q" data-line>ready${lost ? `, ${lost} not matched` : ""}</span></div>`;
+  if (v === "ready") return `<div class="row r-two r-file" data-row data-slot="${esc(name)}">${head}<span class="q" data-line>ready${lost ? `, ${lost} not matched` : ""}${certs ? `, ${many(certs, "certificate")} no course needs` : ""}</span></div>`;
   if (!v || v.endsWith("file not added")) {
     // A past file before any of the four is added is a placeholder only: it is not a slot until one of them arrives.
     const attr = v ? `data-slot="${esc(name)}"` : `data-placeholder="${esc(name)}"`;
@@ -246,7 +256,7 @@ function startView() {
   const past = PAST_SLOTS;
   return `<div class="narrow drop" data-drop>
     <h1 class="big" data-big>${buildFailed ? "Couldn't build a draft from these files" : startTab === "now" ? "Drop this year's files here" : "Drop last year's four files here"}</h1>
-    <div class="links"><label class="link choose">Choose files<input type="file" multiple accept=".xlsx" data-k="files"></label>
+    <div class="links"><label class="link choose">Choose files<input type="file" multiple accept=".xlsx,.zip" data-k="files"></label>
     <button class="link sample" data-act="sample">Use sample data</button>
     <a class="link sample-zip" data-k="sample-zip" href="sample/${startTab === "now" ? "sample-this-year.zip" : "sample-last-year.zip"}" download>Download sample data</a></div>
     ${startTabs()}
@@ -493,7 +503,7 @@ function laterReset() {
 }
 function addLaterFiles(list, remove = null) {
   if (phase !== "draft") return;
-  const files = [...list].map(namedFor), gen = laterGen;
+  const files = Promise.resolve(list).then((l) => [...l].map(namedFor)), gen = laterGen;
   laterReading += 1;
   laterRead = null;
   laterFailed = false;
@@ -502,7 +512,7 @@ function addLaterFiles(list, remove = null) {
     try {
       if (gen !== laterGen) return;
       if (remove !== null) laterHeld.delete(remove);
-      for (const f of files) laterHeld.set(f.name, { name: f.name, bytes: await readBytes(f) });
+      for (const f of await files) laterHeld.set(f.name, { name: f.name, bytes: await readBytes(f) });
       const out = laterHeld.size ? await readForms(Mock.school(), [...laterHeld.values()]) : { school: null, slots: {} };
       laterSlots = out.slots;
       laterRead = out.school ? out : null;
@@ -549,7 +559,7 @@ function formsCard() {
   return card(`<div data-drop>${back()}${title("Add forms")}
     <p class="q intro" data-later-note>Forms are read, never stored in this browser, so after Add and place each file says file not added again.</p>
     <div class="gap" data-rows>${[...LATER, ...others].map((n) => slotRow(n, laterSlots, laterHeld)).join("")}</div>
-    <div class="links"><label class="link choose">Choose files<input type="file" multiple accept=".xlsx" data-k="later-files"></label></div>
+    <div class="links"><label class="link choose">Choose files<input type="file" multiple accept=".xlsx,.zip" data-k="later-files"></label></div>
     ${laterFailed ? `<p class="need gap" data-failed>Couldn't place anyone. Nothing changed.</p>` : ""}
     <div class="acts"><button class="btn fill" data-act="addLater" data-k="addLater"${canAdd() ? "" : " disabled"}>${placing ? "Placing" : "Add and place"}</button></div></div>`);
 }
@@ -769,16 +779,17 @@ document.addEventListener("toggle", (e) => {
   if (e.target.matches && e.target.matches("[data-about]")) aboutOpen = e.target.open;
 }, true);
 document.addEventListener("change", (e) => {
-  if (e.target.matches('[data-k="files"]')) { addFiles(e.target.files); e.target.value = ""; }
-  if (e.target.matches('[data-k="later-files"]')) { addLaterFiles(e.target.files); e.target.value = ""; }
+  if (e.target.matches('[data-k="files"]')) { addFiles(chosen(e.target)); e.target.value = ""; }
+  if (e.target.matches('[data-k="later-files"]')) { addLaterFiles(chosen(e.target)); e.target.value = ""; }
 });
-// A file dropped anywhere on the page counts, and never makes the browser navigate to it.
+// A file, folder or zip dropped anywhere on the page counts, and never makes the browser navigate to it.
 window.addEventListener("dragover", (e) => e.preventDefault());
 // While the Add forms card is open, a drop goes to the card; otherwise to Start.
 window.addEventListener("drop", (e) => {
   e.preventDefault();
-  if (phase === "draft" && top_()?.k === "forms") addLaterFiles(e.dataTransfer.files);
-  else addFiles(e.dataTransfer.files);
+  const list = dropped(e);
+  if (phase === "draft" && top_()?.k === "forms") addLaterFiles(list);
+  else addFiles(list);
 });
 
 Mock.on(render);

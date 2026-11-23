@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { writeBook } from "../../src/xlsx.js";
-import { parseFiles, SLOTS } from "../../src/import.js";
+import { parseFiles, SLOTS, PAST_SLOTS } from "../../src/import.js";
 import { rawSchool } from "./convert-fixture.mjs";
 
 const run = promisify(execFile);
@@ -68,7 +68,37 @@ test("an unmatched choice still converts, and the report ends with the page's ow
 
 test("a missing raw file stops the run with its name", async () => {
   const raw = cleanSchool();
+  delete raw["round1.xlsx"];
+  const dir = await rawFolder(raw);
+  await assert.rejects(convertInto(dir), (e) => e.code === 1 && /round1\.xlsx/.test(e.stderr));
+});
+
+// The allocation was required until 2026-11-23; an upcoming year has none yet.
+test("without the allocation the run still writes the six, and the report says what to fill in", async () => {
+  const raw = cleanSchool();
   delete raw["allocation.xlsx"];
   const dir = await rawFolder(raw);
-  await assert.rejects(convertInto(dir), (e) => e.code === 1 && /allocation\.xlsx/.test(e.stderr));
+  await convertInto(dir);
+  const report = await readFile(join(dir, "out", "convert-report.txt"), "utf8");
+  assert.match(report, /no allocation\.xlsx/);
+  assert.match(report.trim().split("\n").at(-1), /^Start would show: /);
+});
+
+test("--past writes last year's four files, and Start takes them with this year's six", async () => {
+  const dir = await rawFolder(cleanSchool());
+  await convertInto(dir);
+  // Last year's raw folder: the same school, without the row that puts one sponsor on a second course.
+  const last = cleanSchool();
+  last["allocation.xlsx"].pop();
+  const lastDir = await rawFolder(last);
+  const pastRun = () => run(process.execPath, [TOOL, "--in", join(lastDir, "raw"), "--out", join(dir, "past"), "--past"]);
+  const { stdout } = await pastRun();
+  assert.match(stdout, /Start takes these files/);
+  const past = await Promise.all(PAST_SLOTS.map(async (name) => ({ name, bytes: new Uint8Array(await readFile(join(dir, "past", name))) })));
+  const { school, slots } = await parseFiles([...(await six(dir)), ...past]);
+  assert.ok(school && school.past, JSON.stringify(slots));
+  const wen = school.teachers.find((t) => t.email === "woxley@oldschool.example");
+  assert.deepEqual(wen.lastYear, { result: "top4", rank: 1, round: "Round 1" });
+  // A second --past run into the same folder stops.
+  await assert.rejects(pastRun(), (e) => e.code === 1 && /already/.test(e.stderr));
 });

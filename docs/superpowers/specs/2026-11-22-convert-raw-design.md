@@ -52,3 +52,9 @@ Course Name, Vendor, Arrival City, Country; Trip Code, Course Name, Sponsor 1..n
 
 Exact key words per column; dash and spacing normalisation; report wording. Tests use only invented files, laid out
 like the raw ones, with an invented old domain.
+
+## Added 2026-11-23
+
+- `allocation.xlsx` is optional: without it, Code and Seats columns in `courses.xlsx` are read if present (else codes blank and
+  seats 2, listed), every course is offered, no `NOTRUN-n` codes are made, and staff names are blank with one report line.
+- `--past` writes last year's four files from a year's raw folder with its allocation; `returning.xlsx` is not needed.

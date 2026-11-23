@@ -114,6 +114,18 @@ test("a bad file shows one plain line and Build stays locked", async ({ page }) 
   await expect(buildButton(page)).toBeDisabled();
 });
 
+test("the staff row counts certificates no course needs, and a file with several bad rows says how many", async ({ page }) => {
+  const dir = await variant((file, rows) => {
+    if (file === "staff.xlsx") rows.slice(1).filter((r) => !r[2]).slice(0, 2).forEach((r) => (r[2] = "Scubba certificate"));
+  });
+  // The count needs the course list, which says which certificates are asked for.
+  await dropSchool(page, dir);
+  await expect(slot(page, "staff.xlsx").locator("[data-line]")).toHaveText("ready, 1 certificate no course needs");
+  const bad = await variant((file, rows) => { if (file === "courses.xlsx") { rows[1][3] = "two"; rows[2][3] = "three"; } });
+  await page.locator('[data-k="files"]').setInputFiles(join(bad, "courses.xlsx"));
+  await expect(slot(page, "courses.xlsx").locator("[data-line]")).toHaveText("Row 2: seats must be a positive whole number; 1 more row to fix");
+});
+
 test("a stray file keeps its line but does not lock Build", async ({ page }) => {
   await page.goto("/");
   const payload = schoolFiles().map((p) => ({ name: basename(p), mimeType: "application/octet-stream", buffer: readFileSync(p) }));
@@ -136,6 +148,15 @@ test("Courses (1).xlsx and Staff copy.xlsx fill their slots", async ({ page }) =
   await page.locator('[data-k="files"]').setInputFiles({ name: "courses (2).xlsx", mimeType: "application/octet-stream", buffer: Buffer.from("x") });
   await expect(slot(page, "courses.xlsx")).toContainText("Not a readable .xlsx file");
   await expect(buildButton(page)).toBeDisabled();
+});
+
+// The sample zip from Download sample data, dropped as it is: its six files fill their slots.
+test("a dropped zip of the files is opened", async ({ page }) => {
+  await page.goto("/");
+  await dropFiles(page, ["dist/sample/sample-this-year.zip"]);
+  await expect(page.locator("[data-slot]", { hasText: "ready" })).toHaveCount(6);
+  await expect(page.locator("[data-slot]", { hasText: "zip" })).toHaveCount(0);
+  await expect(buildButton(page)).toBeEnabled();
 });
 
 test("a file can be removed and the same file added again", async ({ page }) => {
