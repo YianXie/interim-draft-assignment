@@ -7,7 +7,16 @@ url=http://127.0.0.1:4173
 
 say() { printf '%s\n' "$@"; }
 fail() { say "" "$@" "" "You can close this window."; exit 1; }
-open_page() { open -a "Google Chrome" "$url" 2>/dev/null || open "$url"; }
+# Chrome when it is there. Without it the page opens in the Mac's usual browser, and says so: a draft is kept by the
+# browser it was made in, so one made in Chrome before would look lost.
+browser=Chrome
+open_page() {
+  open -a "Google Chrome" "$url" 2>/dev/null && return
+  browser="that browser"
+  say "" "Google Chrome was not found, so the page is opening in this Mac's usual browser." \
+    "A draft is kept by the browser it was made in. One made in Chrome before will not show here."
+  open "$url"
+}
 
 # A folder unzipped from a download is marked as from the internet, which is why the first double-click needed
 # Open Anyway. Clearing the mark on this folder only (no password needed) lets later double-clicks just open.
@@ -95,5 +104,5 @@ done
 open_page
 say "" "Running at $url" "" \
   "Leave this window open while you use the page." \
-  "To stop: close this window (click Terminate if asked). Your draft stays saved in Chrome."
+  "To stop: close this window (click Terminate if asked). Your draft stays saved in $browser."
 wait "$server"

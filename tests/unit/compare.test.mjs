@@ -11,7 +11,10 @@ import { readSchool } from "./school-fixture.mjs";
 import { loadHighs, solveDraft } from "../../src/solver.js";
 import { writeBook, readBook } from "../../src/xlsx.js";
 import { SLOTS } from "../../src/import.js";
-import { compare, readDraft, readOffice } from "../../tools/compare/compare.mjs";
+import { compare, readDraft, readOffice, builtWithOther } from "../../tools/compare/compare.mjs";
+import { Mock } from "../../src/state.js";
+import { toDraft } from "../../src/solver.js";
+import { sheetsFor } from "../../src/export.js";
 
 const run = promisify(execFile);
 const TOOL = fileURLToPath(new URL("../../tools/compare.mjs", import.meta.url));
@@ -48,6 +51,29 @@ test("the same allocation on both sides agrees everywhere", () => {
   assert.deepEqual(value(r.summary, "Broken rules, all"), ["Broken rules, all", 0, 0]);
   // The choice table is all on its diagonal.
   for (let i = 1; i < r.cross.length - 1; i++) r.cross[i].slice(1, -1).forEach((v, j) => j + 1 !== i && assert.equal(v, 0));
+});
+
+// The page's own download, not a hand-typed sheet: a renamed column or sheet in export.js must fail here.
+test("the page's download with names on is read, and its Files sheet agrees with the six alone", () => {
+  Mock.init(school);
+  Mock.build(toDraft(school, pairs));
+  Mock.setNames(true);
+  const sheets = sheetsFor(Mock);
+  const report = [];
+  assert.deepEqual([...readDraft(school, sheets, report)].sort(), pairs.map(([t, c]) => [t, c]).sort());
+  assert.deepEqual(report, []);
+  assert.deepEqual(builtWithOther(school, sheets), []);
+});
+
+test("a folder with files the draft was not built with, or without ones it was, is said", () => {
+  const files = (past, fit) => [{ name: "Files", rows: [["File", "Added"], ...["past-allocation.xlsx", "past-round1.xlsx", "past-round2.xlsx", "past-singapore.xlsx"].map((f) => [f, past]), ["fit.xlsx", fit]] }];
+  assert.deepEqual(builtWithOther(school, files("No", "No")), []);
+  assert.deepEqual(builtWithOther({ ...school, fit: true }, files("No", "No")), ["the folder has fit.xlsx, but the draft was built without it: its measures count things the draft never saw"]);
+  assert.deepEqual(builtWithOther(school, files("Yes", "No")), ["the draft was built with last year's files, but the folder does not have them: their measures are left out"]);
+  assert.equal(builtWithOther({ ...school, past: { unmatched: [] }, fit: true }, files("Yes", "Yes")).length, 0);
+  assert.equal(builtWithOther({ ...school, past: { unmatched: [] } }, files("No", "Yes")).length, 2);
+  // An older download has no Files sheet: nothing can be said.
+  assert.deepEqual(builtWithOther({ ...school, fit: true }, []), []);
 });
 
 test("points match the solver's second value", async () => {

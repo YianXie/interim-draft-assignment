@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { readBook, writeBook } from "../src/xlsx.js";
 import { parseFiles, SLOTS, PAST_SLOTS, FIT } from "../src/import.js";
-import { compare, readDraft, readOffice } from "./compare/compare.mjs";
+import { compare, readDraft, readOffice, builtWithOther } from "./compare/compare.mjs";
 
 const stop = (line) => {
   console.error(line);
@@ -38,7 +38,9 @@ if (!school) stop(["Start would refuse these files:", ...Object.values(slots).fi
 const report = [];
 let result;
 try {
-  const draft = readDraft(school, await book(opt.draft, "draft"), report);
+  const sheets = await book(opt.draft, "draft");
+  report.push(...builtWithOther(school, sheets).map((l) => `--six: ${l}`));
+  const draft = readDraft(school, sheets, report);
   const office = readOffice(school, (await book(opt.office, "office"))[0]?.rows ?? [], report);
   result = compare(school, draft, office);
 } catch (e) {

@@ -30,7 +30,7 @@ A double-click opens a Terminal window; the first time, it is the window you typ
 
 - **The first time only**, it may say the Mac needs Node 24. Type `y` and press Return. It fetches Node into the folder; no password is needed.
 - It then says "Getting the parts the page needs". This takes about a minute the first time.
-- Chrome opens the page on its own. If it doesn't, open Chrome and go to `http://127.0.0.1:4173`.
+- Chrome opens the page on its own. If it doesn't, open Chrome and go to `http://127.0.0.1:4173`. If the window says Google Chrome was not found, the page opened in another browser; install Chrome and use it, so the draft is always in one place.
 
 **Leave the Terminal window open** while you use the page. Closing it stops the page.
 
@@ -107,7 +107,7 @@ Turning the office's raw form exports into these files, and comparing a draft wi
 
 ## Good to know
 
-- **One tab is simplest.** A second tab of the page follows the first, so changes in either are kept. If the bottom left ever says **Not saved**, reload the page; the last change may need doing again.
+- **One tab is simplest.** A second tab of the page follows the first, so changes in either are kept. If the bottom left ever says **Not saved**, click **Download** first, then reload the page: the download holds every change, and the reload goes back to the last one that was saved.
 - **Show names is off at first**, and **Download** follows it: with names off, the workbook has T numbers only.
 - **Moves happen in one click**, with no "are you sure". **Undo** at the bottom right takes the last one back.
 - **A move that breaks a rule is allowed.** The options list warns before you click, for example "Full" or "No scuba certificate". Afterwards a course that is over its seats, or has a sponsor without the certificate, is on **To do** until it is put right, and the download says so under Status.
@@ -130,7 +130,8 @@ Close the Chrome tab of the page, then close the Terminal window. If it asks, cl
 | Terminal says "Could not get the parts" or "Could not reach nodejs.org" | Check the internet connection and double-click again. A school network may block it; try another network. |
 | Terminal says something else is using the address | Quit the other program, or restart the Mac, then double-click again. |
 | The page opens on an old draft | That is the draft saved from last time. **History**, then **Start over**, gives a fresh start. |
-| Bottom left says **Not saved** | Reload the page. Check the last change is there; if not, make it again. |
+| Bottom left says **Not saved** | Changes made from now on are not being saved. Click **Download** to keep them in a workbook, then reload the page. Anything missing after the reload is in that workbook; make those changes again. |
+| The page opens on Start, though a draft was saved | The draft is kept by the browser it was made in. Open `http://127.0.0.1:4173` in that browser, usually Chrome. |
 | A file row is red | Read the row: it names the file, the row and the problem. Fix it in Excel, save, and add it again. |
 
 ## Tell me

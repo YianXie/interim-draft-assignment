@@ -783,6 +783,9 @@ window.addEventListener("drop", (e) => {
 
 Mock.on(render);
 Mock.onSnapshot(remember);
+// Asks the browser not to clear the saved draft when the disk runs low. Asked once a draft exists; a no changes nothing.
+const keepStorage = () => { try { navigator.storage?.persist?.().catch(() => {}); } catch { /* not offered here */ } };
+Mock.onSnapshot(keepStorage);
 
 async function boot() {
   const saved = await loadAll().catch((err) => {
@@ -795,6 +798,7 @@ async function boot() {
     saveId = saved.saveId;
     phase = "draft";
     Mock.init(saved.school, saved.snapshots);
+    keepStorage();
   } else {
     phase = "start";
     addFiles([]);

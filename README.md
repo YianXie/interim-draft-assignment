@@ -56,7 +56,7 @@ Its sample data and tests are invented: an invented school, invented people, inv
 ## Draft against the office's allocation
 
 - `tools/compare.mjs` measures a downloaded draft and the office's final allocation the same way, against the files loaded on Start: `node tools/compare.mjs --six <folder> --draft <path to the download with names> --office <allocation.xlsx> --out <compare.xlsx>`.
-- `--six` is the folder of files loaded on Start: the six, plus the four `past-*.xlsx` and `fit.xlsx` when they were loaded, which adds their measures. `--draft` is the path to the download, wherever it was saved (for example in `~/Downloads`). `--office` is the same raw `allocation.xlsx` given to the converter. `--out` is optional and never overwritten.
+- `--six` is the folder of files loaded on Start: the six, plus the four `past-*.xlsx` and `fit.xlsx` when they were loaded, which adds their measures. `--draft` is the path to the download, wherever it was saved (for example in `~/Downloads`). `--office` is the same raw `allocation.xlsx` given to the converter. `--out` is optional and never overwritten. If the folder has `fit.xlsx` or last year's files and the draft was built without them, or the other way round, that is listed first under things to check.
 - It prints seats filled, what choice each side gave (1st, top 3, top 4, average), the draft's own points, rules the page checks, and how many teachers are on the same course in both, then a table of the draft's choice against the office's. The `--out` workbook adds a row per teacher and per course, with names, so keep it outside the repo.
 - Sponsors are matched to `staff.xlsx` by name, else by first initial and last name in the email when only one fits. Anything it could not match is listed.
 

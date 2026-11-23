@@ -36,6 +36,21 @@ const loose = (s) => stripMarker(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toL
 const body = (rows) => rows.slice(1).map((cells, i) => ({ n: i + 2, cells })).filter((r) => r.cells.some((c) => !blank(c)));
 const pct = (a, b) => (b ? `${Math.round((100 * a) / b)}%` : "-");
 
+// The download's Files sheet says which optional files the draft was built with. Lines for each one where the --six
+// folder differs, since both sides are then measured against files the draft did not have, or without ones it did.
+export function builtWithOther(school, sheets) {
+  const sheet = sheets.find((s) => s.name === "Files");
+  if (!sheet) return [];
+  const added = (name) => body(sheet.rows).some(({ cells }) => text(cells[0]) === name && norm(cells[1]) === "yes");
+  const out = [];
+  for (const [what, had, has] of [["last year's files", added("past-allocation.xlsx"), !!school.past], ["fit.xlsx", added("fit.xlsx"), !!school.fit]]) {
+    const it = what === "fit.xlsx" ? ["it", "its", "has"] : ["them", "their", "have"];
+    if (has && !had) out.push(`the folder has ${what}, but the draft was built without ${it[0]}: ${it[1]} measures count things the draft never saw`);
+    if (had && !has) out.push(`the draft was built with ${what}, but the folder does not ${it[2] === "has" ? "have it" : "have them"}: ${it[1]} measures are left out`);
+  }
+  return out;
+}
+
 // The draft's Teachers sheet: Email and Course Code, read by header.
 export function readDraft(school, sheets, report) {
   const sheet = sheets.find((s) => s.name === "Teachers");
