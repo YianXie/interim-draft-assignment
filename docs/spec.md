@@ -66,7 +66,7 @@ The inline `<style>` block from `flow.html` moves as is to `style.css`; the only
 
 - **Start:** one drop zone, at most 80 words. No school name or year, since the office loads its own files (changed 2026-11-22 by the owner; it said "Invented school" and "Interim 2028").
 - **Tabs:** To do (opens first, one item at a time), Teachers, Courses. The big line says how many To do items are left.
-- **To do items:** short or empty offered courses; people with a form not placed; one single group item for everyone with no form who isn't placed, with "Leave them unplaced".
+- **To do items:** short or empty offered courses, and courses a hand move left over their seats or with a sponsor who lacks the certificate (added 2026-11-23 by the owner); people with a form not placed; one single group item for everyone with no form who isn't placed, with "Leave them unplaced".
 - **Top bar:** the words "Interim Draft Assistant" (was "Invented school" until 2026-11-22), Show names (off at start) and Download. **Bottom line:** "Saved in this browser", Undo.
 - **Editing:** Move to (including Not placed), Move here on short courses, Leave unplaced, Undo. A move that breaks a rule shows a warning and stands.
 - **Reason per teacher:** recomputed from the current draft, at most 20 words, names no other teacher. A moved teacher shows only "Moved by the office" and their choice. A running course with a free seat gets its own sentence, not "too few sponsors to run".
@@ -82,7 +82,7 @@ IndexedDB, loaded before page code starts: one record of the parsed upload (with
 
 ## Download
 
-One `.xlsx` that follows the switch, built from the current draft, plain values, strings always as text, named "Interim draft v<version> T numbers" or "… with names" (said "Fernhollow invented draft" until 2026-11-22). Sheets: Courses (Course Code, Course Name, Sponsor 1..n, Status), Teachers (Teacher, Email, Course, Choice, Why, Status; with names off, Teacher is the T number and there is no Email column), Changes (dated, one row per edit). With names off, a Note sheet says T numbers are pseudonymous, not anonymous.
+One `.xlsx` that follows the switch, built from the current draft, plain values, strings always as text, named "Interim draft v<version> T numbers" or "… with names" (said "Fernhollow invented draft" until 2026-11-22). Sheets: Courses (Course Code, Course Name, Sponsor 1..n, Status), Teachers (Teacher, Email, Course, Choice, Why, Status; with names off, Teacher is the T number and there is no Email column), Changes (dated, one row per edit). A sponsor without the course's certificate is marked in both Status columns (added 2026-11-23). With names off, a Note sheet says T numbers are pseudonymous, not anonymous.
 
 ## Done means
 

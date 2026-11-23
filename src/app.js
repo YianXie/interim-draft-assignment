@@ -136,6 +136,16 @@ const sampleFiles = () => {
   const names = startTab === "past" ? [...SLOTS.filter((name) => !held.has(name)), ...PAST_SLOTS] : SLOTS;
   return names.map((name) => ({ name, arrayBuffer: () => fetch(`sample/${name}`).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject())) }));
 };
+// The solver file is asked for at every Build and Add and place. The copy taken when the page loaded is used only when that
+// fails, so a server stopped since then (the Terminal window closed) does not read as a problem with the files.
+const solverFile = () => fetch("highs.wasm").then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error("no solver file"))));
+const solverAtLoad = solverFile().catch(() => null);
+async function solver() {
+  const bytes = await solverFile().catch(() => solverAtLoad);
+  if (!bytes) throw new Error("no solver file");
+  const module = await WebAssembly.compile(bytes);
+  return loadHighs({ instantiateWasm: (imports, done) => { WebAssembly.instantiate(module, imports).then(done); return {}; } });
+}
 const canBuild = () => phase === "start" && reading === 0 && !!parsed;
 
 async function build() {
@@ -146,7 +156,7 @@ async function build() {
   phase = "building";
   render();
   try {
-    const { status, pairs } = solveDraft(await loadHighs({ locateFile: (f) => "/" + f }), school);
+    const { status, pairs } = solveDraft(await solver(), school);
     if (status !== "Optimal" || recheck(school, pairs).length) { failBuild(); return; }
     const id = crypto.randomUUID();
     saveId = id;
@@ -282,7 +292,7 @@ function aboutPanel() {
     <h3>After the draft</h3>
     <ul>${li([
       "Every draft is checked against the rules above before it is shown. If no draft passes, nothing is shown.",
-      "To do lists what needs a person: courses short of sponsors, teachers not placed, and people with no form.",
+      "To do lists what needs a person: courses short of sponsors, over their seats or missing a certificate, teachers not placed, and people with no form.",
       "Each teacher's card says why they are where they are, with facts only. It never names another teacher.",
       "You can move anyone anywhere. A move that breaks a rule, such as a full course or a missing certificate, is shown with a warning, not blocked.",
       "Undo and History step back through every change. Restore goes back to any earlier version.",
@@ -414,13 +424,12 @@ function fillRows(cid) {
   return `<div class="gap" data-rows><div class="row r-fill head"><span>Could sponsor</span><span></span><span></span></div>${list.map((x) =>
     `<button class="row r-fill" data-row data-act="moveTo" data-id="${x.tid}" data-c="${esc(cid)}" data-k="f-${x.tid}"><span>${L(x.tid)}</span><span class="q">${esc(x.now)}</span><span class="go">Move here</span></button>`).join("")}</div>`;
 }
-// A sponsor here without the course's certificate: their row says so in place of their choice, in the words the options list used.
-const noCert = (t, c) => (c.needs && !Mock.teacher(t).certificates.includes(c.needs) ? `No ${c.needs.toLowerCase()} on file` : "");
 function courseBody(cid) {
   const c = Mock.course(cid), list = Mock.sponsors(cid), short = list.length < c.seats, over = list.length > c.seats;
   const asked = Mock.whoAsked(cid).filter((x) => !x.placedHere);
   const sponsorRow = (t) => {
-    const missing = noCert(t, c);
+    // A sponsor here without the course's certificate: their row says so in place of their choice.
+    const missing = Mock.noCert(t);
     return `<button class="row r-two" data-row data-teacher="${t}" data-k="s-${t}"><span>${L(t)}</span><span class="${missing ? "need" : "q"}"${missing ? " data-no-cert" : ""}>${esc(missing || longChoice(t, cid))}</span></button>`;
   };
   return `${title(esc(c.name))}
@@ -509,7 +518,7 @@ async function addLater() {
   placing = true;
   render();
   try {
-    const highs = await loadHighs({ locateFile: (f) => "/" + f });
+    const highs = await solver();
     if (phase !== "draft") return;
     // Another tab saved meanwhile: these placements would be worked out on an older draft and refused, so none are made.
     if (missed) { laterFailed = true; return; }

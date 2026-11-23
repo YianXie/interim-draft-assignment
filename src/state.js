@@ -161,10 +161,18 @@ function teacherFlags(tid) {
     const c = C.get(cid);
     if (ch && ch.rank >= 5) out.push({ level: "check", text: `${ord(ch.rank)} choice` });
     if (!ch && t.submitted && !(t.returning && t.returningCourse === cid)) out.push({ level: "check", text: "Not on their list" });
-    if (c.needs && !t.certificates.includes(c.needs)) out.push({ level: "needs", text: `No ${c.needs.toLowerCase()} on file` });
+    if (noCert(tid)) out.push({ level: "needs", text: noCert(tid) });
   }
   return out;
 }
+
+// The certificate this teacher lacks for the course they are on, in the words the options list uses. "" when nothing is missing.
+function noCert(tid) {
+  const c = S.placements[tid] ? C.get(S.placements[tid]) : null;
+  return c && c.needs && !T.get(tid).certificates.includes(c.needs) ? `No ${c.needs.toLowerCase()} on file` : "";
+}
+// A course the office's own moves put past a rule: more sponsors than seats, or a sponsor without its certificate.
+const pastRule = (cid) => sponsors(cid).length > C.get(cid).seats || sponsors(cid).some(noCert);
 
 // What is unusual about this course: [{level, text}]
 function courseFlags(cid) {
@@ -174,15 +182,16 @@ function courseFlags(cid) {
   if (list.length === 0) out.push({ level: "needs", text: `Needs sponsors: 0 of ${c.seats}` });
   else if (list.length < c.seats) out.push({ level: "needs", text: `Needs sponsors: ${list.length} of ${c.seats}` });
   if (list.length > c.seats) out.push({ level: "check", text: `Over by ${list.length - c.seats}` });
-  if (c.needs && list.some((t) => !T.get(t).certificates.includes(c.needs))) out.push({ level: "needs", text: "Certificate missing" });
+  if (list.some(noCert)) out.push({ level: "needs", text: "Certificate missing" });
   return out;
 }
 
-// What still needs the office, in the order it is shown: short or empty offered courses, people with a form not placed,
-// then one group for everyone with no form who is not placed. Anyone the office left unplaced is done.
+// What still needs the office, in the order it is shown: offered courses that are short, empty, over their seats or have a
+// sponsor without the certificate, people with a form not placed, then one group for everyone with no form who is not placed.
+// Anyone the office left unplaced is done.
 function todo() {
   if (!S.history.length) return [];
-  const out = courses().filter((c) => sponsors(c.id).length < c.seats).map((c) => ({ kind: "course", cid: c.id }));
+  const out = courses().filter((c) => sponsors(c.id).length < c.seats || pastRule(c.id)).map((c) => ({ kind: "course", cid: c.id }));
   const open = D.teachers.filter((t) => !S.placements[t.id] && !S.left.has(t.id));
   for (const t of open) if (t.submitted) out.push({ kind: "teacher", tid: t.id });
   const noForm = open.filter((t) => !t.submitted).map((t) => t.id);
@@ -287,4 +296,4 @@ function describe(snap) {
 }
 
 export const Mock = { state: S, school: () => D, on, onSnapshot, init, build, teacher, course, teachers, courses, allCourses, label, contact, placedOn, sponsors, seatsLeft, choice, choiceText, past, lastYear, lastYearLine, thisYear, fit, fitLine, fitSearch, fitTags, status, reason,
-  teacherFlags, courseFlags, todo, summary, optionsFor, whoAsked, move, leave, addForms, undo, canUndo, restore, setNames, describe, handOff, history: () => [...S.history] };
+  teacherFlags, courseFlags, noCert, todo, summary, optionsFor, whoAsked, move, leave, addForms, undo, canUndo, restore, setNames, describe, handOff, history: () => [...S.history] };

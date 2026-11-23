@@ -220,6 +220,14 @@ test("a Build that cannot finish says so and keeps the files, so Build can be pr
   await expect(page.locator("[data-result]")).toBeVisible({ timeout: 60_000 });
 });
 
+// The solver file is taken when the page loads, so a server stopped after that (the Terminal window closed) does not stop Build.
+test("Build still works when the server stops after the page has loaded", async ({ page }) => {
+  await dropSchool(page);
+  await page.route("**/highs.wasm", (route) => route.abort());
+  await buildButton(page).click();
+  await expect(page.locator("[data-result]")).toBeVisible({ timeout: 60_000 });
+});
+
 test("a changed file clears the failed-Build line", async ({ page }) => {
   await page.route("**/highs.wasm", (route) => route.abort());
   await dropSchool(page);

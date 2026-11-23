@@ -39,6 +39,19 @@ test("Note says T numbers are pseudonymous, not anonymous", () => {
   assert.match(text, /pseudonymous, not anonymous/);
 });
 
+test("a sponsor moved onto a course without its certificate is marked on both sheets", () => {
+  const needs = school.courses.find((c) => c.running && c.needs);
+  const mover = school.teachers.find((t) => draft[t.id] && draft[t.id] !== needs.id && !t.certificates.includes(needs.needs));
+  const status = (name, key, at) => body(name).find((r) => r[at] === key).at(-1);
+  const before = status("Courses", needs.id, 0);
+  assert.ok(!/certificate/i.test(before));
+  Mock.move(mover.id, needs.id);
+  assert.equal(status("Teachers", mover.id, 0), `No ${needs.needs.toLowerCase()} on file`);
+  assert.match(status("Courses", needs.id, 0), /^(Full|Short|Over), certificate missing$/);
+  Mock.undo();
+  assert.equal(status("Courses", needs.id, 0), before);
+});
+
 test("Courses has every course in code order with Sponsor 1..n and Status", () => {
   Mock.setNames(true);
   const n = Math.max(...school.courses.map((c) => c.seats));

@@ -22,7 +22,7 @@ function coursesSheet(mock) {
   const head = ["Course Code", "Course Name", ...Array.from({ length: n }, (_, i) => `Sponsor ${i + 1}`), "Status"];
   const rows = all.map((c) => {
     const sponsors = mock.sponsors(c.id).map((t) => mock.label(t));
-    return [c.id, c.name, ...Array.from({ length: n }, (_, i) => sponsors[i] ?? ""), sentence(mock.status(c.id))];
+    return [c.id, c.name, ...Array.from({ length: n }, (_, i) => sponsors[i] ?? ""), sentence(mock.status(c.id)) + (mock.sponsors(c.id).some(mock.noCert) ? ", certificate missing" : "")];
   });
   return { name: "Courses", rows: [head, ...rows] };
 }
@@ -35,6 +35,8 @@ function choiceOf(mock, t, cid) {
 }
 function statusOf(mock, t, cid) {
   if (!cid) return "Not placed";
+  // A sponsor without the course's certificate says so before anything else, as on the course's card.
+  if (mock.noCert(t.id)) return mock.noCert(t.id);
   if (!t.submitted && !(t.returning && t.returningCourse === cid)) return "Check with them";
   if (mock.state.moved.has(t.id)) return "Moved by the office";
   return sentence(mock.status(cid));

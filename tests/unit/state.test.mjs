@@ -20,7 +20,8 @@ const seatsTaken = (cid, placed) => Object.values(placed).filter((c) => c === ci
 
 // What the To do should hold, worked out from the draft and the School alone.
 function expectedTodo(placed, left = new Set()) {
-  const courses = running().filter((c) => seatsTaken(c.id, placed) < c.seats).map((c) => c.id);
+  const lacks = (c) => !!c.needs && school.teachers.some((t) => placed[t.id] === c.id && !t.certificates.includes(c.needs));
+  const courses = running().filter((c) => seatsTaken(c.id, placed) !== c.seats || lacks(c)).map((c) => c.id);
   const unplaced = school.teachers.filter((t) => !placed[t.id] && !left.has(t.id));
   return {
     courses,
@@ -56,6 +57,34 @@ test("fixture todo has 3 to 14 items and each kind", () => {
   const want = expectedTodo(draft);
   assert.equal(items.length, want.courses.length + want.teachers.length + (want.noForm.length ? 1 : 0));
   for (const kind of ["course", "teacher", "noForm"]) assert.ok(items.some((i) => i.kind === kind), `has a ${kind} item`);
+});
+
+// A move that breaks a rule stands, but it still needs a person: the course stays on the To do until it is put right.
+test("a course filled past its seats by hand is on the To do until someone is moved off", () => {
+  fresh();
+  const full = running().find((c) => !c.needs && Mock.seatsLeft(c.id) === 0);
+  const mover = school.teachers.find((t) => draft[t.id] && draft[t.id] !== full.id && Mock.seatsLeft(draft[t.id]) === 0 && school.courses.find((c) => c.id === draft[t.id]).seats > 1);
+  assert.ok(!split(Mock.todo()).courses.includes(full.id));
+  Mock.move(mover.id, full.id);
+  assert.ok(split(Mock.todo()).courses.includes(full.id), "over its seats");
+  assert.equal(Mock.todo().filter((i) => i.cid === full.id).length, 1, "one item per course");
+  Mock.undo();
+  assert.ok(!split(Mock.todo()).courses.includes(full.id));
+});
+
+test("a full course with a sponsor who lacks its certificate is on the To do", () => {
+  const person = (id, certificates) => ({ id, name: id, email: `${id.toLowerCase()}@fernhollow.example`, returning: false, returningCourse: null, submitted: false, certificates, prefs: [] });
+  const made = { school: "Made up", year: "Made up", teachers: [person("A", ["Rope certificate"]), person("B", [])],
+    courses: [{ id: "X", name: "Course X", kind: "International", seats: 1, running: true, needs: "Rope certificate" }, { id: "Y", name: "Course Y", kind: "International", seats: 1, running: true, needs: null }] };
+  Mock.init(made);
+  Mock.build({ A: "X", B: "Y" });
+  assert.deepEqual(Mock.todo(), []);
+  Mock.move("A", null);
+  Mock.move("B", "X");
+  // X is full, so it is listed only for the certificate; Y is listed as empty.
+  assert.deepEqual(Mock.todo(), [{ kind: "course", cid: "X" }, { kind: "course", cid: "Y" }]);
+  assert.equal(Mock.noCert("B"), "No rope certificate on file");
+  assert.equal(Mock.noCert("A"), "");
 });
 
 test("leave clears a person; leaving the group clears all of them; undo restores", () => {
