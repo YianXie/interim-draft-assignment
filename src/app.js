@@ -267,65 +267,12 @@ function startView() {
       <p class="q intro">Optional: add all four or none. With them, each teacher's result last year is on their card and in the download, and anyone who got none of their choices last year is put on a top-4 choice first where the rules allow.</p>
       ${past.map((n) => slotRow(n)).join("")}</div>
     <div class="acts"><button class="btn fill" data-act="build" data-k="build"${canBuild() ? "" : " disabled"}>${phase === "building" ? "Building" : "Build"}</button></div>
-  </div>${aboutPanel()}
-  <p class="narrow repo-line">${repoLink(true)}</p>`;
+  </div>
+  <p class="narrow repo-line">${docsLink("docs-link")}${repoLink(true)}</p>`;
 }
 
-// How the page and the draft work, folded under Start. Its open state lives here, since every render rewrites the page.
-let aboutOpen = false;
-const li = (items) => items.map((x) => `<li>${x}</li>`).join("");
-function aboutPanel() {
-  return `<details class="narrow about-box" data-about${aboutOpen ? " open" : ""}>
-    <summary data-k="about">How it works</summary>
-    <div class="about-body">
-    <h3>What it does</h3>
-    <p>It reads this year's spreadsheets (round2.xlsx and singapore.xlsx are optional), builds a draft that puts sponsors on courses, explains each placement in one line, and lets the office move anyone before downloading the result to Excel. The draft is a starting point: the office makes the decisions.</p>
-
-    <h3>Rules every draft follows</h3>
-    <ul>${li([
-      "Each teacher is on one course at most.",
-      "A course marked not offered in courses.xlsx gets nobody.",
-      "A course that needs a certificate gets only teachers who hold it in staff.xlsx.",
-      "A returning sponsor stays on the course they ran, if it is offered this year. If it is not, they are treated like anyone else.",
-      "Anyone who sent a form is placed only on a course they listed, in any round.",
-      "A course with a returning sponsor always runs, even with seats empty. Any other course runs with every seat filled, or not at all.",
-      "Someone who sent no form can be placed on any course they qualify for, but only to fill seats.",
-    ])}</ul>
-
-    <h3>Priority order</h3>
-    <p>Each priority is settled first and then held fixed while the next one is worked out, so a later priority never trades away an earlier one.</p>
-    <ol>${li([
-      "<b>Fewest empty seats</b> on courses that have a returning sponsor.",
-      "<b>Last year's unlucky first</b>, only when last year's four files are added: as many as possible of those who got none of their choices last year are put on a 1st to 4th choice.",
-      "<b>Best choices overall.</b> Each placement scores 7 for a 1st choice down to 1 for a 7th, plus 20 for Round 1, 10 for Round 2 and 0 for Singapore, and the draft takes the highest total. So any Round 1 choice counts above any Round 2 choice, and any Round 2 choice above any Singapore one. A course listed in two rounds counts at its better score.",
-      "<b>Fewest people with no form</b> placed.",
-    ])}</ol>
-    <p>When the form was sent does not matter, and neither does the order of any file. The same files always give the same draft: the input is sorted by email and course code, never by name or T number.</p>
-
-    <h3>After the draft</h3>
-    <ul>${li([
-      "Every draft is checked against the rules above before it is shown. If no draft passes, nothing is shown.",
-      "To do lists what needs a person: courses short of sponsors, over their seats or missing a certificate, teachers not placed, and people with no form.",
-      "Each teacher's card says why they are where they are, with facts only. It never names another teacher.",
-      "You can move anyone anywhere. A move that breaks a rule, such as a full course or a missing certificate, is shown with a warning, not blocked.",
-      "Undo and History step back through every change. Restore goes back to any earlier version.",
-      "Add forms brings in Round 2 or Singapore forms later. Everyone on a course stays; only open seats and unplaced teachers are worked out.",
-    ])}</ul>
-
-    <h3>Your data</h3>
-    <ul>${li([
-      "Everything happens in this browser tab on this laptop. The files are read and the draft is worked out inside the page. Nothing is uploaded.",
-      "The page is blocked by its own policy from sending anything to any other site. It only loads from this laptop's own server.",
-      "Dropped files stay in memory until Build. The spreadsheets themselves are never saved.",
-      "After Build, what was read from them (names, emails, certificates and choices) and every version of the draft are saved in this browser, unencrypted, so a reload does not lose work. Anyone using this browser on this laptop could see them.",
-      "Start over, at the bottom of History, deletes all of it from the browser.",
-      "Each teacher gets a random T number at upload. With Show names off, the page shows T numbers and no emails. That changes only what you see: the names are still in the browser. T numbers are pseudonymous, not anonymous.",
-      "Download follows the switch: names and emails with Show names on, T numbers only with it off. Once downloaded, the workbook is an ordinary file and the page's protections no longer apply to it.",
-      "Last year's files are used only to work out each teacher's result last year. Entries that match nobody on this year's staff list are counted, never shown.",
-    ])}</ul>
-    </div>
-  </details>`;
-}
+// The documentation page, /docs, in a new tab: files held on Start live in this tab's memory and would be lost on leaving it.
+const docsLink = (cls) => `<a class="${cls}" data-docs data-k="docs" href="/docs" target="_blank" rel="noopener">Documentation</a>`;
 
 const who = (id) => `${id} ${Mock.label(id)}`;
 
@@ -369,7 +316,8 @@ function topBar() {
 const bottomLine = () => `<div class="wrap"><span data-saved></span>
   ${Mock.canUndo() ? `<button class="link" data-act="undo" data-k="un">Undo</button>` : ""}
   <button class="link" data-act="open" data-to="forms" data-k="forms">Add forms</button>
-  <button class="link" data-act="open" data-to="history" data-k="hist">History</button></div>`;
+  <button class="link" data-act="open" data-to="history" data-k="hist">History</button>
+  ${docsLink("link docs-link")}</div>`;
 
 /* Opened items */
 const card = (inner) => `<section class="card" data-panel>${inner}</section>`;
@@ -774,10 +722,6 @@ document.addEventListener("input", (e) => {
   const w = e.target.dataset && e.target.dataset.search;
   if (w) { view.q[w] = e.target.value; filter(w); }
 });
-// toggle does not bubble, so it is caught on the way down.
-document.addEventListener("toggle", (e) => {
-  if (e.target.matches && e.target.matches("[data-about]")) aboutOpen = e.target.open;
-}, true);
 document.addEventListener("change", (e) => {
   if (e.target.matches('[data-k="files"]')) { addFiles(chosen(e.target)); e.target.value = ""; }
   if (e.target.matches('[data-k="later-files"]')) { addLaterFiles(chosen(e.target)); e.target.value = ""; }

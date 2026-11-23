@@ -69,9 +69,13 @@ export async function variantSchool(edit) {
 }
 
 // Waived at the owner's request (2026-11-16): the To do side list, table headers, code and Tags columns may run over the
-// word counts, and the GitHub link in the top bar is one control more than the budget. Every other limit still holds.
+// word counts, and the GitHub link in the top bar is one control more than the budget. Also waived at the owner's request
+// (2026-11-23): the Documentation link in the bottom line is one more. Every other limit still holds.
 const WORD_WAIVES = /^(words|chromeWords|maxWordsInRow) /;
-const repoWaive = (x, repoShown) => repoShown && /^controlsOutsideRows 9 /.test(x);
+const repoWaive = (x, repoShown, docsShown) => {
+  const m = x.match(/^controlsOutsideRows (\d+) /);
+  return !!m && Number(m[1]) <= 8 + (repoShown ? 1 : 0) + (docsShown ? 1 : 0);
+};
 
 // Same window measure.cjs uses. Fails the test on any overBudget entry, less the waivers above.
 export async function measure(page, budgetName) {
@@ -79,7 +83,8 @@ export async function measure(page, budgetName) {
   const report = await page.evaluate(INSPECT);
   judge(report, budgetName, watched.get(page) || []);
   const repoShown = await page.locator("#top [data-repo]").isVisible();
-  expect(report.overBudget.filter((x) => !WORD_WAIVES.test(x) && !repoWaive(x, repoShown)), JSON.stringify(report)).toEqual([]);
+  const docsShown = await page.locator("#done [data-docs]").isVisible();
+  expect(report.overBudget.filter((x) => !WORD_WAIVES.test(x) && !repoWaive(x, repoShown, docsShown)), JSON.stringify(report)).toEqual([]);
   return report;
 }
 

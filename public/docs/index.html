@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; form-action 'none'; base-uri 'none'">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documentation · Interim Draft Assistant</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body class="docs">
+<header class="docs-top"><div class="docs-top-in">
+  <a class="brand" href="/">Interim Draft Assistant</a>
+  <span class="q">Documentation</span>
+</div></header>
+
+<div class="docs-layout">
+<nav class="docs-nav" aria-label="Documentation">
+  <p class="docs-nav-head">On this page</p>
+  <ol>
+    <li><a href="#start">Getting started</a></li>
+    <li><a href="#files">The files</a></li>
+    <li><a href="#sample">The sample data</a>
+      <ol>
+        <li><a href="#sample-this-year">This year</a></li>
+        <li><a href="#sample-last-year">Last year</a></li>
+        <li><a href="#sample-try">Things to try</a></li>
+      </ol>
+    </li>
+    <li><a href="#fit">The fit file</a>
+      <ol>
+        <li><a href="#fit-what">What is in it</a></li>
+        <li><a href="#fit-use">How the draft uses it</a></li>
+        <li><a href="#fit-make">Where it comes from</a></li>
+        <li><a href="#fit-try">Trying it</a></li>
+      </ol>
+    </li>
+    <li><a href="#how">How it works</a>
+      <ol>
+        <li><a href="#rules">Rules every draft follows</a></li>
+        <li><a href="#priority">Priority order</a></li>
+        <li><a href="#after">After the draft</a></li>
+        <li><a href="#data">Your data</a></li>
+      </ol>
+    </li>
+    <li><a href="#words">Words used on the page</a></li>
+  </ol>
+  <p class="docs-nav-back"><a href="/">Back to the page</a></p>
+</nav>
+
+<main class="docs-main">
+<h1>Documentation</h1>
+<p class="lede">The Interim Draft Assistant reads the office's spreadsheets, builds a draft that puts sponsors on courses, explains each placement in one line, and lets the office move anyone before downloading the result to Excel. The draft is a starting point: the office makes the decisions.</p>
+
+<section id="start">
+<h2>Getting started</h2>
+<ol>
+  <li><b>Add the files.</b> On Start, drop this year's files onto the page, or click <b>Choose files</b>. To look around first, click <b>Use sample data</b>.</li>
+  <li><b>Build.</b> Each file's row says <i>ready</i> or names the first problem. When all the needed files are ready, click <b>Build</b>.</li>
+  <li><b>Work through To do.</b> It lists what needs a person: courses short of sponsors, teachers not placed, and people with no form.</li>
+  <li><b>Move anyone.</b> Open a teacher, read the <b>Why</b> line, and click a course to move them there. <b>Undo</b> takes a move back.</li>
+  <li><b>Download.</b> The workbook opens in Excel and follows the <b>Show names</b> switch.</li>
+</ol>
+</section>
+
+<section id="files">
+<h2>The files</h2>
+<p>Each file is an Excel <code>.xlsx</code> file. The file name says what it is, so it must be one of the names below. Only the first sheet is read, and row 1 holds the headers in this order.</p>
+<div class="docs-table"><table>
+  <thead><tr><th>File</th><th>Needed?</th><th>What it holds</th></tr></thead>
+  <tbody>
+    <tr><td><code>courses.xlsx</code></td><td>Yes</td><td>Every course: code, name, type (International or Singapore), seats, offered (Yes or No), the certificate it needs, arrival country and city, vendor link.</td></tr>
+    <tr><td><code>staff.xlsx</code></td><td>Yes</td><td>Every teacher who can sponsor: email, name, and certificates held.</td></tr>
+    <tr><td><code>returning.xlsx</code></td><td>Yes</td><td>Sponsors going back to the course they ran: email and course code.</td></tr>
+    <tr><td><code>round1.xlsx</code></td><td>Yes</td><td>Round 1 forms: time, email, up to seven International choices, three written answers.</td></tr>
+    <tr><td><code>round2.xlsx</code></td><td>Later is fine</td><td>Round 2 forms: time, email, up to three International choices.</td></tr>
+    <tr><td><code>singapore.xlsx</code></td><td>Later is fine</td><td>Singapore forms: time, email, up to five Singapore choices, two written answers.</td></tr>
+    <tr><td><code>past-*.xlsx</code> (four)</td><td>Optional, all four or none</td><td>Last year's final list and last year's three forms. Added on the <b>Last year</b> tab of Start.</td></tr>
+    <tr><td><code>fit.xlsx</code></td><td>Optional</td><td>Facts found in what teachers wrote, checked by the office. See <a href="#fit">The fit file</a>.</td></tr>
+  </tbody>
+</table></div>
+<p>A form file left out counts as nobody having sent that form. Round 2 and Singapore forms can be added after the draft is built, with <b>Add forms</b>. The office guide in the project folder (<code>docs/office-guide.md</code>) lists every header exactly.</p>
+</section>
+
+<section id="sample">
+<h2>The sample data</h2>
+<p>The sample data is an invented school with invented teachers and invented courses. No one in it is real, so it is safe to try anything: move people, break rules, start over. It is laid out exactly like the office's own files, so it doubles as a template.</p>
+<p>There are two ways to get it, on either tab of Start:</p>
+<ul>
+  <li><b>Use sample data</b> puts the sample files straight into the page, ready to <b>Build</b>.</li>
+  <li><b>Download sample data</b> saves them as a zip, so they can be opened in Excel. Typing over these files, with row 1 left as it is, is the easiest way to make the office's own.</li>
+</ul>
+
+<h3 id="sample-this-year">This year</h3>
+<p>On the <b>This year</b> tab the sample is the six files, in <code>sample-this-year.zip</code>:</p>
+<ul>
+  <li><b>54 courses</b>: 44 International and 10 Singapore, with 110 seats between them. One course needs a scuba certificate.</li>
+  <li><b>96 teachers</b> on the staff list. 19 are returning sponsors, and 25 sent no form at all.</li>
+  <li><b>Forms in all three rounds</b>: Round 1 for most teachers, a smaller Round 2, and Singapore forms.</li>
+</ul>
+<p>It is made to show the hard cases, not to be tidy: more teachers than seats, some popular courses, a certificate only a few hold, and people who never sent a form. So To do is not empty after Build, just as it would not be with real forms.</p>
+
+<h3 id="sample-last-year">Last year</h3>
+<p>On the <b>Last year</b> tab, <b>Use sample data</b> adds the six and last year's four invented files, in <code>sample-last-year.zip</code>. With them, each teacher's card and the download show how they did last year, and anyone who got none of their choices last year is put on a 1st to 4th choice first, where the rules allow.</p>
+
+<h3 id="sample-try">Things to try</h3>
+<ul>
+  <li>Build, then open a teacher on <b>Teachers</b> and read the <b>Why</b> line.</li>
+  <li>Move someone onto a full course: the page warns, but lets you.</li>
+  <li>Turn on <b>Show names</b>, then <b>Download</b>, and compare it with a download with names off.</li>
+  <li>Build from only <code>courses.xlsx</code>, <code>staff.xlsx</code>, <code>returning.xlsx</code> and <code>round1.xlsx</code>, then bring in <code>round2.xlsx</code> and <code>singapore.xlsx</code> with <b>Add forms</b>. With the sample, Round 2 places nobody and Singapore places 6. That is expected.</li>
+</ul>
+</section>
+
+<section id="fit">
+<h2>The fit file</h2>
+<p>Teachers write a few sentences on their forms: a language they speak, a club they run, something they cannot do. The rest of the page never reads those answers. <code>fit.xlsx</code> is how they can count: it lists short facts found in the answers, one per row, each checked by a person in the office before the file is added.</p>
+
+<h3 id="fit-what">What is in it</h3>
+<p>Row 1 holds five headers, and each row below is one fact about one teacher:</p>
+<div class="docs-table"><table>
+  <thead><tr><th>Column</th><th>What goes in it</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td>Email</td><td>The teacher, as in <code>staff.xlsx</code>.</td><td><i>a teacher's email</i></td></tr>
+    <tr><td>Course Code</td><td>The course the fact is about, or empty for a fact about the teacher in general.</td><td>INT-09</td></tr>
+    <tr><td>Kind</td><td>One of Language, Certificate, Experience, Skill or Limitation.</td><td>Experience</td></tr>
+    <tr><td>Fact</td><td>A few words saying what was found.</td><td>Photography Walk</td></tr>
+    <tr><td>Quote</td><td>The teacher's own words it came from, word for word.</td><td>"I run the school's photography club…"</td></tr>
+  </tbody>
+</table></div>
+<p>A teacher can have many rows, or none. The Quote is there so the office can check each fact against what was actually written.</p>
+
+<h3 id="fit-use">How the draft uses it</h3>
+<ul>
+  <li>It only breaks ties. Every rule and every earlier priority is settled first, exactly as without the file, so it never moves anyone off a better choice.</li>
+  <li>Among drafts that are equally good on everything else, the draft puts as many teachers as it can on a course they have a fact for.</li>
+  <li>A Limitation never counts as a fit, and neither does a general fact with no course code.</li>
+  <li>After that, the draft stays as close as it can to the one built without the file, so adding it changes as little as possible.</li>
+  <li>Each teacher's card shows what was found about them on its own line, and so does the download. It is never part of the <b>Why</b> line.</li>
+</ul>
+
+<h3 id="fit-make">Where it comes from</h3>
+<p>The file is made by the maintainer on a separate computer, with a reading tool run by hand on the written answers. The page itself never reads the answers, and never calls any outside service. Every row should then be checked by the office in Excel: delete any row that is wrong, and fix any that is close. Only then is it added on Start.</p>
+
+<h3 id="fit-try">Trying it</h3>
+<p><b>Use sample data</b> and <b>Download sample data</b> are the six files only. An invented <code>fit.xlsx</code>, with facts for the sample teachers, is in the project folder under <code>fixtures/fit</code>. After <b>Use sample data</b>, drop it on Start (or add it with <b>Choose files</b>), then click <b>Build</b>.</p>
+</section>
+
+<section id="how">
+<h2>How it works</h2>
+
+<h3 id="rules">Rules every draft follows</h3>
+<ul>
+  <li>Each teacher is on one course at most.</li>
+  <li>A course marked not offered in <code>courses.xlsx</code> gets nobody.</li>
+  <li>A course that needs a certificate gets only teachers who hold it in <code>staff.xlsx</code>.</li>
+  <li>A returning sponsor stays on the course they ran, if it is offered this year. If it is not, they are treated like anyone else.</li>
+  <li>Anyone who sent a form is placed only on a course they listed, in any round.</li>
+  <li>A course with a returning sponsor always runs, even with seats empty. Any other course runs with every seat filled, or not at all.</li>
+  <li>Someone who sent no form can be placed on any course they qualify for, but only to fill seats.</li>
+</ul>
+
+<h3 id="priority">Priority order</h3>
+<p>Each priority is settled first and then held fixed while the next one is worked out, so a later priority never trades away an earlier one.</p>
+<ol>
+  <li><b>Fewest empty seats</b> on courses that have a returning sponsor.</li>
+  <li><b>Last year's unlucky first</b>, only when last year's four files are added: as many as possible of those who got none of their choices last year are put on a 1st to 4th choice.</li>
+  <li><b>Best choices overall.</b> Each placement scores 7 for a 1st choice down to 1 for a 7th, plus 20 for Round 1, 10 for Round 2 and 0 for Singapore, and the draft takes the highest total. So any Round 1 choice counts above any Round 2 choice, and any Round 2 choice above any Singapore one. A course listed in two rounds counts at its better score.</li>
+  <li><b>Fewest people with no form</b> placed.</li>
+  <li><b>Fit</b>, only when <code>fit.xlsx</code> is added: the tie-breaks described under <a href="#fit-use">How the draft uses it</a>.</li>
+</ol>
+<p>When the form was sent does not matter, and neither does the order of any file. The same files always give the same draft: the input is sorted by email and course code, never by name or T number.</p>
+
+<h3 id="after">After the draft</h3>
+<ul>
+  <li>Every draft is checked against the rules above before it is shown. If no draft passes, nothing is shown.</li>
+  <li>To do lists what needs a person: courses short of sponsors, over their seats or missing a certificate, teachers not placed, and people with no form.</li>
+  <li>Each teacher's card says why they are where they are, with facts only. It never names another teacher.</li>
+  <li>You can move anyone anywhere. A move that breaks a rule, such as a full course or a missing certificate, is shown with a warning, not blocked.</li>
+  <li>Undo and History step back through every change. Restore goes back to any earlier version.</li>
+  <li>Add forms brings in Round 2 or Singapore forms later. Everyone on a course stays; only open seats and unplaced teachers are worked out.</li>
+</ul>
+
+<h3 id="data">Your data</h3>
+<ul>
+  <li>Everything happens in this browser tab on this laptop. The files are read and the draft is worked out inside the page. Nothing is uploaded.</li>
+  <li>The page is blocked by its own policy from sending anything to any other site. It only loads from this laptop's own server.</li>
+  <li>Dropped files stay in memory until Build. The spreadsheets themselves are never saved.</li>
+  <li>After Build, what was read from them (names, emails, certificates and choices) and every version of the draft are saved in this browser, unencrypted, so a reload does not lose work. Anyone using this browser on this laptop could see them.</li>
+  <li>Start over, at the bottom of History, deletes all of it from the browser.</li>
+  <li>Each teacher gets a random T number at upload. With Show names off, the page shows T numbers and no emails. That changes only what you see: the names are still in the browser. T numbers are pseudonymous, not anonymous.</li>
+  <li>Download follows the switch: names and emails with Show names on, T numbers only with it off. Once downloaded, the workbook is an ordinary file and the page's protections no longer apply to it.</li>
+  <li>Last year's files are used only to work out each teacher's result last year. Entries that match nobody on this year's staff list are counted, never shown.</li>
+</ul>
+</section>
+
+<section id="words">
+<h2>Words used on the page</h2>
+<dl>
+  <dt>Sponsor</dt><dd>A teacher who goes on a course with the students.</dd>
+  <dt>Returning sponsor</dt><dd>A sponsor going back to the course they ran before, listed in <code>returning.xlsx</code>.</dd>
+  <dt>Round 1, Round 2, Singapore</dt><dd>The three forms teachers send, in that order. Earlier rounds count for more.</dd>
+  <dt>No form</dt><dd>A teacher on the staff list who sent none of the forms.</dd>
+  <dt>T number</dt><dd>A random label given to each teacher at upload, shown in place of names while Show names is off.</dd>
+  <dt>To do</dt><dd>The list of things in the draft that need a person to look at them.</dd>
+  <dt>Version</dt><dd>The draft after one change. History lists every version, and Restore goes back to one.</dd>
+</dl>
+</section>
+</main>
+</div>
+</body>
+</html>

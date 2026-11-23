@@ -148,18 +148,6 @@ button.row:hover { background: var(--hover); }
 .x:hover { background: #fbeceb; color: #8c1d17; }
 .start-tabs { line-height: 24px; }
 
-.about-box { margin-top: 28px; border: 1px solid var(--rule); border-radius: 10px; }
-.about-box summary { cursor: pointer; padding: 14px 32px; min-height: 44px; color: var(--blue); list-style-position: inside; }
-.about-box summary:hover { text-decoration: underline; }
-.about-body { padding: 0 32px 24px; font-size: 16px; line-height: 1.5; }
-.about-body h3 { font-size: 17px; font-weight: 600; margin: 20px 0 6px; }
-.about-body h3:first-child { margin-top: 4px; }
-.about-body p { margin: 0 0 8px; }
-.about-body ul, .about-body ol { margin: 0 0 8px; padding-left: 22px; }
-.about-body li { margin: 4px 0; }
-.about-body li b { font-weight: 600; }
-@media (max-width: 600px) { .about-box summary { padding: 14px 16px; } .about-body { padding: 0 16px 20px; } }
-
 /* To do: the open item, with every item listed beside it (below it on a narrow window). */
 .todo-layout { display: grid; grid-template-columns: minmax(0, 720px) minmax(220px, 1fr); gap: 0 40px; align-items: start; }
 .todo-nav { position: sticky; top: 16px; margin-top: 8px; border-left: 1px solid var(--rule); padding-left: 16px; display: flex; flex-direction: column; }
@@ -178,7 +166,9 @@ button.row:hover { background: var(--hover); }
 
 .repo { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--ink); text-decoration: none; }
 .repo:hover { color: var(--blue); }
-.repo-line { margin-top: 16px; font-size: 16px; }
+.repo-line { margin-top: 16px; font-size: 16px; display: flex; align-items: center; gap: 24px; }
+a.docs-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--blue); text-decoration: none; }
+a.docs-link:hover { text-decoration: underline; }
 .repo-line .repo { color: var(--quiet); }
 .repo-line .repo:hover { color: var(--blue); text-decoration: underline; }
 /* Scrolled into view on a short window: stop a little above the bottom, never a fraction of a pixel below it. */

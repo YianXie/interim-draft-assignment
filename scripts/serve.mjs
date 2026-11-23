@@ -13,7 +13,9 @@ const port = Number(process.env.INTERIM_PORT) || 4173;
 createServer(async (req, res) => {
   try {
     const path = decodeURIComponent(new URL(req.url, "http://x").pathname);
-    const file = normalize(join(root, path === "/" ? "index.html" : path));
+    // /docs and /docs/ are the documentation page, dist/docs/index.html.
+    const page = path === "/" ? "index.html" : path === "/docs" || path === "/docs/" ? "docs/index.html" : path;
+    const file = normalize(join(root, page));
     // Inside dist/ only: a sibling such as dist-old/ also starts with the same letters.
     if (!file.startsWith(root + sep)) { res.writeHead(403).end(); return; }
     const body = await readFile(file);
