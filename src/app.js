@@ -1,5 +1,5 @@
 import { Mock } from "./state.js";
-import { parseFiles, readForms, LATER, SLOTS, PAST_SLOTS, OPTIONAL, FIT } from "./import.js";
+import { parseFiles, readForms, slotName, LATER, SLOTS, PAST_SLOTS, OPTIONAL, FIT } from "./import.js";
 import { RESULT_LABEL } from "./past.js";
 import { loadHighs, solveDraft, toDraft } from "./solver.js";
 import { recheck, newProblems } from "./recheck.js";
@@ -103,10 +103,12 @@ const todoKey = (i) => `${i.kind}:${i.cid ?? i.tid ?? ""}`;
 
 const KNOWN = [...SLOTS, ...PAST_SLOTS, FIT];
 const readBytes = (f) => f.arrayBuffer().then((b) => new Uint8Array(b), () => new Uint8Array());
+// A dropped file is held under the slot its name picks, so "Courses (1).xlsx" replaces courses.xlsx and is listed as it.
+const namedFor = (f) => { const name = slotName(f.name); return { name, arrayBuffer: () => f.arrayBuffer() }; };
 // Drops and removals are handled strictly in order, so a later file always replaces an earlier one of the same name.
 function addFiles(list, remove = null) {
   if (phase !== "start") return;
-  const files = [...list];
+  const files = [...list].map(namedFor);
   reading += 1;
   parsed = null;
   buildFailed = false;
@@ -248,7 +250,7 @@ function startView() {
     <a class="link sample-zip" data-k="sample-zip" href="sample/${startTab === "now" ? "sample-this-year.zip" : "sample-last-year.zip"}" download>Download sample data</a></div>
     ${startTabs()}
     <div class="gap${fitRow ? " tight" : ""}" data-rows data-start-panel="now"${startTab === "now" ? "" : " hidden"}>
-      <p class="q intro">Needed every year. Each file name must match exactly. round2.xlsx and singapore.xlsx are optional, since those forms come after Round 1: a form file left out counts as nobody having sent that form.</p>
+      <p class="q intro">Needed every year. round2.xlsx and singapore.xlsx are optional, since those forms come after Round 1: a form file left out counts as nobody having sent that form.</p>
       ${now.map((n) => slotRow(n)).join("")}</div>
     <div class="gap" data-rows data-start-panel="past"${startTab === "past" ? "" : " hidden"}>
       <p class="q intro">Optional: add all four or none. With them, each teacher's result last year is on their card and in the download, and anyone who got none of their choices last year is put on a top-4 choice first where the rules allow.</p>
@@ -490,7 +492,7 @@ function laterReset() {
 }
 function addLaterFiles(list, remove = null) {
   if (phase !== "draft") return;
-  const files = [...list], gen = laterGen;
+  const files = [...list].map(namedFor), gen = laterGen;
   laterReading += 1;
   laterRead = null;
   laterFailed = false;

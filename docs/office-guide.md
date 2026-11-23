@@ -59,7 +59,7 @@ A double-click opens a Terminal window; the first time, it is the window you typ
 - **Moves happen in one click**, with no "are you sure". **Undo** at the bottom right takes the last one back.
 - **A move that breaks a rule is allowed.** The options list warns before you click, for example "Full" or "No scuba certificate". Afterwards the **Courses** list shows it under Status, and the course's card marks the person in red.
 - **Start over** is at the bottom of **History**.
-- **File names must match exactly**, in lowercase: `courses.xlsx`, not `Courses.xlsx` or `courses (1).xlsx`. Unzip the sample zip first; the zip itself is not read.
+- **The file name picks what a file is**: `courses.xlsx`, `staff.xlsx` and so on. Capital letters and a second download's `courses (1).xlsx` or `courses copy.xlsx` are fine; any other name is not read. Unzip the sample zip first; the zip itself is not read.
 - **One problem per file is shown at a time.** Fix it, add the file again, and the next one (if any) shows.
 - The draft is saved in Chrome on this Mac, so it is still there after closing everything.
 

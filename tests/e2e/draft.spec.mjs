@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { readFileSync, rmSync } from "node:fs";
 import { basename, join } from "node:path";
 import { readBook } from "../../src/xlsx.js";
+import { SLOTS } from "../../src/import.js";
 import { buildButton, buildDraft, dropFiles, dropSchool, measure, measureStart, schoolFiles, variantSchool, visibleStrings, watchPage } from "./helpers.mjs";
 import { forbiddenIn } from "./words.mjs";
 
@@ -116,11 +117,25 @@ test("a bad file shows one plain line and Build stays locked", async ({ page }) 
 test("a stray file keeps its line but does not lock Build", async ({ page }) => {
   await page.goto("/");
   const payload = schoolFiles().map((p) => ({ name: basename(p), mimeType: "application/octet-stream", buffer: readFileSync(p) }));
-  await page.locator('[data-k="files"]').setInputFiles([...payload, { name: "courses (1).xlsx", mimeType: "application/octet-stream", buffer: Buffer.from("x") }]);
-  await expect(slot(page, "courses (1).xlsx")).toHaveText("courses (1).xlsx: not one of the six file names");
+  await page.locator('[data-k="files"]').setInputFiles([...payload, { name: "old courses.xlsx", mimeType: "application/octet-stream", buffer: Buffer.from("x") }]);
+  await expect(slot(page, "old courses.xlsx")).toHaveText("old courses.xlsx: not one of the six file names");
   await expect(page.locator("[data-slot]", { hasText: "ready" })).toHaveCount(6);
   await expect(buildButton(page)).toBeEnabled();
   await buildDraft(page);
+});
+
+// A second download or a capital letter: the name still picks its slot, and the row is listed under the slot's own name.
+test("Courses (1).xlsx and Staff copy.xlsx fill their slots", async ({ page }) => {
+  await page.goto("/");
+  const odd = { "courses.xlsx": "Courses (1).xlsx", "staff.xlsx": "Staff copy.xlsx" };
+  const payload = schoolFiles().map((p) => ({ name: odd[basename(p)] ?? basename(p), mimeType: "application/octet-stream", buffer: readFileSync(p) }));
+  await page.locator('[data-k="files"]').setInputFiles(payload);
+  await expect(page.locator("[data-slot]", { hasText: "ready" })).toHaveCount(6);
+  expect(await page.locator("[data-slot]").evaluateAll((els) => els.map((e) => e.dataset.slot))).toEqual(SLOTS);
+  // The newer copy replaces the one held, as the same name would.
+  await page.locator('[data-k="files"]').setInputFiles({ name: "courses (2).xlsx", mimeType: "application/octet-stream", buffer: Buffer.from("x") });
+  await expect(slot(page, "courses.xlsx")).toContainText("Not a readable .xlsx file");
+  await expect(buildButton(page)).toBeDisabled();
 });
 
 test("a file can be removed and the same file added again", async ({ page }) => {

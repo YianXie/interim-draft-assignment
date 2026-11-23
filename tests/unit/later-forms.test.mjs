@@ -26,6 +26,13 @@ const base = (await parseFiles(await Promise.all(SLOTS.filter((n) => !LATER_NAME
 const baseBefore = structuredClone(base);
 const byEmail = (school) => new Map(school.teachers.map((t) => [t.email, t]));
 
+test("a later form named with capitals or a copy number is read as its round", async () => {
+  const [r2, sg] = await Promise.all(LATER_NAMES.map(fixture));
+  const out = await readForms(base, [{ ...r2, name: "Round2 (1).xlsx" }, { ...sg, name: "Singapore copy.xlsx" }]);
+  assert.ok(out.school);
+  assert.deepEqual(out.slots, { [ROUND2]: "ready", [SINGAPORE]: "ready" });
+});
+
 test("adding both later forms gives the same choices as building with all six", async () => {
   const six = (await parseFiles(await Promise.all(SLOTS.map(fixture)), seq())).school;
   const out = await readForms(base, await Promise.all(LATER_NAMES.map(fixture)));

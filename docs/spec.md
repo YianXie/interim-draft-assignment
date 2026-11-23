@@ -33,7 +33,7 @@ Before the expected results are written, and with all AI sessions closed, the ow
 
 ## The six files
 
-Each is `.xlsx`, read from its first sheet whatever its name, headers in row 1, exact wording. The file name picks the slot. Emails are read on any domain (sheet-name and domain rules dropped 2026-11-22 by the owner, so the office can load its own files and download its own addresses); the invented fixtures keep `fernhollow.example`.
+Each is `.xlsx`, read from its first sheet whatever its name, headers in row 1, exact wording. The file name picks the slot; capital letters, and a trailing ` (1)` or ` copy` from a second download, are ignored (added 2026-11-23 by the owner). In `courses.xlsx`, Type, Seats and Offered are read whatever their letter case or surrounding spaces, and Seats may be a whole number typed as text (added 2026-11-23). Emails are read on any domain (sheet-name and domain rules dropped 2026-11-22 by the owner, so the office can load its own files and download its own addresses); the invented fixtures keep `fernhollow.example`.
 
 | File             | Columns                                                                                                                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |

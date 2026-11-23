@@ -9,6 +9,12 @@ export const SLOTS = ["courses.xlsx", "staff.xlsx", "returning.xlsx", "round1.xl
 // Optional: what the reader found in the written answers, checked by the office. One row per fact.
 export const FIT = "fit.xlsx";
 export const KINDS = ["Language", "Certificate", "Experience", "Skill", "Limitation"];
+// The slot a dropped file is for. A capital letter, or the " (1)" or " copy" a second download or a duplicate is given, still
+// picks the slot; any other name is returned as it came, so its line shows what was dropped.
+export function slotName(name) {
+  const plain = String(name).trim().toLowerCase().replace(/\s*(\(\d+\)|copy(\s+\d+)?)\.xlsx$/, ".xlsx");
+  return [...SLOTS, ...PAST_SLOTS, FIT].includes(plain) ? plain : name;
+}
 const choices = (n) => Array.from({ length: n }, (_, i) => `Choice ${i + 1}`);
 // The forms are laid out like the office's: Timestamp, Email, the choices, then the written answers. Courses end with
 // where the course flies to and its vendor. Those extra columns must be there, under these headers, but are not read.
@@ -112,15 +118,19 @@ function readCourses(file, rows) {
   const codes = new Set();
   const names = new Set();
   for (const r of rows) {
-    const [code, name, type, seats, offered, cert] = r.cells;
+    // Type, Seats and Offered are read as meant: spaces around them, letter case, and a whole number typed as text all pass.
+    const [code, name, , , , cert] = r.cells;
+    const type = ["International", "Singapore"].find((k) => k.toLowerCase() === text(r.cells[2]).toLowerCase());
+    const seats = typeof r.cells[3] === "number" ? r.cells[3] : /^\d+$/.test(text(r.cells[3])) ? Number(text(r.cells[3])) : NaN;
+    const offered = ["Yes", "No"].find((k) => k.toLowerCase() === text(r.cells[4]).toLowerCase());
     const id = text(code);
     if (!id) refuse(file, r.n, "course code is empty");
     if (codes.has(id)) refuse(file, r.n, "course code appears twice");
     if (!text(name)) refuse(file, r.n, "course name is empty");
     if (names.has(text(name))) refuse(file, r.n, "course name appears twice");
-    if (type !== "International" && type !== "Singapore") refuse(file, r.n, "type must be International or Singapore");
-    if (typeof seats !== "number" || !Number.isInteger(seats) || seats < 1) refuse(file, r.n, "seats must be a positive whole number");
-    if (offered !== "Yes" && offered !== "No") refuse(file, r.n, "offered must be Yes or No");
+    if (!type) refuse(file, r.n, "type must be International or Singapore");
+    if (!Number.isInteger(seats) || seats < 1) refuse(file, r.n, "seats must be a positive whole number");
+    if (!offered) refuse(file, r.n, "offered must be Yes or No");
     codes.add(id);
     names.add(text(name));
     courses.push({ id, name: text(name), kind: type, seats, running: offered === "Yes", needs: text(cert) || null });
@@ -235,9 +245,11 @@ export async function formAnswers(file, bytes) {
 export async function parseFiles(files, random = secureRandom) {
   const slots = {};
   const bytesOf = {};
+  // Of two files for one slot, the later one is read.
   for (const f of files) {
-    if (SLOTS.includes(f.name) || PAST_SLOTS.includes(f.name) || f.name === FIT) bytesOf[f.name] = f.bytes;
-    else slots[f.name] = `${f.name}: not one of the six file names`;
+    const name = slotName(f.name);
+    if (SLOTS.includes(name) || PAST_SLOTS.includes(name) || name === FIT) bytesOf[name] = f.bytes;
+    else slots[name] = `${name}: not one of the six file names`;
   }
   // Last year's files are optional: all four or none. They come after the six, so staff.xlsx is read first.
   const past = PAST_SLOTS.some((file) => file in bytesOf);
@@ -412,13 +424,15 @@ export async function readForms(school, files) {
   const slots = {};
   const got = {};
   for (const f of files) {
-    if (!LATER.includes(f.name)) {
-      slots[f.name] = `${f.name}: only ${LATER.join(" and ")} can be added to a draft`;
+    const name = slotName(f.name);
+    delete got[name];
+    if (!LATER.includes(name)) {
+      slots[name] = `${name}: only ${LATER.join(" and ")} can be added to a draft`;
       continue;
     }
-    const res = await SECTION(f.name, readEmailRows)(f.bytes);
-    if (res.ok) got[f.name] = res.data;
-    else slots[f.name] = res.problem;
+    const res = await SECTION(name, readEmailRows)(f.bytes);
+    if (res.ok) { got[name] = res.data; delete slots[name]; }
+    else slots[name] = res.problem;
   }
   const onStaff = new Set(school.teachers.map((t) => t.email));
   const byName = new Map(school.courses.map((c) => [c.name, c]));

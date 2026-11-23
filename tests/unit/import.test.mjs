@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { readBook, writeBook } from "../../src/xlsx.js";
-import { parseFiles, SLOTS } from "../../src/import.js";
+import { parseFiles, slotName, SLOTS } from "../../src/import.js";
 import { readSchool } from "./school-fixture.mjs";
 
 const dir = new URL("../../fixtures/school/", import.meta.url);
@@ -75,6 +75,46 @@ test("wrong file name is refused", async () => {
   assert.equal(out.school, null);
   assert.match(out.slots["teachers.xlsx"], /^teachers\.xlsx: /);
   assert.match(out.slots["staff.xlsx"], /^staff\.xlsx: /);
+});
+
+// A re-download or a capital letter is the usual slip: "courses (1).xlsx", "Courses.xlsx", "staff copy.xlsx".
+test("a file name that differs only by capitals, a copy number or the word copy picks its slot", async () => {
+  for (const [given, slot] of [["Courses.xlsx", "courses.xlsx"], ["courses (1).xlsx", "courses.xlsx"], ["staff copy.xlsx", "staff.xlsx"], ["Round1 copy 2.XLSX", "round1.xlsx"],
+    [" singapore(12).xlsx ", "singapore.xlsx"], ["Past-Allocation (2).xlsx", "past-allocation.xlsx"], ["FIT.xlsx", "fit.xlsx"]]) assert.equal(slotName(given), slot, given);
+  // Anything else keeps the name it came with, so its line still shows what was dropped.
+  for (const other of ["teachers.xlsx", "courses 2025.xlsx", "old courses.xlsx", "courses.xls", "courses (1) (2).xlsx", "courses.xlsx.xlsx"]) assert.equal(slotName(other), other);
+  const names = { "courses.xlsx": "Courses (1).xlsx", "staff.xlsx": "STAFF.xlsx", "returning.xlsx": "returning copy.xlsx", "round1.xlsx": "Round1.xlsx" };
+  const out = await run((_, n) => Object.assign(n, names));
+  assert.ok(out.school);
+  assert.deepEqual(Object.keys(out.slots).sort(), [...SLOTS].sort());
+});
+
+test("of two files for one slot, the later one is read", async () => {
+  const good = await run();
+  const rows = await load();
+  const files = [];
+  for (const name of SLOTS) files.push({ name, bytes: await writeBook([{ name: SHEET, rows: rows[name] }]) });
+  const out = await parseFiles([...files, { name: "courses (1).xlsx", bytes: new Uint8Array([1]) }]);
+  assert.ok(good.school);
+  assert.equal(out.school, null);
+  assert.equal(out.slots["courses.xlsx"], "courses.xlsx: not a readable .xlsx file");
+});
+
+test("courses.xlsx: stray spaces, letter case and a number typed as text are read as meant", async () => {
+  const plain = await run(undefined, seq());
+  const out = await run((rows) => {
+    for (const r of rows["courses.xlsx"].slice(1)) {
+      r[2] = ` ${String(r[2]).toUpperCase()} `;
+      r[3] = ` ${r[3]} `;
+      r[4] = `${String(r[4]).toLowerCase()} `;
+    }
+  }, seq());
+  assert.ok(out.school, JSON.stringify(out.slots));
+  assert.deepEqual(out.school, plain.school);
+  for (const bad of ["2.0", "2 seats", "1e1", "", " "]) {
+    const no = await run((rows) => (rows["courses.xlsx"][5][3] = bad));
+    assert.equal(no.slots["courses.xlsx"], "courses.xlsx, row 6: seats must be a positive whole number", bad);
+  }
 });
 
 test("the first sheet is read whatever its name", async () => {
