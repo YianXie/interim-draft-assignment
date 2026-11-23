@@ -11,7 +11,8 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const L = (id) => esc(Mock.label(id));
 const many = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const byId = (a, b) => a.id.localeCompare(b.id);
-const timeOf = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+// A History line's day and time: versions made on different days must not look alike.
+const whenOf = (iso) => `${new Date(iso).toLocaleDateString([], { day: "numeric", month: "short" })} ${new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 
 // sort is per list, { key, dir } once a header is clicked, null before; it lives here so it outlasts a tab switch.
 const view = { tab: "todo", stack: [], idx: 0, q: { courses: "", teachers: "" }, sort: { courses: null, teachers: null } };
@@ -469,7 +470,7 @@ function askedCard(f) {
 
 function historyCard() {
   return card(`${back()}${title("History")}<div class="gap" data-rows>${Mock.history().map((h, i) => `
-    <div class="row r-two" data-row><span><span class="q">${esc(timeOf(h.when))}</span>&ensp;${esc(Mock.describe(h))}</span>${i ? `<button class="link" data-act="restore" data-v="${h.version}" data-k="h-${h.version}">Restore</button>` : ""}</div>`).join("")}</div>
+    <div class="row r-two" data-row><span><span class="q" data-when>v${h.version}&ensp;${esc(whenOf(h.when))}</span>&ensp;${esc(Mock.describe(h))}</span>${i ? `<button class="link" data-act="restore" data-v="${h.version}" data-k="h-${h.version}">Restore</button>` : ""}</div>`).join("")}</div>
     <div class="links"><button class="link" data-act="startOver" data-k="so">Start over</button></div>`);
 }
 

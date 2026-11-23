@@ -327,6 +327,12 @@ test("every To do item fits first, the big line equals the number of items, the 
   await page.getByRole("button", { name: "History" }).click();
   await expect(page.getByRole("heading", { name: "History" })).toBeVisible();
   await expect(page.getByText("First draft built from the forms")).toBeVisible();
+  // Each line carries its version, as Restore lines and the download's file name do, and the day, since work runs over days.
+  const today = await page.evaluate(() => new Date().toLocaleDateString([], { day: "numeric", month: "short" }));
+  const lines = page.locator("#main [data-row] [data-when]");
+  await expect(lines).toHaveCount(3);
+  expect((await lines.allTextContents()).map((t) => t.split(/\s+/)[0])).toEqual(["v3", "v2", "v1"]);
+  for (const text of await lines.allTextContents()) { expect(text).toContain(today); expect(text).toMatch(/\d{1,2}:\d{2}/); }
 });
 
 test("a teacher's card moves them, and the move screen has Not placed", async ({ page }) => {
