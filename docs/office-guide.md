@@ -6,8 +6,8 @@ You need a Mac with macOS 13.5 or newer, Google Chrome, an internet connection t
 
 ## 1. Get it
 
-1. On the [project's GitHub page](https://github.com/YianXie/interim-draft-assignment), click the green **Code** button, then **Download ZIP**.
-2. Open your **Downloads** folder and double-click `interim-draft-assignment-main.zip`. A folder with the same name appears.
+1. On the [project's GitHub page](https://github.com/YianXie/interim-draft-assistant), click the green **Code** button, then **Download ZIP**.
+2. Open your **Downloads** folder and double-click `interim-draft-assistant-main.zip`. A folder with the same name appears.
 3. Move that folder somewhere easy to find, such as **Documents**.
 
 ## 2. Start it

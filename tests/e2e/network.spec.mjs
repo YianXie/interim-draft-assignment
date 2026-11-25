@@ -4,7 +4,7 @@ import { ORIGIN, buildDraft, dropSchool } from "./helpers.mjs";
 const POLICY = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; form-action 'none'; base-uri 'none'">`;
 // Nothing here is ever contacted: the address is reserved for documentation.
 const OUTSIDE = "http://198.51.100.1/";
-const REPO = "https://github.com/YianXie/interim-draft-assignment";
+const REPO = "https://github.com/YianXie/interim-draft-assistant";
 
 const tab = (page, name) => page.getByRole("tab", { name });
 const names = (page) => page.getByRole("switch", { name: "Show names" });
